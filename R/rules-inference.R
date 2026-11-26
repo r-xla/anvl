@@ -2064,7 +2064,8 @@ infer_while <- function(..., cond, body, n_captures) {
 }
 
 # The operands are the arguments of `fn`, then what it closes over, which only
-# the lowering reads. `rule` is checked when the pullback rule traces it.
-infer_custom_gradient <- function(..., fn, rule, n_captures) {
+# the lowering reads. `rule` and `forward` are checked when the pullback rule
+# calls them.
+infer_custom_gradient <- function(..., fn, rule, forward, n_captures) {
   graph_output_avals(fn)
 }

@@ -4,40 +4,41 @@
 \alias{prim_custom_gradient}
 \title{Primitive Custom Gradient}
 \usage{
-prim_custom_gradient(args, fn, rule)
+prim_custom_gradient(args, fn, rule, forward = NULL)
 }
 \arguments{
 \item{args}{(named \code{list()})\cr
 The arguments of \code{fn}: \code{\link{arrayish}} values, or trees of them in the sense
 of pjrt's \code{\link[pjrt:build_tree]{RTree}}, by name. \code{rule} gives the gradient
-with respect to these. No entry may be named \code{out}, \code{grad} or \code{required},
-the names under which \code{rule} receives the result, its gradient and which
-gradients are required. An R value materializes at its default data type,
-as in \code{\link[=prim_while]{prim_while()}}.}
+with respect to these. No entry may be named \code{out}, \code{grad}, \code{required} or
+\code{residuals}, the names under which \code{rule} receives the result, its
+gradient, which gradients are required and the residuals of \code{forward}. An
+R value materializes at its default data type, as in \code{\link[=prim_while]{prim_while()}}.}
 
 \item{fn}{(\code{function})\cr
 Computes the result from the entries of \code{args}, which it receives as
 arguments. Returns an array, or a tree of them.}
 
-\item{rule}{(\code{function} | \code{anvl_rule_pullback})\cr
-Computes the gradient. A function receives the entries of \code{args} as arguments, plus
+\item{rule}{(\code{function})\cr
+Computes the gradient. Receives the entries of \code{args} as arguments, plus
 \code{out}, the result of \code{fn}, \code{grad}, the gradient with respect to \code{out}, of
-the same structure, data types and shapes, and \code{required}, a named
+the same structure, data types and shapes, \code{required}, a named
 \code{logical()} with one element per entry of \code{args}: \code{TRUE} where the
 gradient with respect to that entry is required, i.e. where any of its
-arrays requires one. Returns a named list with the gradient with respect
-to each required entry -- for an array \code{x}, the sum over the elements of
-\code{out} of their \code{grad} times their derivative with respect to \code{x} -- of
-\code{x}'s structure, data types and shapes. An entry that is not required,
-e.g. an integer, which never is, can be left out or be \code{NULL}.
+arrays requires one, and, if \code{forward} is given, \code{residuals}, those it
+returned. Returns a named list with the gradient with respect to each
+required entry -- for an array \code{x}, the sum over the elements of \code{out} of
+their \code{grad} times their derivative with respect to \code{x} -- of \code{x}'s
+structure, data types and shapes. An entry that is not required, e.g. an
+integer, which never is, can be left out or be \code{NULL}.}
 
-Alternatively, a \code{\link[=rule_pullback]{rule_pullback()}} with a \code{forward} pass, which replaces
-\code{fn} where the result is differentiated, so that the backward pass can
-read what the forward pass computed. Its passes are those of a
-primitive's rule, except that \code{inputs} are the entries of \code{args} by name
-rather than one array per operand, \code{params} is an empty list, and
-\code{outputs}, \code{grads}, \code{required} and the returned gradients are those of a
-function above.}
+\item{forward}{(\code{NULL} | \code{function})\cr
+A forward pass that replaces \code{fn} where the result is differentiated, so
+that \code{rule} can reuse what it computed. Receives the entries of \code{args}
+as arguments, plus \code{required}, as \code{rule} does, and returns a list with
+\code{out}, the result, of the structure, data types and shapes of the result
+of \code{fn}, and \code{residuals}, a list of arrays, or trees of them, which \code{rule}
+receives. \code{NULL} (the default) differentiates the result of \code{fn} itself.}
 }
 \value{
 (\code{\link{arrayish}} | \code{list})\cr
@@ -52,9 +53,10 @@ its own.
 }
 \section{Gradients}{
 
-\code{rule} is traced when the gradient is, once the function being
-differentiated has been traced. It can close over constants -- R values and
-arrays -- but not over a traced value: pass that through \code{args} instead.
+\code{rule} and \code{forward} are traced when the gradient is, once the function
+being differentiated has been traced. They can close over constants -- R
+values and arrays -- but not over a traced value: pass that through \code{args}
+instead.
 
 \code{fn} may close over traced values, but \code{\link[=gradient]{gradient()}} cannot differentiate
 with respect to those, as \code{rule} only gives the gradient with respect to
@@ -67,6 +69,7 @@ with respect to those, as \code{rule} only gives the gradient with respect to
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{pullback}
+\item \code{vectorize}
 }
 }
 
@@ -102,21 +105,19 @@ jit(gradient(pow, wrt = "x"))(x, 3L)
 dpow <- function(x, n) gradient(pow, wrt = "x")(x, n)$x
 jit(gradient(dpow, wrt = "x"))(x, 3L)
 
-# With a forward pass, x^(n - 1) is computed once, for the result and for
-# its gradient
+# With a forward pass, x^(n - 1) is computed once, for the result and, as a
+# residual, for its gradient
 pow_fwd <- function(x, n) {
   prim_custom_gradient(
     list(x = x, n = n),
     fn = pow_loop,
-    rule = rule_pullback(forward = function(inputs, params, required) {
-      p <- inputs$x^(inputs$n - 1L)
-      list(
-        outputs = p * inputs$x,
-        backward = function(inputs, outputs, grads, params, required) {
-          list(x = grads * inputs$n * p)
-        }
-      )
-    })
+    forward = function(x, n, required) {
+      p <- x^(n - 1L)
+      list(out = p * x, residuals = list(p = p))
+    },
+    rule = function(x, n, out, grad, required, residuals) {
+      list(x = grad * n * residuals$p)
+    }
   )
 }
 jit(gradient(pow_fwd, wrt = "x"))(x, 3L)

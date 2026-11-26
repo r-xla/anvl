@@ -982,9 +982,9 @@ prim_scan[["stablehlo"]] <- function(..., body, steps, reverse, n_carry, n_xs, n
 }
 
 # The operands are `fn`'s inputs: its arguments, then the captures. Its
-# operations are lowered in place. `rule` is not lowered: a gradient is traced,
-# as anvl operations, before the program is lowered.
-prim_custom_gradient[["stablehlo"]] <- function(..., fn, rule, n_captures) {
+# operations are lowered in place. `rule` and `forward` are not lowered: a
+# gradient is traced, as anvl operations, before the program is lowered.
+prim_custom_gradient[["stablehlo"]] <- function(..., fn, rule, forward, n_captures) {
   env <- HloEnv()
   ins <- list(...)
   for (k in seq_along(fn$inputs)) {

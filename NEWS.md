@@ -2,6 +2,9 @@
 
 ## Breaking changes
 
+* `prim_custom_gradient()` takes a forward pass as `forward`, which returns the
+  result and `residuals` that `rule` receives, instead of a `rule_pullback()`
+  as `rule`, whose backward pass closed over what the forward pass computed.
 * Batch axes now come last to have consistent col-major semantics everywhere.
   This includes: matrix multiplication, Cholesky decomposition, triangular solves, convolutions, scans, and top-k operations.
 * Random draws fill a shape in column-major order.

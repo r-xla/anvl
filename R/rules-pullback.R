@@ -752,13 +752,13 @@ scan_carry_requires <- function(body, required, carry_idx) {
 }
 
 # The pullback rule replaces the forward pass of the call, where it is known
-# which entries of `args` require a gradient. A `rule` with a forward pass of
-# its own runs that, and its backward pass then reads what it computed. A
-# function `rule` keeps the call: it is recorded again, and `rule` is traced
-# and applied to the call's own inputs, outputs and cotangents. Either way the
-# gradient is recorded as anvl operations, so differentiating it differentiates
-# them in turn. Nothing gives a gradient for what `fn` closes over, so
-# differentiating with respect to that is refused.
+# which entries of `args` require a gradient. Without `forward`, the call is
+# recorded again; with it, `forward` runs in its place and gives the result and
+# the residuals. Either way `rule` is traced and applied to the call's
+# arguments, its result, the cotangents and the residuals, so the gradient is
+# recorded as anvl operations, and differentiating it differentiates them in
+# turn. Nothing gives a gradient for what `fn` closes over, so differentiating
+# with respect to that is refused.
 prim_custom_gradient[["pullback"]] <- rule_pullback(forward = function(inputs, params, required) {
   fn <- params$fn
   arg_idx <- seq_len(length(inputs) - params$n_captures)
@@ -778,42 +778,54 @@ prim_custom_gradient[["pullback"]] <- rule_pullback(forward = function(inputs, p
     \(r) any(unlist(r)),
     logical(1L)
   )
-  if (!is.function(params$rule)) {
-    return(custom_forward_pass(params$rule$forward, args, fn, required_entries, length(inputs)))
+  residuals <- NULL
+  if (is.null(params$forward)) {
+    outputs <- graph_desc_add(prim_custom_gradient, args = inputs, params = params, infer_fn = infer_custom_gradient)
+  } else {
+    fwd <- custom_forward_pass(params$forward, args, fn, required_entries)
+    outputs <- fwd$outputs
+    residuals <- fwd$residuals
   }
-  outputs <- graph_desc_add(prim_custom_gradient, args = inputs, params = params, infer_fn = infer_custom_gradient)
   backward <- function(inputs, outputs, grads, params, required) {
     traced <- trace_custom_gradient_rule(
       params$rule,
       args = args,
       out = unflatten(fn$out_tree, outputs),
       grad = unflatten(fn$out_tree, grads),
-      required = required_entries
+      required = required_entries,
+      residuals = residuals
     )
     cts <- vector("list", length(inputs))
-    cts[traced$leaves] <- graph_apply(traced$graph, c(inputs[arg_idx], outputs, grads))
+    residual_leaves <- if (!is.null(residuals)) flatten(residuals)
+    cts[traced$leaves] <- graph_apply(traced$graph, c(inputs[arg_idx], outputs, grads, residual_leaves))
     cts
   }
   list(outputs = outputs, backward = backward)
 })
 
 # Traces `rule` of `prim_custom_gradient()` on `args`, `out` and `grad`, boxes
-# of the trace being differentiated, telling it which entries of `args` are
-# `required` (a named logical). Returns the graph, which takes the arrays of
-# `args`, `out` and `grad` and returns the gradients `rule` gave, and `leaves`:
+# of the trace being differentiated, and the `residuals` of its `forward`
+# (`NULL` without one), telling it which entries of `args` are `required` (a
+# named logical). Returns the graph, which takes the arrays of `args`, `out`,
+# `grad` and `residuals` and returns the gradients `rule` gave, and `leaves`:
 # the positions among the arrays of `args` these are the gradients of. `rule`
 # is checked here, as it is not traced before.
-trace_custom_gradient_rule <- function(rule, args, out, grad, required) {
+trace_custom_gradient_rule <- function(rule, args, out, grad, required, residuals = NULL) {
   call <- quote(prim_custom_gradient())
   given <- NULL
-  rule_traced <- function(args, out, grad) {
-    grads <- do.call(rule, c(args, list(out = out, grad = grad, required = required)))
+  rule_traced <- function(args, out, grad, residuals = NULL) {
+    extra <- if (!is.null(residuals)) list(residuals = residuals)
+    grads <- do.call(rule, c(args, list(out = out, grad = grad, required = required), extra))
     checked <- check_custom_gradients(grads, args, required, "{.arg rule}", call)
     given <<- checked$given
     checked$grads
   }
   desc <- local_descriptor()
-  graph <- trace_fn(rule_traced, list(args = args, out = out, grad = grad), desc = desc)
+  inputs <- list(args = args, out = out, grad = grad)
+  if (!is.null(residuals)) {
+    inputs$residuals <- residuals
+  }
+  graph <- trace_fn(rule_traced, inputs, desc = desc)
 
   # A traced value `rule` closes over belongs to a trace that has been replayed
   # by now; only arrays are constants here.
@@ -839,112 +851,83 @@ trace_custom_gradient_rule <- function(rule, args, out, grad, required) {
   list(graph = graph, leaves = leaves)
 }
 
-# Runs `forward`, the forward pass of a `rule` of `prim_custom_gradient()`, on
-# `args`, the boxes of the call's arguments by entry, telling it which entries
-# are `required`. Returns what an alternative forward of a pullback rule does:
-# the boxes of its outputs, which must be of the types `fn` returns, and a
-# backward pass for the call's `n_inputs` operands. The backward pass
-# `forward` returns may close over what `forward` computed; apart from that,
-# the two passes may close over arrays only, not over another traced value.
-custom_forward_pass <- function(forward, args, fn, required, n_inputs) {
+# Runs `forward` of `prim_custom_gradient()` on `args`, the boxes of the call's
+# arguments by entry, telling it which entries are `required`. Returns the boxes
+# of the result, which must be of the types `fn` returns, as `outputs`, and the
+# residuals, a list of boxes or trees of them, as `residuals`. `forward` may
+# close over arrays, but not over another traced value.
+custom_forward_pass <- function(forward, args, fn, required) {
   call <- quote(prim_custom_gradient())
   desc <- current_descriptor()
-  # What a pass may read besides arrays: the arguments, then what the forward
-  # pass computes from them.
+  # What `forward` may read besides arrays: the arguments, then what it
+  # computes from them.
   known <- hashtab()
   for (box in flatten(args)) {
     known[[box$gnode]] <- TRUE
   }
   n_before <- desc$statements$size()
-  result <- forward(args, list(), required)
+  result <- do.call(forward, c(args, list(required = required)))
 
-  valid <- is.list(result) &&
-    !is_arrayish(result) &&
-    all(c("outputs", "backward") %in% names(result)) &&
-    is.function(result$backward)
-  if (!valid) {
-    got <- if (!is.list(result) || is_arrayish(result)) {
-      "Got {value_repr(result)}."
-    } else if (!all(c("outputs", "backward") %in% names(result))) {
-      "Got a list with names {value_repr(names(result))}."
+  is_list <- function(x) is.list(x) && !is_arrayish(x)
+  if (!is_list(result) || !all(c("out", "residuals") %in% names(result))) {
+    got <- if (is_list(result)) "Got a list with names {value_repr(names(result))}." else "Got {value_repr(result)}."
+    cli_abort(
+      c("{.arg forward} must return a list with the result, {.field out}, and the {.field residuals}.", x = got),
+      call = call
+    )
+  }
+  if (!pjrt::tree_equal(build_tree(result$out), fn$out_tree)) {
+    cli_abort(
+      c(
+        "{.arg forward} must return {.field out} with the structure of the result of {.arg fn}.",
+        x = "Got {value_repr(result$out)}."
+      ),
+      call = call
+    )
+  }
+  residual_leaves <- if (is_list(result$residuals)) flatten(result$residuals)
+  not_array <- which(!vapply(residual_leaves, is_arrayish, logical(1L)))
+  if (!is_list(result$residuals) || length(not_array)) {
+    got <- if (is_list(result$residuals)) {
+      sprintf(
+        "Got {value_repr(residual_leaves[[not_array[[1L]]]])} at `%s`.",
+        pjrt::tree_path(build_tree(result$residuals), not_array[[1L]])
+      )
     } else {
-      "Got {.field backward} {value_repr(result$backward)}."
+      "Got {value_repr(result$residuals)}."
     }
     cli_abort(
-      c(
-        "The forward pass of {.arg rule} must return a list with its {.field outputs} and its {.field backward} pass, a function.", # nolint
-        x = got
-      ),
+      c("{.arg forward} must return {.field residuals} that are a list of arrays, or trees of them.", x = got),
       call = call
     )
   }
-  if (!pjrt::tree_equal(build_tree(result$outputs), fn$out_tree)) {
-    cli_abort(
-      c(
-        "The forward pass of {.arg rule} must return {.field outputs} with the structure of the result of {.arg fn}.",
-        x = "Got {value_repr(result$outputs)}."
-      ),
-      call = call
-    )
-  }
-  outputs <- lapply(flatten(result$outputs), \(x) materialize_rdata_box(maybe_box_arrayish(x, desc)))
-  check_custom_reads(desc, n_before, known, outputs, "The forward pass of {.arg rule}", call)
+  as_box <- \(x) materialize_rdata_box(maybe_box_arrayish(x, desc))
+  outputs <- lapply(flatten(result$out), as_box)
+  residual_boxes <- lapply(residual_leaves, as_box)
+  check_custom_reads(desc, n_before, known, c(outputs, residual_boxes), "{.arg forward}", call)
   fn_avals <- graph_output_avals(fn)
   out_avals <- lapply(outputs, \(box) box$gnode$aval)
   bad <- type_mismatches(fn_avals, out_avals)
   if (length(bad)) {
     paths <- vapply(bad, \(i) pjrt::tree_path(fn$out_tree, i), character(1L))
     described <- sprintf(
-      "`fn` returns %s%s, the forward pass %s",
+      "`fn` returns %s%s, `forward` %s",
       vapply(fn_avals[bad], repr, character(1L)),
       ifelse(nzchar(paths), sprintf(" at `%s`", paths), ""),
       vapply(out_avals[bad], repr, character(1L))
     )
     cli_abort(
       c(
-        "The forward pass of {.arg rule} must return {.field outputs} of the same types as the result of {.arg fn}.",
+        "{.arg forward} must return {.field out} of the same types as the result of {.arg fn}.",
         x = "{described}."
       ),
       call = call
     )
   }
-
-  backward <- function(inputs, outputs, grads, params, required_inputs) {
-    desc <- current_descriptor()
-    for (grad in grads) {
-      if (is_graph_box(grad)) {
-        known[[grad$gnode]] <- TRUE
-      }
-    }
-    n_before <- desc$statements$size()
-    what <- "The backward pass of {.arg rule}"
-    grads <- result$backward(
-      args,
-      unflatten(fn$out_tree, outputs),
-      unflatten(fn$out_tree, grads),
-      list(),
-      required
-    )
-    checked <- check_custom_gradients(grads, args, required, what, call)
-    boxes <- lapply(flatten(checked$grads), maybe_box_arrayish, desc = desc)
-    check_custom_reads(desc, n_before, known, boxes, what, call)
-    leaves <- given_leaves(args, checked$given)
-    check_custom_gradient_types(
-      lapply(flatten(args)[leaves], \(box) box$gnode$aval),
-      lapply(boxes, \(box) box$gnode$aval),
-      build_tree(args),
-      leaves,
-      what,
-      call
-    )
-    cts <- vector("list", n_inputs)
-    cts[leaves] <- boxes
-    cts
-  }
-  list(outputs = outputs, backward = backward)
+  list(outputs = outputs, residuals = unflatten(build_tree(result$residuals), residual_boxes))
 }
 
-# Refuses a pass `what` of a `rule` of `prim_custom_gradient()` that read a
+# Refuses `what`, the `forward` of `prim_custom_gradient()`, where it read a
 # traced value it does not `know`: one that no call it recorded into `desc`
 # (those after the first `n_before`) computed, and that is no array. Checks the
 # operands of those calls and `results`, the boxes it returned, and adds what
@@ -969,8 +952,7 @@ abort_custom_closure <- function(what, call) {
   cli_abort(
     c(
       paste0(what, " must not close over a traced value."),
-      i = "Pass it to {.arg rule} through {.arg args} instead.",
-      i = if (startsWith(what, "The backward")) "The backward pass can close over what its forward pass computed."
+      i = "Pass it through {.arg args} instead."
     ),
     call = call
   )

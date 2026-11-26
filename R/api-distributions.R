@@ -2245,25 +2245,24 @@ ppois_differentiable <- function(k, lambda, lower_tail, log_p, is_f32) {
   prim_custom_gradient(
     list(k = k, lambda = lambda),
     fn = function(k, lambda) ppois_raw(k, lambda, lower_tail, log_p, is_f32)$value,
-    rule = rule_pullback(forward = function(inputs, params, required) {
-      k <- inputs$k
-      lambda <- inputs$lambda
+    # The loops compute the derivative along with the value, as a residual.
+    forward = function(k, lambda, required) {
       # Higher derivatives also differentiate this forward pass. Stop gradients
       # through lambda here because the loops have no pullback rule;
       # `ppois_slope()` supplies the higher derivatives.
       raw <- ppois_raw(k, stop_gradient(lambda), lower_tail, log_p, is_f32, grad = required[["lambda"]])
-      backward <- function(inputs, outputs, grads, params, required_inputs) {
-        if (!required[["lambda"]]) {
-          return(list())
-        }
-        slope <- ppois_slope(if (lower_tail) -raw$grad else raw$grad, k, lambda, log_p)
-        # On the log scale, the slope can overflow when lambda is tiny:
-        # it is roughly (k + 1) / lambda. Pin zero incoming gradients at zero
-        # to avoid NaN from multiplying zero by an infinite slope.
-        list(lambda = sum_like(nv_ifelse(grads == 0, 0, grads * slope), lambda))
+      list(out = raw$value, residuals = if (required[["lambda"]]) list(grad = raw$grad) else list())
+    },
+    rule = function(k, lambda, out, grad, required, residuals) {
+      if (!required[["lambda"]]) {
+        return(list())
       }
-      list(outputs = raw$value, backward = backward)
-    })
+      slope <- ppois_slope(if (lower_tail) -residuals$grad else residuals$grad, k, lambda, log_p)
+      # On the log scale, the slope can overflow when lambda is tiny:
+      # it is roughly (k + 1) / lambda. Pin zero incoming gradients at zero
+      # to avoid NaN from multiplying zero by an infinite slope.
+      list(lambda = sum_like(nv_ifelse(grad == 0, 0, grad * slope), lambda))
+    }
   )
 }
 
