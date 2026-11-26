@@ -1197,6 +1197,32 @@ describe("prim_triangular_solve", {
   it("masking: upper, unit_diagonal", verify_triangular_solve_masking(lower = FALSE, unit_diagonal = TRUE))
 })
 
+describe("prim_lu", {
+  # `batch` is the shape of the trailing batch axes, which torch puts first.
+  # torch's `torch_lu()` factors like LAPACK's getrf, so it packs the same `LU`
+  # with the same pivots.
+  verify_lu_grad <- function(m, n, batch = integer()) {
+    shp <- c(m, n, batch)
+    x_r <- array(rnorm(prod(shp)), shp)
+    w_r <- array(rnorm(prod(shp)), shp)
+
+    f_anvl <- function(x, w) nv_sum(prim_lu(x)$LU * w)
+    grad_anvl <- jit(gradient(f_anvl, wrt = "x"))(nv_array(x_r, dtype = "f64"), nv_array(w_r, dtype = "f64"))$x
+
+    x_torch <- torch::torch_tensor(to_batch_first(x_r), requires_grad = TRUE, dtype = torch::torch_float64())
+    w_torch <- torch::torch_tensor(to_batch_first(w_r), dtype = torch::torch_float64())
+    torch::torch_sum(torch::torch_lu(x_torch)[[1L]] * w_torch)$backward()
+
+    expect_equal(as_array(grad_anvl), from_batch_first(as_array_torch(x_torch$grad), length(batch)), tolerance = 1e-8)
+  }
+
+  it("square", verify_lu_grad(3L, 3L))
+  it("tall", verify_lu_grad(4L, 2L))
+  it("wide", verify_lu_grad(2L, 4L))
+  it("batched", verify_lu_grad(3L, 3L, batch = c(2L, 3L)))
+  it("batched, wide", verify_lu_grad(2L, 3L, batch = 2L))
+})
+
 describe("prim_scan", {
   # An RNN, h_t = tanh(W h_{t-1} + x_t), differentiated with respect to the
   # initial state, the inputs and the weight it closes over.

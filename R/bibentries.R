@@ -16,6 +16,16 @@ bibentries <- c(
     year = "2008",
     institution = "Oxford University Computing Laboratory"
   ),
+  dehoog2011differentiation = bibentry(
+    bibtype = "article",
+    title = "Differentiation of matrix functionals using triangular factorization",
+    author = c(person("F. R.", "de Hoog"), person("R. S.", "Anderssen"), person("M. A.", "Lukas")),
+    journal = "Mathematics of Computation",
+    volume = "80",
+    number = "275",
+    pages = "1585--1600",
+    year = "2011"
+  ),
   walter2012structured = bibentry(
     bibtype = "phdthesis",
     title = "Structured higher-order algorithmic differentiation in the forward and reverse mode with application in optimum experimental design",

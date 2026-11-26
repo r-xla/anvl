@@ -1853,6 +1853,64 @@ matmul_on_side <- function(a, x, left_side) {
   if (left_side) nv_matmul(a, x) else nv_matmul(x, a)
 }
 
+# The leading `rows` x `cols` block of `x`, padded with zeros where `x` is
+# smaller.
+resize_matrix <- function(x, rows, cols) {
+  shp <- shape(x)
+  target <- c(rows, cols, shp[-(1:2)])
+  kept <- pmin(shp, target)
+  unit <- rep(1L, length(shp))
+  none <- integer(length(shp))
+  if (any(kept < shp)) {
+    x <- prim_static_slice(x, unit, kept, unit)
+  }
+  if (any(kept < target)) {
+    x <- prim_pad(x, 0, none, target - kept, none)
+  }
+  x
+}
+
+# The permutation matrices `P` of the batch of permutation vectors `perm`, at
+# data type `dtype`: `(P %*% x)[i, ]` is `x[perm[i], ]`.
+permutation_matrix <- function(perm, dtype) {
+  shp <- c(shape(perm)[[1L]], shape(perm))
+  rows <- prim_broadcast_in_axes(perm, shp, c(1L, seq_along(shp)[-(1:2)]))
+  cols <- prim_iota(axis = 2L, shape = shp, dtype = dtype(perm), start = 1L)
+  prim_convert(prim_eq(rows, cols), dtype)
+}
+
+# The factors of the packed `LU` (m x n) of `prim_lu()`, each completed by the
+# identity to an invertible square matrix: the unit lower triangular `l`
+# (m x m), with `L` in its first `k = min(m, n)` columns, and the upper
+# triangular `u` (n x n), with `U` in its first `k` rows. With these,
+# `P A = L U` moves by `P dA = dL U + L dU`, so `l^-1 P dA u^-1` is
+# `l^-1 dL + dU u^-1`: its strict lower triangle is the first term, and its
+# upper triangle the second (de Hoog, Anderssen and Lukas 2011).
+lu_factors <- function(LU) {
+  shp <- shape(LU)
+  m <- shp[[1L]]
+  n <- shp[[2L]]
+  eye <- function(size) prim_convert(diag_mask(c(size, size, shp[-(1:2)])), dtype(LU))
+  l <- prim_add(keep_triangle(resize_matrix(LU, m, m), lower = TRUE, unit_diagonal = TRUE), eye(m))
+  u <- keep_triangle(resize_matrix(LU, n, n), lower = FALSE, unit_diagonal = FALSE)
+  beyond_k <- prim_gt(prim_iota(axis = 1L, shape = shape(u), dtype = "i32", start = 1L), min(m, n))
+  list(l = l, u = prim_ifelse(beyond_k, eye(n), u))
+}
+
+# `op(l)^-1 x op(u)^-1` for the factors `l` and `u` of `lu_factors()`, where
+# `op()` is `t()` if `transpose`.
+solve_lu_sides <- function(factors, x, transpose) {
+  x <- prim_triangular_solve(
+    factors$l,
+    x,
+    left_side = TRUE,
+    lower = TRUE,
+    unit_diagonal = TRUE,
+    transpose_a = transpose
+  )
+  prim_triangular_solve(factors$u, x, left_side = FALSE, lower = FALSE, unit_diagonal = FALSE, transpose_a = transpose)
+}
+
 #' @name prim_chol
 #' @rdname prim_chol
 #' @references
@@ -1933,6 +1991,26 @@ prim_triangular_solve[["pullback"]] <- rule_pullback(function(inputs, outputs, g
   }
 
   list(grad_a, if (required[[2L]]) grad_b)
+})
+
+# The transpose of the derivative the pushforward rule computes,
+# `dLU = l tril(Y, -1) + triu(Y) u` with `Y = l^-1 P dA u^-1` (see
+# `lu_factors()`): the cotangent `G` of `LU` pulls back to
+# `Y = tril(t(l) G, -1) + triu(G t(u))` and on to `t(P) t(l)^-1 Y t(u)^-1`.
+# The pivots and the permutation are integers, whose cotangents carry nothing.
+#' @name prim_lu
+#' @rdname prim_lu
+#' @references
+#' `r format_bib("dehoog2011differentiation")`
+prim_lu[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  factors <- lu_factors(outputs[[1L]])
+  grad <- grads[[1L]]
+  y <- prim_add(
+    keep_triangle(nv_matmul(transpose_matrix_axes(factors$l), grad), lower = TRUE, unit_diagonal = TRUE),
+    keep_triangle(nv_matmul(grad, transpose_matrix_axes(factors$u)), lower = FALSE, unit_diagonal = FALSE)
+  )
+  P <- permutation_matrix(outputs[[3L]], dtype(grad))
+  list(nv_matmul(transpose_matrix_axes(P), solve_lu_sides(factors, y, transpose = TRUE)))
 })
 
 # Moves a group factor from axis `from` of `x` into axis `to`: `from` is cut
