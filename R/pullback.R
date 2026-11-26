@@ -713,23 +713,14 @@ trace_value_and_grad <- function(f, args, wrt, fn, call = rlang::caller_env()) {
 #' dtotal(x)
 pullback <- function(.f, ...) {
   assert_function(.f)
-  trace_pullback(.f, pullback_args(.f, list(...)), "pullback")$pullback
+  trace_pullback(.f, differentiated_args(.f, list(...)), "pullback")$pullback
 }
 
 #' @rdname pullback
 #' @export
 value_and_pullback <- function(.f, ...) {
   assert_function(.f)
-  trace_pullback(.f, pullback_args(.f, list(...)), "value_and_pullback")
-}
-
-# The arguments `args` of `pullback()`, matched to the formals of `f`, as
-# `prepare_gradient_args()` returns them: every float array among them is
-# differentiated.
-pullback_args <- function(f, args) {
-  prep <- flatten_args(match_args_to_formals(f, args))
-  prep$is_wrt_flat <- vapply(prep$args_flat, is_float_array, logical(1L))
-  prep
+  trace_pullback(.f, differentiated_args(.f, list(...)), "value_and_pullback")
 }
 
 # The pullback of `f` for `pullback()`, `value_and_pullback()` or
@@ -739,43 +730,22 @@ pullback_args <- function(f, args) {
 # backward pass there. It differentiates the leaves `prep$is_wrt_flat`
 # selects, and returns `NULL` for the others.
 trace_pullback <- function(f, prep, fn, call = rlang::caller_env()) {
-  enclosing <- current_descriptor(silent = TRUE)
-  if (is.null(enclosing)) {
-    cli_abort(
-      c(
-        "{.fn {fn}} can only be called inside a {.fn jit}-compiled function.",
-        i = "Call it in the function you pass to {.fn jit}."
-      ),
-      call = call
+  traced <- trace_replayed(f, prep, fn, call = call, replay = function(graph, operands) {
+    # A leaf that is no array is static, and no input of the graph.
+    requires_grad <- prep$is_wrt_flat[!graph$is_static_flat]
+    reqs <- list(
+      required_env = requirements_from(graph, graph$inputs[requires_grad]),
+      requires_grad = requires_grad
     )
-  }
-  # The arguments are expressions of the enclosing trace, which must be
-  # recorded there before `f`'s trace opens.
-  force(prep)
-  # A side effect `f` uses closes over the enclosing trace's value, and its
-  # uses continue the enclosing trace's.
-  desc <- local_descriptor(side_effects_mode = "capture")
-  graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree, desc = desc)
-  # A leaf that is no array is static, and no input of the graph.
-  requires_grad <- prep$is_wrt_flat[!graph$is_static_flat]
-  reqs <- list(
-    required_env = requirements_from(graph, graph$inputs[requires_grad]),
-    requires_grad = requires_grad
-  )
-  res <- graph_pullback(graph, reqs, graph_operands(graph, prep$args_flat))
-  desc_end_capture(enclosing, list(graph))
-
-  value <- unflatten(graph$out_tree, res$value)
+    graph_pullback(graph, reqs, operands)
+  })
+  graph <- traced$graph
+  value <- unflatten(graph$out_tree, traced$res$value)
   pull <- function(cotangent) {
-    if (!descriptor_within(current_descriptor(silent = TRUE), enclosing)) {
-      cli_abort(c(
-        "A pullback can only be called in the function {.fn {fn}} was called in.",
-        i = "Or in a function traced inside it, such as a branch of {.fn nv_if}."
-      ))
-    }
+    assert_called_within(traced$enclosing, "pullback", fn)
     cts <- flatten_cotangent(value, cotangent, graph$out_tree, call = rlang::current_env())
     pulled <- vector("list", length(prep$args_flat))
-    pulled[prep$is_wrt_flat] <- res$pullback(cts)
+    pulled[prep$is_wrt_flat] <- traced$res$pullback(cts)
     unflatten(prep$in_tree, pulled)
   }
   list(value = value, pullback = pull)
@@ -810,68 +780,21 @@ flatten_cotangent <- function(value, cotangent, out_tree, call) {
         return(NULL)
       }
       path <- pjrt::tree_path(out_tree, i)
-      at <- if (nzchar(path)) " at {.code {path}}" else ""
-      dt <- dtype(x)
-      if (!is_dtype_float(dt)) {
+      at <- if (nzchar(path)) cli::format_inline(" at {.code {path}}") else ""
+      if (!is_dtype_float(dtype(x))) {
         cli_abort(
           c(
-            paste0("The value of {.arg .f} has no cotangent", at, "."),
-            x = "It is {.val {as.character(dt)}}, not a float.",
+            "The value of {.arg .f} has no cotangent{at}.",
+            x = "It is {.val {as.character(dtype(x))}}, not a float.",
             i = "Pass {.code NULL} there."
           ),
           call = call
         )
       }
-      if (has_no_dtype(ct)) {
-        ct <- materialize_at(ct, dt)
-      } else if (!is_arrayish(ct)) {
-        cli_abort(
-          c(
-            paste0("The cotangent", at, " must be an array."),
-            x = "Got {.cls {class(ct)}}."
-          ),
-          call = call
-        )
-      }
-      ct <- maybe_box_arrayish(ct)
-      if (dtype(ct) != dt || !identical(shape(ct), shape(x))) {
-        cli_abort(
-          c(
-            paste0("The cotangent", at, " must have the data type and shape of the value."),
-            x = "The value is {.val {format_aval_short(to_abstract(x))}}, the cotangent {.val {format_aval_short(to_abstract(ct))}}." # nolint
-          ),
-          call = call
-        )
-      }
-      ct
+      check_seed(x, ct, kind = "cotangent", where = at, of = "value", call = call)
     },
     flatten(value),
-    cotangent_leaves(value, cotangent, call),
+    leaves_like(value, cotangent, call, "{.arg cotangent} must be structured like the value of {.arg .f}."),
     seq_len(tree_size(out_tree))
   )
-}
-
-# The leaves of `cotangent` aligned with those of `value`, `NULL` for each leaf
-# of a part of `value` whose cotangent is `NULL`. Errors name `call`.
-cotangent_leaves <- function(value, cotangent, call) {
-  if (is.null(cotangent)) {
-    return(vector("list", length(flatten(value))))
-  }
-  if (build_tree(cotangent) == build_tree(value)) {
-    return(flatten(cotangent))
-  }
-  same_node <- rlang::is_bare_list(value) &&
-    rlang::is_bare_list(cotangent) &&
-    length(cotangent) == length(value) &&
-    identical(names(cotangent), names(value))
-  if (!same_node) {
-    cli_abort(
-      c(
-        "{.arg cotangent} must be structured like the value of {.arg .f}.",
-        i = "{.code NULL} can stand in for any part of it."
-      ),
-      call = call
-    )
-  }
-  do.call(c, unname(Map(cotangent_leaves, value, cotangent, list(call)))) %||% list()
 }

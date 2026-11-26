@@ -74,3 +74,98 @@ assert_in_trace <- function(name, call = rlang::caller_env()) {
     )
   }
 }
+
+# The arguments `args` of `pullback()`, matched to the formals of `f`, as
+# `prepare_gradient_args()` returns them: every float array among them is
+# differentiated.
+differentiated_args <- function(f, args) {
+  prep <- flatten_args(match_args_to_formals(f, args))
+  prep$is_wrt_flat <- vapply(prep$args_flat, is_float_array, logical(1L))
+  prep
+}
+
+# `f` traced for `fn`, one of the transformations, at the arguments `prep`
+# holds into a graph of its own, which `replay(graph, operands)` replays into
+# the enclosing trace as a function of `operands`, the boxes its inputs are
+# bound to there. Returns the graph, what `replay` returned, and the
+# descriptor of the enclosing trace. Errors name `call`.
+trace_replayed <- function(f, prep, fn, replay, call) {
+  enclosing <- current_descriptor(silent = TRUE)
+  if (is.null(enclosing)) {
+    cli_abort(
+      c(
+        "{.fn {fn}} can only be called inside a {.fn jit}-compiled function.",
+        i = "Call it in the function you pass to {.fn jit}."
+      ),
+      call = call
+    )
+  }
+  # The arguments are expressions of the enclosing trace, which must be
+  # recorded there before `f`'s trace opens.
+  force(prep)
+  # A side effect `f` uses closes over the enclosing trace's value, and its
+  # uses continue the enclosing trace's.
+  desc <- local_descriptor(side_effects_mode = "capture")
+  graph <- trace_fn(f, args_flat = prep$args_flat, in_tree = prep$in_tree, desc = desc)
+  res <- replay(graph, graph_operands(graph, prep$args_flat))
+  desc_end_capture(enclosing, list(graph))
+  list(graph = graph, res = res, enclosing = enclosing)
+}
+
+# Refuses to call a pullback (`what`) that `fn` made in the trace `enclosing`
+# outside that trace and the traces opened inside it.
+assert_called_within <- function(enclosing, what, fn) {
+  if (!descriptor_within(current_descriptor(silent = TRUE), enclosing)) {
+    cli_abort(c(
+      "A {what} can only be called in the function {.fn {fn}} was called in.",
+      i = "Or in a function traced inside it, such as a branch of {.fn nv_if}."
+    ))
+  }
+}
+
+# The leaves of `x` -- such as a cotangent of a value -- aligned with those of
+# `like`, `NULL` for each leaf of a part of `like` whose counterpart in `x` is
+# `NULL`. Errors name `call`, with the headline `mismatch` for an `x`
+# structured unlike `like`.
+leaves_like <- function(like, x, call, mismatch) {
+  if (is.null(x)) {
+    return(vector("list", length(flatten(like))))
+  }
+  if (build_tree(x) == build_tree(like)) {
+    return(flatten(x))
+  }
+  same_node <- rlang::is_bare_list(like) &&
+    rlang::is_bare_list(x) &&
+    length(x) == length(like) &&
+    identical(names(x), names(like))
+  if (!same_node) {
+    cli_abort(c(mismatch, i = "{.code NULL} can stand in for any part of it."), call = call)
+  }
+  leaves <- Map(leaves_like, like, x, MoreArgs = list(call = call, mismatch = mismatch))
+  do.call(c, unname(leaves)) %||% list()
+}
+
+# `x`, the seed of a derivative such as a cotangent (`kind`) of the float array
+# `primal`, boxed in the current trace after checking that the two fit
+# together; an R value takes the data type of `primal`. `where` (formatted)
+# says which part of `of`, such as the value, it belongs to. Errors name
+# `call`.
+check_seed <- function(primal, x, kind, where, of, call) {
+  dt <- dtype(primal)
+  if (has_no_dtype(x)) {
+    x <- materialize_at(x, dt)
+  } else if (!is_arrayish(x)) {
+    cli_abort(c("The {kind}{where} must be an array.", x = "Got {.cls {class(x)}}."), call = call)
+  }
+  x <- maybe_box_arrayish(x)
+  if (dtype(x) != dt || !identical(shape(x), shape(primal))) {
+    cli_abort(
+      c(
+        "The {kind}{where} must have the data type and shape of the {of}.",
+        x = "The {of} is {.val {format_aval_short(to_abstract(primal))}}, the {kind} {.val {format_aval_short(to_abstract(x))}}." # nolint
+      ),
+      call = call
+    )
+  }
+  x
+}
