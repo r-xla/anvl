@@ -1075,14 +1075,13 @@ describe("prim_custom_gradient", {
   x <- nv_scalar(2, dtype = "f32")
   id_rule <- function(x, out, grad, required) list(x = grad)
 
-  it("refuses an fn or rule that is not a function", {
+  it("refuses an fn, rule or forward that is not a function", {
     expect_snapshot(error = TRUE, prim_custom_gradient(list(x = x), fn = 1, rule = id_rule))
     expect_snapshot(error = TRUE, prim_custom_gradient(list(x = x), fn = function(x) x, rule = "r"))
-  })
-
-  it("refuses a pullback rule without a forward pass", {
-    rule <- rule_pullback(backward = function(inputs, outputs, grads, params, required) list(x = grads))
-    expect_snapshot(error = TRUE, prim_custom_gradient(list(x = x), fn = function(x) x, rule = rule))
+    expect_snapshot(
+      error = TRUE,
+      prim_custom_gradient(list(x = x), fn = function(x) x, rule = id_rule, forward = "f")
+    )
   })
 
   it("refuses args that are not a list with names", {
@@ -1095,6 +1094,10 @@ describe("prim_custom_gradient", {
     expect_snapshot(
       error = TRUE,
       prim_custom_gradient(list(required = x), fn = function(required) required, rule = function(...) list())
+    )
+    expect_snapshot(
+      error = TRUE,
+      prim_custom_gradient(list(residuals = x), fn = function(residuals) residuals, rule = function(...) list())
     )
     expect_snapshot(
       error = TRUE,
@@ -1120,11 +1123,25 @@ describe("prim_custom_gradient", {
     )
   })
 
-  it("refuses an fn or rule without an argument for a value it receives", {
+  it("refuses an fn, rule or forward without an argument for a value it receives", {
     expect_snapshot(error = TRUE, prim_custom_gradient(list(y = x), fn = function(x) x, rule = id_rule))
     expect_snapshot(
       error = TRUE,
       prim_custom_gradient(list(x = x), fn = function(x) x, rule = function(x, grad) list(x = grad))
+    )
+    # with a forward pass, rule also receives the residuals
+    expect_snapshot(
+      error = TRUE,
+      prim_custom_gradient(list(x = x), fn = function(x) x, rule = id_rule, forward = function(x, required) x)
+    )
+    expect_snapshot(
+      error = TRUE,
+      prim_custom_gradient(
+        list(x = x),
+        fn = function(x) x,
+        rule = function(x, out, grad, required, residuals) list(x = grad),
+        forward = function(x) x
+      )
     )
   })
 })

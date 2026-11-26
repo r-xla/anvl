@@ -76,61 +76,68 @@
       ! `rule` must return a gradient of the same type as the argument it belongs to.
       x `x` is f64[3], its gradient f64[].
 
-# prim_custom_gradient / with a forward pass / refuses a forward or backward pass that closes over a traced value
+# prim_custom_gradient / with a forward pass / refuses a forward pass that closes over a traced value
 
     Code
-      differentiate(function(s) {
-        function(inputs, params, required) {
-          list(outputs = inputs$x * s, backward = function(inputs, outputs, grads,
-            params, required) list(x = grads))
-        }
-      })
+      differentiate(function(s) function(x, required) list(out = x * s, residuals = list()))
     Condition
       Error in `prim_custom_gradient()`:
-      ! The forward pass of `rule` must not close over a traced value.
-      i Pass it to `rule` through `args` instead.
+      ! `forward` must not close over a traced value.
+      i Pass it through `args` instead.
 
 ---
 
     Code
-      differentiate(function(s) {
-        function(inputs, params, required) {
-          list(outputs = inputs$x * 4, backward = function(inputs, outputs, grads,
-            params, required) list(x = grads * s))
-        }
-      })
+      differentiate(function(s) function(x, required) list(out = x * 4, residuals = list(
+        s = s)))
     Condition
       Error in `prim_custom_gradient()`:
-      ! The backward pass of `rule` must not close over a traced value.
-      i Pass it to `rule` through `args` instead.
-      i The backward pass can close over what its forward pass computed.
+      ! `forward` must not close over a traced value.
+      i Pass it through `args` instead.
 
-# prim_custom_gradient / with a forward pass / refuses a forward pass that does not return its outputs and a backward pass
+# prim_custom_gradient / with a forward pass / refuses a forward pass that does not return the result and the residuals
 
     Code
-      differentiate(function(inputs, params, required) inputs$x)
+      differentiate(function(x, required) x)
     Condition
       Error in `prim_custom_gradient()`:
-      ! The forward pass of `rule` must return a list with its outputs and its backward pass, a function.
+      ! `forward` must return a list with the result, out, and the residuals.
       x Got f64[3].
 
 ---
 
     Code
-      differentiate(function(inputs, params, required) list(outputs = inputs$x,
-      backward = "b"))
+      differentiate(function(x, required) list(out = x))
     Condition
       Error in `prim_custom_gradient()`:
-      ! The forward pass of `rule` must return a list with its outputs and its backward pass, a function.
-      x Got backward "b".
+      ! `forward` must return a list with the result, out, and the residuals.
+      x Got a list with names "out".
 
-# prim_custom_gradient / with a forward pass / refuses outputs of another structure or type than the result of fn
+---
+
+    Code
+      differentiate(function(x, required) list(out = x, residuals = "r"))
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `forward` must return residuals that are a list of arrays, or trees of them.
+      x Got "r".
+
+---
+
+    Code
+      differentiate(function(x, required) list(out = x, residuals = list(a = "r")))
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `forward` must return residuals that are a list of arrays, or trees of them.
+      x Got "r" at `a`.
+
+# prim_custom_gradient / with a forward pass / refuses a result of another structure or type than the result of fn
 
     Code
       differentiate(function(x) list(x, x))
     Condition
       Error in `prim_custom_gradient()`:
-      ! The forward pass of `rule` must return outputs with the structure of the result of `fn`.
+      ! `forward` must return out with the structure of the result of `fn`.
       x Got <list> of length 2.
 
 ---
@@ -139,18 +146,18 @@
       differentiate(function(x) nv_convert(x, "f32"))
     Condition
       Error in `prim_custom_gradient()`:
-      ! The forward pass of `rule` must return outputs of the same types as the result of `fn`.
-      x `fn` returns f64[3], the forward pass f32[3].
+      ! `forward` must return out of the same types as the result of `fn`.
+      x `fn` returns f64[3], `forward` f32[3].
 
-# prim_custom_gradient / with a forward pass / refuses a backward pass that leaves out a required gradient
+# prim_custom_gradient / with a forward pass / refuses a rule that leaves out a required gradient
 
     Code
       jit(gradient(f))(x)
     Condition
       Error in `prim_custom_gradient()`:
-      ! The backward pass of `rule` must return the gradient of each entry of `args` that is required.
+      ! `rule` must return the gradient of each entry of `args` that is required.
       x Got none for "x".
-      i The backward pass of `rule` receives which entries are required as `required`.
+      i `rule` receives which entries are required as `required`.
 
 # prim_eq, prim_ne, prim_gt, prim_ge, prim_lt, prim_le
 

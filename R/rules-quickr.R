@@ -1843,7 +1843,8 @@ local({
     }
   )
 
-  # `fn` runs in place; `rule` took part when a gradient was traced, if any.
+  # `fn` runs in place; `rule` and `forward` took part when a gradient was
+  # traced, if any.
   quickr_register_prim_lowerer(
     prim_custom_gradient,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {

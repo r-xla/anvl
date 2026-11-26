@@ -166,8 +166,14 @@ remove_unused_constants <- function(graph) {
 }
 
 inline_scalarish_constants <- function(graph) {
+  # A "plain" constant holds R data, which a literal would embed as it is, so one
+  # whose missing value a literal cannot spell stays a constant (see
+  # `literal_can_hold()`).
   is_scalarish <- function(gval) {
-    is_graph_value(gval) && is_concrete_array(gval$aval) && (nelts(gval$aval) == 1L)
+    is_graph_value(gval) &&
+      is_concrete_array(gval$aval) &&
+      (nelts(gval$aval) == 1L) &&
+      !(backend(gval$aval$data) == "plain" && !literal_can_hold(gval$aval$data$data, dtype(gval$aval)))
   }
 
   scalarish_to_lit <- function(gval) {

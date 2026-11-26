@@ -8,17 +8,18 @@ prim_lu(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-One input, with exactly 2 axes. Can be any float data type. An R value materializes at its
+One input, with at least 2 axes, the first two forming the matrix; any trailing axes are batch axes. Can be any float data type. An R value materializes at its
 \link[=default_dtypes]{default data type}.}
 }
 \value{
 (named \code{list} of three \code{\link{arrayish}})\cr
-Elements \code{LU} \verb{(m, n)} with the input's data type; \code{pivots} \verb{(k,)} at the
-default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}) with \code{k = min(m, n)}
-(sequential row swaps: row \code{i} was exchanged with row \code{pivots[i]} during
-elimination step \code{i}); and \code{permutation} \verb{(m,)} at that same data type, a
-permutation vector for \eqn{P} such that \code{(P \%*\% A)[i, ]} equals
-\code{A[permutation[i], ]}.
+Elements \code{LU} \verb{(m, n, ...)} with the input's data type; \code{pivots} \verb{(k, ...)}
+at the default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}) with
+\code{k = min(m, n)} (sequential row swaps: row \code{i} was exchanged with row
+\code{pivots[i]} during elimination step \code{i}); and \code{permutation} \verb{(m, ...)} at
+that same data type, a permutation vector for \eqn{P} such that
+\code{(P \%*\% A)[i, ]} equals \code{A[permutation[i], ]}. Here \verb{(m, n, ...)} is
+\code{shape(x)}, and \code{...} its batch axes.
 }
 \description{
 Computes the partial-pivoted LU decomposition of a matrix \code{x}:
@@ -29,11 +30,13 @@ and \eqn{U} is upper triangular. \code{L} (with implicit unit diagonal) and
 layout. \eqn{P} is returned in two equivalent forms: \code{pivots} (LAPACK's
 sequential row-swap encoding) and \code{permutation} (an explicit
 permutation vector).
+The first two axes form the matrix, and any trailing axes are batch axes.
 }
 \section{Implemented Rules}{
 
 \itemize{
 \item \code{stablehlo}
+\item \code{vectorize}
 }
 }
 

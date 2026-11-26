@@ -50,7 +50,7 @@ NULL
 #' - `side_effect_stack()`: the values `size` applications of a function that
 #'   uses it `n` times start from when they run one after the other from
 #'   `value`, the i-th `(i - 1) * n` uses after it, stacked along a new last
-#'   axis of every box, for [vectorize()] with `randomness = "different"`.
+#'   axis of every box, for [vectorize()] with `randomness = "independent"`.
 #' - `side_effect_advance()`: `NULL`; after a run, advances `object` by `n`
 #'   uses.
 #' - `side_effect_format()`: the line a printed graph shows after its body for
@@ -98,7 +98,7 @@ side_effect_stack <- function(effect, value, n, size) {
 side_effect_stack.default <- function(effect, value, n, size) {
   cli_abort(c(
     "This side effect cannot differ between the slices of {.fn vectorize}.",
-    i = "Use it with {.code randomness = \"same\"}."
+    i = "Use it with {.code randomness = \"common\"}."
   ))
 }
 
@@ -319,37 +319,6 @@ desc_end_capture <- function(desc, graphs) {
     graph$side_effects <- list()
   }
   invisible(desc)
-}
-
-# ---- Vectorized functions -----------------------------------------------------
-
-# Binds the side effects of `graph`, the function `vectorize()` traced on one
-# slice, which took them as fresh inputs, in the trace `desc`, which applies it
-# to `size` slices: their inputs become inputs of `graph`, after its own.
-# Returns the operands for them and which of them are batched. With
-# `randomness = "different"`, the slices use a side effect one after the other,
-# as a loop over them would, and the views of `desc` continue after all of
-# them; with `"same"`, every slice starts from the value `desc` is at, and the
-# views continue after one.
-desc_bind_vectorized <- function(desc, graph, size, randomness) {
-  views <- graph$side_effects
-  graph$inputs <- c(graph$inputs, views_values(views, "inputs"))
-  graph$side_effects <- list()
-  bound <- lapply(views, function(body) {
-    x <- desc_view(desc, body$effect)
-    start <- view_current(x)[names(body$inputs)]
-    if (randomness == "same") {
-      x$n <- x$n + body$n
-      return(list(operands = start, batched = rep(FALSE, length(start))))
-    }
-    x$n <- x$n + size * body$n
-    stacked <- side_effect_stack(body$effect, start, body$n, size)[names(body$inputs)]
-    list(operands = stacked, batched = rep(TRUE, length(stacked)))
-  })
-  list(
-    operands = unname(unlist(lapply(bound, `[[`, "operands"), recursive = FALSE)),
-    batched = unlist(lapply(bound, `[[`, "batched")) %||% logical()
-  )
 }
 
 # ---- The program and the host -------------------------------------------------

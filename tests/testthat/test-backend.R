@@ -88,11 +88,18 @@ test_that("install_anvl rejects backends that have nothing to install", {
 })
 
 describe("skip_if_no_plugin", {
-  # An empty plugin cache and none of the variables that make a plugin
-  # available otherwise. The plugin this session already loaded is unaffected.
-  local_no_pjrt_plugin <- function(envir = parent.frame()) {
+  # Only the plugins of the `downloaded` platforms are downloaded, and none of
+  # the variables that make a plugin available otherwise are set. Where pjrt
+  # stores its plugins is pjrt's business, so the download state is mocked
+  # instead of set up on disk. The plugin this session already loaded is
+  # unaffected.
+  local_pjrt_plugins <- function(downloaded = character(), envir = parent.frame()) {
+    local_mocked_bindings(
+      plugins_downloaded = function(platforms) all(platforms %in% downloaded),
+      .package = "pjrt",
+      .env = envir
+    )
     withr::local_envvar(
-      R_USER_CACHE_DIR = withr::local_tempdir(.local_envir = envir),
       PJRT_PLUGIN_PATH_CPU = NA,
       PJRT_PLUGIN_PATH_CUDA = NA,
       PJRT_INSTALL = NA,
@@ -101,33 +108,33 @@ describe("skip_if_no_plugin", {
   }
 
   it("skips when the plugin is neither downloaded, pointed to, nor allowed to download", {
-    local_no_pjrt_plugin()
+    local_pjrt_plugins()
     expect_condition(skip_if_no_plugin("cpu"), class = "skip")
     withr::local_envvar(PJRT_INSTALL = "0")
     expect_condition(skip_if_no_plugin("cpu"), class = "skip")
   })
 
   it("does not skip when the plugin is downloaded", {
-    local_no_pjrt_plugin()
-    dir.create(file.path(tools::R_user_dir("pjrt", "cache"), "cpu"), recursive = TRUE)
+    local_pjrt_plugins(downloaded = "cpu")
     expect_no_condition(skip_if_no_plugin("cpu"), class = "skip")
+    expect_condition(skip_if_no_plugin("cuda"), class = "skip")
   })
 
   it("does not skip when PJRT_PLUGIN_PATH_<PLATFORM> points to the plugin", {
-    local_no_pjrt_plugin()
+    local_pjrt_plugins()
     withr::local_envvar(PJRT_PLUGIN_PATH_CPU = "libpjrt_cpu.so")
     expect_no_condition(skip_if_no_plugin("cpu"), class = "skip")
     expect_condition(skip_if_no_plugin("cuda"), class = "skip")
   })
 
   it("does not skip when PJRT_INSTALL=1 allows downloading the plugin", {
-    local_no_pjrt_plugin()
+    local_pjrt_plugins()
     withr::local_envvar(PJRT_INSTALL = "1")
     expect_no_condition(skip_if_no_plugin("cpu"), class = "skip")
   })
 
   it("defaults to the platform of the default device", {
-    local_no_pjrt_plugin()
+    local_pjrt_plugins()
     withr::local_envvar(PJRT_PLUGIN_PATH_CPU = "libpjrt_cpu.so")
     local_default_device("cuda:1")
     expect_condition(skip_if_no_plugin(), class = "skip")
@@ -149,5 +156,114 @@ describe("the plain backend", {
   it("converts a bit64::integer64 payload by value", {
     out <- jit(function() nv_array(bit64::as.integer64(c(3, 5)), dtype = "i64"))()
     expect_equal(as.integer(as_array(out)), c(3L, 5L))
+  })
+})
+
+describe("register_backend", {
+  # A backend built from exported functions only, the way a package would build
+  # one: it holds arrays as R arrays and runs a jitted function by tracing it
+  # and evaluating each statement with the primitive's `"toy"` rule.
+  toy_device <- function() structure("cpu", class = c("ToyDevice", "AnvlDevice"))
+
+  toy_array <- function(data, dtype, shape) {
+    mode <- switch(substr(as.character(dtype), 1L, 1L), f = "double", b = "logical", "integer")
+    data <- as.vector(data, mode)
+    if (length(shape)) {
+      data <- array(data, dim = shape)
+    }
+    structure(
+      list(data = data, dtype = as_dtype(dtype), shape = as.integer(shape), backend = "toy"),
+      class = "AnvlArray"
+    )
+  }
+
+  toy_run <- function(f, args) {
+    graph <- trace_fn(f, args = args)
+    values <- utils::hashtab()
+    value_of <- function(node) {
+      if (inherits(node, "GraphLiteral")) node$aval$data else utils::gethash(values, node)
+    }
+    inputs <- Filter(function(x) inherits(x, "AnvlArray"), flatten(args))
+    Map(function(node, x) utils::sethash(values, node, as_array(x)), graph$inputs, inputs)
+    for (statement in graph$statements) {
+      outputs <- do.call(statement$primitive[["toy"]], c(lapply(statement$inputs, value_of), statement$params))
+      Map(function(node, x) utils::sethash(values, node, x), statement$outputs, outputs)
+    }
+    outputs <- lapply(graph$outputs, function(node) {
+      nv_array(value_of(node), dtype = dtype(node$aval), shape = shape(node$aval))
+    })
+    unflatten(graph$out_tree, outputs)
+  }
+
+  toy_backend <- function() {
+    AnvlBackend(
+      new_data = function(data, dtype, shape, device, row_major = FALSE) toy_array(data, dtype, shape),
+      new_empty = function(dtype, shape, device) toy_array(0, dtype, shape),
+      dtype = function(x) x$dtype,
+      shape = function(x) x$shape,
+      as_array = function(x, check) x$data,
+      as_raw = function(x, row_major) stop("The toy backend has no raw payloads."),
+      platform = function(x) "cpu",
+      device = function(x) toy_device(),
+      new_device = function(x) toy_device(),
+      print_data = function(x, footer, ...) {
+        print(x$data, ...)
+        cat(footer, "\n")
+      },
+      jit = function(f, static, cache_size, device = NULL) {
+        function() toy_run(f, lapply(as.list(match.call())[-1L], eval, envir = parent.frame()))
+      },
+      await_data = function(x) invisible(NULL),
+      default_dtypes = list(float = "f64", int = "i32")
+    )
+  }
+
+  local_toy_backend <- function(envir = parent.frame()) {
+    register_backend("toy", toy_backend())
+    register_rule_type("toy")
+    registerS3method("backend", "ToyDevice", function(x, ...) "toy")
+    prim_add[["toy"]] <- function(lhs, rhs) list(lhs + rhs)
+    prim_mul[["toy"]] <- function(lhs, rhs) list(lhs * rhs)
+    withr::defer(
+      {
+        prim_add[["toy"]] <- NULL
+        prim_mul[["toy"]] <- NULL
+        globals$interpretation_rules <- setdiff(globals$interpretation_rules, "toy")
+        rm("toy", envir = globals$backends)
+      },
+      envir = envir
+    )
+    local_backend("toy", envir = envir)
+  }
+
+  it("makes a backend that a package defines selectable", {
+    local_registered_default_dtypes()
+    local_toy_backend()
+    expect_equal(active_backend(), "toy")
+    x <- nv_array(c(1, 2))
+    expect_equal(backend(x), "toy")
+    expect_equal(dtype(x), as_dtype("f64"))
+    expect_true(is_device(device(x)))
+    expect_equal(backend(nv_device("cpu")), "toy")
+  })
+
+  it("runs jitted and eager code with the rules attached for the backend", {
+    local_toy_backend()
+    f <- jit(function(x, y) x * y + x)
+    out <- f(nv_array(c(1, 2)), nv_array(c(3, 4)))
+    expect_equal(backend(out), "toy")
+    expect_equal(as.vector(as_array(out)), c(4, 10))
+    expect_equal(as.vector(as_array(nv_array(c(1, 2)) * 2)), c(2, 4))
+  })
+
+  it("checks that the backend is an AnvlBackend when it is first used", {
+    register_backend("not_a_backend", list())
+    withr::defer(rm("not_a_backend", envir = globals$backends))
+    local_backend("not_a_backend")
+    expect_error(nv_array(1), "AnvlBackend")
+  })
+
+  it("rejects a name that the option anvl.default_dtypes reserves", {
+    expect_error(register_backend("float", toy_backend()), "data type category")
   })
 })

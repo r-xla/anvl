@@ -69,9 +69,6 @@ prepare_gradient_args <- function(args, wrt) {
 #' results and a closure with the signature of `backward` above, which can use
 #' intermediate values of the forward pass via lexical scoping.
 #'
-#' A rule with a `forward` pass can also be the `rule` of
-#' [prim_custom_gradient()].
-#'
 #' @param backward (`NULL` | `function`)\cr
 #'   Backward hook for the default case.
 #' @param forward (`NULL` | `function`)\cr
@@ -141,7 +138,7 @@ graph_gradient <- function(graph, wrt) {
     SideEffectView(x$effect, value, n = x$n, inputs = x$inputs)
   })
   out <- validate_gradient_output(graph$outputs)
-  seed <- get_box_or_register_const(desc, nv_scalar(1L, dtype = out$aval$dtype))
+  seed <- gradient_seed(desc, out)
   grad <- graph_pullback(graph, compute_requirements(graph, wrt))$pullback(list(seed))
   desc$outputs <- lapply(grad, \(box) box$gnode)
   desc$in_tree <- graph$in_tree
@@ -195,6 +192,20 @@ validate_gradient_output <- function(out_gvals) {
     ))
   }
   out
+}
+
+# The cotangent reverse mode starts from for the scalar output `out`: its
+# derivative with respect to itself, a literal 1 at its data type. StableHLO
+# has no literals at the 16-bit floats, so those are refused.
+gradient_seed <- function(desc, out) {
+  dtype <- out$aval$dtype
+  if (as.character(dtype) %in% c("f16", "bf16")) {
+    cli_abort(c(
+      "Can't differentiate a function that returns a {.val {as.character(dtype)}} array.",
+      i = "Convert the output to {.val f32} or {.val f64}."
+    ))
+  }
+  get_box_or_register_const(desc, GraphLiteral(LiteralArray(1L, shape = integer(), dtype = dtype)))
 }
 
 # Determine which gvals will require a gradient.
@@ -631,7 +642,7 @@ trace_value_and_grad <- function(f, args, wrt, fn, call = rlang::caller_env()) {
   assert_in_trace(fn, call = call)
   out <- trace_pullback(f, prep, fn)
   value <- validate_gradient_output(lapply(flatten(out$value), \(box) box$gnode))
-  seed <- get_box_or_register_const(current_descriptor(), nv_scalar(1L, dtype = value$aval$dtype))
+  seed <- gradient_seed(current_descriptor(), value)
   grad <- out$pullback(unflatten(build_tree(out$value), list(seed)))
   list(value = out$value, grad = if (is.null(wrt)) grad else grad[names(grad) %in% wrt])
 }

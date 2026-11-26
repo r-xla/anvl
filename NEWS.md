@@ -2,6 +2,9 @@
 
 ## Breaking changes
 
+* `prim_custom_gradient()` takes a forward pass as `forward`, which returns the
+  result and `residuals` that `rule` receives, instead of a `rule_pullback()`
+  as `rule`, whose backward pass closed over what the forward pass computed.
 * Batch axes now come last to have consistent col-major semantics everywhere.
   This includes: matrix multiplication, Cholesky decomposition, triangular solves, convolutions, scans, and top-k operations.
 * Random draws fill a shape in column-major order.
@@ -29,15 +32,28 @@
   allow to prevent optimizations from moving computations across it.
 * Added two new transformations `pullback()` and `value_and_pullback()`.
 * Elementwise primitives such as `prim_add()` now broadcast scalars.
-* New `vectorize()` maps a function over axes of its arguments (`in_axes`,
-  `out_axes`, by default the last axis), like `base::Vectorize()` but as one
-  traced program; it composes with `gradient()`. New `rule_vectorize()` gives a
-  primitive its rule.
+* Experimental: new `vectorize()` maps a function over axes of its arguments
+  (`in_axes`, `out_axes`, by default the last axis), in the spirit of
+  `base::Vectorize()`.
+* `prim_qr()`, `prim_lu()`, `prim_svd()` and `prim_eigh()`, and with them
+  `nv_qr()`, `nv_svd()` and `nv_eigh()`, take a batch of matrices, whose batch
+  axes trail them, as `prim_chol()` and `prim_triangular_solve()` already do.
+* `gradient()` differentiates a batched Cholesky decomposition or triangular
+  solve.
 * `safetensors::safe_save_file()` writes `AnvlArray`s, and
   `safetensors::safe_load_file(framework = "anvl")` reads them.
 * The `"quickr"` backend accepts a raw payload in `nv_array()`.
+* Experimental: `AnvlBackend()`, `register_backend()` and the new
+  `register_rule_type()` let a package add a backend, with its own rules for
+  the primitives.
 
 ## Bug fixes
+
+* A missing value (`NA_real_`, `NA_integer_`, `NA`) passed to a jitted function
+  or an operation as an R scalar, or written in a traced body, behaves as in
+  `nv_array()` at the data type it takes, instead of being refused with a
+  self-contradictory error. An `NA` in an R array passed to a jitted function
+  is now reported at `i32` too.
 
 * An empty `wrt` in `gradient()`, `value_and_gradient()` and `graph_gradient()`
   differentiates with respect to no argument, rather than all of them.
@@ -55,6 +71,12 @@
 * Constructing `AnvlArray`s from R objects is now more efficient.
 * The generated XLA programs are more efficient, especially around
   flattening operations.
+* `nv_rnorm()` is up to 6x faster on CPU for large samples, with the same
+  values: an optimisation barrier stops XLA computing the random draws again
+  for each of their consumers.
+* `nv_sample()` is up to 3x faster on CPU for large samples, with the same
+  values: an optimisation barrier keeps the random draws out of the gather
+  kernel, where they could not be vectorised.
 
 # anvl 0.6.0
 

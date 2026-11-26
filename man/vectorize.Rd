@@ -4,39 +4,41 @@
 \alias{vectorize}
 \title{Vectorize a Function}
 \usage{
-vectorize(f, in_axes = -1L, out_axes = -1L, randomness = "different")
+vectorize(f, in_axes = -1L, out_axes = -1L, randomness = "independent")
 }
 \arguments{
 \item{f}{(\code{function})\cr
 Function to vectorize.}
 
-\item{in_axes}{(\code{integer(1)} | named \code{list()} | named \code{integer()})\cr
-The arguments to map over and their batch axes. Negative axes count from
-the end, so the default, \code{-1L}, is the last axis of every argument mapped
-over. A single axis maps over
-every argument that is an array, along that axis. That includes every
-argument of the enclosing \code{\link[=jit]{jit()}} that is not static, R data among them;
-other values -- such as static arguments, a random state, or an R array
-written inside the traced function -- are passed on unchanged.
-A named list or vector gives the axis of each argument to map over, by
-its name; arguments it leaves out or gives \code{NULL} are passed on
-unchanged. A nested argument takes one axis for all of its leaves. All
-arguments mapped over must have the same size along their batch axes.}
+\item{in_axes}{(\code{integer(1)} | named \code{list()})\cr
+Specify the batch axis.
+If \code{in_axes} is a single integer, it maps over that axis of every argument
+that is an array with at least one axis, an R array as well as an
+\code{\link{AnvlArray}}. Every application gets the other arguments as they are,
+such as a scalar, which has no axis to map over.
+If it is a named list, it must be compatible with the argument tree of the function.
+The values of the tree must either be integers, indicating the batch axis (negative
+values count from the end), or \code{NULL}, indicating no batching.
+Values are applied to all leaves of the node.
+Arguments or named elements the list leaves out are not batched either.
+Every argument that the list gives an axis must have it, so it cannot give
+one to a scalar.}
 
 \item{out_axes}{(\code{integer(1)} | \code{list()})\cr
-The axes along which the outputs of \code{f} are stacked, by default the last
-one. A single axis applies
-to every output. A list follows the structure of what \code{f} returns, down to
-any depth, matching named elements by name: an entry applies to every
-output below it. An output with \code{n}
-axes per slice can be stacked along axes \code{1} to \code{n + 1}, or \code{-(n + 1)} to
-\code{-1} counting from the end. \code{NULL} returns an
-output as it is, which works for one that does not depend on the
-arguments mapped over.}
+Along which axis to stack the outputs of \code{f}. Specified like \code{in_axes},
+but a tree follows the structure of what \code{f} returns. \code{NULL} returns an
+output as it is, which only works for one that does not differ between
+the slices: it depends neither on the arguments mapped over nor, with
+\code{randomness = "independent"}, on random numbers.}
 
 \item{randomness}{(\code{character(1)})\cr
-Whether the slices draw \code{"different"} (the default) or the \code{"same"}
-random numbers.}
+How the slices draw random numbers. With \code{"independent"} (the default),
+they draw independent random numbers: every slice draws the numbers a loop
+applying \code{f} to one slice after the other draws for it, and the random
+state advances as after that loop, so replacing such a loop with
+\code{vectorize()} gives the same results. With \code{"common"}, they draw common
+random numbers: every slice draws those a single application of \code{f}
+draws, and the random state advances as after that application.}
 }
 \value{
 (\code{function})\cr
@@ -46,39 +48,71 @@ what \code{f} returns, with the batch axis added to every output where
 returned as it is.
 }
 \description{
-Return a new function that maps \code{f} over an axis of its arguments, like
-\code{\link[base:Vectorize]{base::Vectorize()}}. Unlike \code{Vectorize()}, it does not call \code{f} once per
-instance: the returned function traces \code{f} once and turns every operation of
-it into one that works on the whole batch, so \code{f} can be written for a
-single instance and still run as one program over all of them.
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 
-\code{in_axes} says which arguments are mapped over, and along which axis: \code{f}
-sees one slice of such an argument at a time, with that axis dropped. Every
-leaf of a nested argument is mapped over along the same axis. The other
-arguments are passed to each application of \code{f} unchanged. \code{out_axes} says
-along which axis each output of \code{f} is stacked. By default, both are the last
-axis: the slices of a matrix are its columns, and the results of \code{f} are
-stacked as columns.
+Return a new function that maps \code{f} over an axis of its arguments: it
+applies \code{f} to every slice along that axis, by default the last, so to every
+column of a matrix. This is in the spirit of \code{\link[base:Vectorize]{base::Vectorize()}}, but unlike
+it, \code{vectorize()} maps over slices, not elements. Instead of looping over
+the slices, the function is rewritten to operate on the whole batch at once.
 
-\code{randomness} says what the random draws of \code{f} (see \code{\link[=nv_set_seed]{nv_set_seed()}}) give
-the slices, as PyTorch's \code{torch.func.vmap()} does. By default, every slice
-draws numbers of its own: the same ones a loop over the slices, applying \code{f}
-to one after the other, would draw, so \code{vectorize()} changes how fast a
-simulation runs, not its results. With \code{"same"}, every slice draws the same
-numbers, the ones a single application of \code{f} draws, and the random state
-advances as after that application.
+This is analogous to \code{vmap} found in other array computing frameworks.
+
+See the \href{https://r-xla.github.io/anvl/articles/vectorize.html}{Vectorization} article for more details.
 }
+\section{Differences from base R}{
+
+Unlike \code{\link[base:Vectorize]{base::Vectorize()}} and the apply functions:
+\itemize{
+\item \code{vectorize()} maps over slices along an axis, not over elements: over the
+columns of a matrix by default, not over its numbers.
+\item Arguments are not recycled, as elsewhere in anvl: every argument mapped
+over must have the same number of slices.
+\item Results are not flattened: every output keeps the shape \code{f} gives it, with
+the batch axis added, where \code{sapply()} and \code{apply()} would turn a matrix
+result into a column.
+\item A negative axis counts from the end: the default \code{in_axes = -1L} maps over
+the last axis, while \code{x[-1]} leaves out the first element.
+}
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # f is written for a single vector
 f <- function(x, y) sum(x * y)
 x <- nv_array(matrix(1:6, nrow = 2L), dtype = "f32")
+y <- nv_array(c(1, 2), dtype = "f32")
 
 # one dot product per column of x, against the same y
-jit(vectorize(f, in_axes = list(x = -1L)))(x, nv_array(c(1, 2), dtype = "f32"))
+jit(vectorize(f, in_axes = list(x = -1L)))(x, y)
 
 # map over the rows instead: each row divided by its sum
 jit(vectorize(function(x) x / sum(x), in_axes = 1L, out_axes = 1L))(x)
+
+# a nested list in in_axes maps over a part of a nested argument: the
+# columns of params$w, while params$b is the same for every column
+affine <- function(params, y) sum(params$w * y) + params$b
+params <- list(w = x, b = nv_scalar(10, dtype = "f32"))
+jit(vectorize(affine, in_axes = list(params = list(w = -1L))))(params, y)
+
+# out_axes as a list: stack the dot products, and return the norm of y,
+# which does not depend on the columns, as it is
+dot_norm <- function(x, y) list(dot = sum(x * y), norm = sqrt(sum(y^2)))
+jit(vectorize(
+  dot_norm,
+  in_axes = list(x = -1L),
+  out_axes = list(dot = -1L, norm = NULL)
+))(x, y)
+
+# vectorize() composes with other transformations, e.g. one gradient of a
+# loss per column of x
+loss <- function(w, x) sum((x * w)^2)
+jit(vectorize(gradient(loss, wrt = "w"), in_axes = list(x = -1L)))(y, x)
+
+# and with itself: every column of x against every column of x, which is
+# t(x) \%*\% x
+f_all <- vectorize(vectorize(f, in_axes = list(x = -1L)), in_axes = list(y = -1L))
+jit(f_all)(x, x)
 
 # every column gets noise of its own, the noise a loop over the columns
 # would draw
@@ -86,7 +120,7 @@ noisy <- function(x) x + nv_rnorm(shape = 2L)
 nv_set_seed(1L)
 jit(vectorize(noisy))(x)
 # or the same noise for every column
-jit(vectorize(noisy, randomness = "same"))(x)
+jit(vectorize(noisy, randomness = "common"))(x)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

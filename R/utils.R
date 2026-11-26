@@ -114,9 +114,7 @@ is_valid_r_lit <- function(x) {
   !is.object(x) &&
     length(x) == 1L &&
     is.null(dim(x)) &&
-    (is.numeric(x) || is.logical(x)) &&
-    # Accept NaN/Inf but reject NA (NA has no obvious dtype).
-    (is.nan(x) || !is.na(x))
+    (is.numeric(x) || is.logical(x))
 }
 
 is_valid_r_array <- function(x) {
@@ -199,10 +197,6 @@ scatter_to_gather_slice_sizes <- function(
 
 col_major_layout <- function(naxes) {
   seq_len(naxes) - 1L
-}
-
-col_major_layouts <- function(...) {
-  lapply(list(...), col_major_layout)
 }
 
 row_major_layouts <- function(...) {

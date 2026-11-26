@@ -8,13 +8,13 @@ prim_qr(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-One input, with exactly 2 axes. Can be any float data type. An R value materializes at its
+One input, with at least 2 axes, the first two forming the matrix; any trailing axes are batch axes. Can be any float data type. An R value materializes at its
 \link[=default_dtypes]{default data type}.}
 }
 \value{
 (named \code{list} of two \code{\link{arrayish}})\cr
-Elements \code{Q} (shape \verb{(m, k)}) and \code{R}
-(shape \verb{(k, n)}), where \verb{(m, n) = shape(x)} and
+Elements \code{Q} (shape \verb{(m, k, ...)}) and \code{R}
+(shape \verb{(k, n, ...)}), where \verb{(m, n, ...) = shape(x)} and
 \code{k = min(m, n)}. Both have the input's data type.
 }
 \description{
@@ -24,11 +24,13 @@ where \eqn{Q} has orthonormal columns (\eqn{Q^\top Q = I}) and
 \eqn{R} is upper triangular.
 For an \eqn{m \times n} input with \eqn{k = \min(m, n)}, \eqn{Q} has
 shape \eqn{m \times k} and \eqn{R} has shape \eqn{k \times n}.
+The first two axes form the matrix, and any trailing axes are batch axes.
 }
 \section{Implemented Rules}{
 
 \itemize{
 \item \code{stablehlo}
+\item \code{vectorize}
 }
 }
 

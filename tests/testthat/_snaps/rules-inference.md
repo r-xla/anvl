@@ -820,7 +820,7 @@
       ! `false` must be a function.
       x Got "x".
 
-# prim_custom_gradient / refuses an fn or rule that is not a function
+# prim_custom_gradient / refuses an fn, rule or forward that is not a function
 
     Code
       prim_custom_gradient(list(x = x), fn = 1, rule = id_rule)
@@ -835,18 +835,17 @@
       prim_custom_gradient(list(x = x), fn = function(x) x, rule = "r")
     Condition
       Error in `prim_custom_gradient()`:
-      ! `rule` must be a function, or a `rule_pullback()` with a forward pass.
+      ! `rule` must be a function.
       x Got "r".
 
-# prim_custom_gradient / refuses a pullback rule without a forward pass
+---
 
     Code
-      prim_custom_gradient(list(x = x), fn = function(x) x, rule = rule)
+      prim_custom_gradient(list(x = x), fn = function(x) x, rule = id_rule, forward = "f")
     Condition
       Error in `prim_custom_gradient()`:
-      ! `rule` must have a forward pass where it is a `rule_pullback()`.
-      x Got a pullback rule with only a backward pass.
-      i Pass a function as `rule` instead: it receives the arguments, the result and its gradient by name.
+      ! `forward` must be a function or `NULL`.
+      x Got "f".
 
 # prim_custom_gradient / refuses args that are not a list with names
 
@@ -873,9 +872,9 @@
         list())
     Condition
       Error in `prim_custom_gradient()`:
-      ! `args` must not have an entry named "out", "grad" or "required".
+      ! `args` must not have an entry named "out", "grad", "required" or "residuals".
       x Got an entry named "out".
-      i `rule` receives the result of `fn`, its gradient and which gradients are required under these names.
+      i `rule` receives the result of `fn`, its gradient, which gradients are required and the residuals of `forward` under these names.
 
 ---
 
@@ -884,9 +883,20 @@
       rule = function(...) list())
     Condition
       Error in `prim_custom_gradient()`:
-      ! `args` must not have an entry named "out", "grad" or "required".
+      ! `args` must not have an entry named "out", "grad", "required" or "residuals".
       x Got an entry named "required".
-      i `rule` receives the result of `fn`, its gradient and which gradients are required under these names.
+      i `rule` receives the result of `fn`, its gradient, which gradients are required and the residuals of `forward` under these names.
+
+---
+
+    Code
+      prim_custom_gradient(list(residuals = x), fn = function(residuals) residuals,
+      rule = function(...) list())
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `args` must not have an entry named "out", "grad", "required" or "residuals".
+      x Got an entry named "residuals".
+      i `rule` receives the result of `fn`, its gradient, which gradients are required and the residuals of `forward` under these names.
 
 ---
 
@@ -920,7 +930,7 @@
       ! `args` must hold arrays, or trees of them.
       x Got "a" at `p$b`.
 
-# prim_custom_gradient / refuses an fn or rule without an argument for a value it receives
+# prim_custom_gradient / refuses an fn, rule or forward without an argument for a value it receives
 
     Code
       prim_custom_gradient(list(y = x), fn = function(x) x, rule = id_rule)
@@ -940,4 +950,26 @@
       ! `rule` must have an argument for each value it receives.
       x Got a function with arguments c("x", "grad").
       i It has none for c("out", "required").
+
+---
+
+    Code
+      prim_custom_gradient(list(x = x), fn = function(x) x, rule = id_rule, forward = function(
+        x, required) x)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `rule` must have an argument for each value it receives.
+      x Got a function with arguments c("x", "out", "grad", "required").
+      i It has none for "residuals".
+
+---
+
+    Code
+      prim_custom_gradient(list(x = x), fn = function(x) x, rule = function(x, out,
+        grad, required, residuals) list(x = grad), forward = function(x) x)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `forward` must have an argument for each value it receives.
+      x Got a function with arguments "x".
+      i It has none for "required".
 

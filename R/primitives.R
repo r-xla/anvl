@@ -2866,38 +2866,39 @@ prim_scan <- new_primitive(
 #' @param args (named `list()`)\cr
 #'   The arguments of `fn`: [`arrayish`] values, or trees of them in the sense
 #'   of pjrt's [`RTree`][pjrt::build_tree], by name. `rule` gives the gradient
-#'   with respect to these. No entry may be named `out`, `grad` or `required`,
-#'   the names under which `rule` receives the result, its gradient and which
-#'   gradients are required. An R value materializes at its default data type,
-#'   as in [prim_while()].
+#'   with respect to these. No entry may be named `out`, `grad`, `required` or
+#'   `residuals`, the names under which `rule` receives the result, its
+#'   gradient, which gradients are required and the residuals of `forward`. An
+#'   R value materializes at its default data type, as in [prim_while()].
 #' @param fn (`function`)\cr
 #'   Computes the result from the entries of `args`, which it receives as
 #'   arguments. Returns an array, or a tree of them.
-#' @param rule (`function` | `anvl_rule_pullback`)\cr
-#'   Computes the gradient. A function receives the entries of `args` as arguments, plus
+#' @param rule (`function`)\cr
+#'   Computes the gradient. Receives the entries of `args` as arguments, plus
 #'   `out`, the result of `fn`, `grad`, the gradient with respect to `out`, of
-#'   the same structure, data types and shapes, and `required`, a named
+#'   the same structure, data types and shapes, `required`, a named
 #'   `logical()` with one element per entry of `args`: `TRUE` where the
 #'   gradient with respect to that entry is required, i.e. where any of its
-#'   arrays requires one. Returns a named list with the gradient with respect
-#'   to each required entry -- for an array `x`, the sum over the elements of
-#'   `out` of their `grad` times their derivative with respect to `x` -- of
-#'   `x`'s structure, data types and shapes. An entry that is not required,
-#'   e.g. an integer, which never is, can be left out or be `NULL`.
-#'
-#'   Alternatively, a [rule_pullback()] with a `forward` pass, which replaces
-#'   `fn` where the result is differentiated, so that the backward pass can
-#'   read what the forward pass computed. Its passes are those of a
-#'   primitive's rule, except that `inputs` are the entries of `args` by name
-#'   rather than one array per operand, `params` is an empty list, and
-#'   `outputs`, `grads`, `required` and the returned gradients are those of a
-#'   function above.
+#'   arrays requires one, and, if `forward` is given, `residuals`, those it
+#'   returned. Returns a named list with the gradient with respect to each
+#'   required entry -- for an array `x`, the sum over the elements of `out` of
+#'   their `grad` times their derivative with respect to `x` -- of `x`'s
+#'   structure, data types and shapes. An entry that is not required, e.g. an
+#'   integer, which never is, can be left out or be `NULL`.
+#' @param forward (`NULL` | `function`)\cr
+#'   A forward pass that replaces `fn` where the result is differentiated, so
+#'   that `rule` can reuse what it computed. Receives the entries of `args`
+#'   as arguments, plus `required`, as `rule` does, and returns a list with
+#'   `out`, the result, of the structure, data types and shapes of the result
+#'   of `fn`, and `residuals`, a list of arrays, or trees of them, which `rule`
+#'   receives. `NULL` (the default) differentiates the result of `fn` itself.
 #' @return ([`arrayish`] | `list`)\cr
 #'   The result of `fn`.
 #' @section Gradients:
-#' `rule` is traced when the gradient is, once the function being
-#' differentiated has been traced. It can close over constants -- R values and
-#' arrays -- but not over a traced value: pass that through `args` instead.
+#' `rule` and `forward` are traced when the gradient is, once the function
+#' being differentiated has been traced. They can close over constants -- R
+#' values and arrays -- but not over a traced value: pass that through `args`
+#' instead.
 #'
 #' `fn` may close over traced values, but [gradient()] cannot differentiate
 #' with respect to those, as `rule` only gives the gradient with respect to
@@ -2933,28 +2934,26 @@ prim_scan <- new_primitive(
 #' dpow <- function(x, n) gradient(pow, wrt = "x")(x, n)$x
 #' jit(gradient(dpow, wrt = "x"))(x, 3L)
 #'
-#' # With a forward pass, x^(n - 1) is computed once, for the result and for
-#' # its gradient
+#' # With a forward pass, x^(n - 1) is computed once, for the result and, as a
+#' # residual, for its gradient
 #' pow_fwd <- function(x, n) {
 #'   prim_custom_gradient(
 #'     list(x = x, n = n),
 #'     fn = pow_loop,
-#'     rule = rule_pullback(forward = function(inputs, params, required) {
-#'       p <- inputs$x^(inputs$n - 1L)
-#'       list(
-#'         outputs = p * inputs$x,
-#'         backward = function(inputs, outputs, grads, params, required) {
-#'           list(x = grads * inputs$n * p)
-#'         }
-#'       )
-#'     })
+#'     forward = function(x, n, required) {
+#'       p <- x^(n - 1L)
+#'       list(out = p * x, residuals = list(p = p))
+#'     },
+#'     rule = function(x, n, out, grad, required, residuals) {
+#'       list(x = grad * n * residuals$p)
+#'     }
 #'   )
 #' }
 #' jit(gradient(pow_fwd, wrt = "x"))(x, 3L)
 #' @export
 prim_custom_gradient <- new_primitive(
   "custom_gradient",
-  function(args, fn, rule) {
+  function(args, fn, rule, forward = NULL) {
     force(args)
     if (!is.function(fn)) {
       cli_abort(c(
@@ -2962,17 +2961,16 @@ prim_custom_gradient <- new_primitive(
         x = "Got {value_repr(fn)}."
       ))
     }
-    if (inherits(rule, "anvl_rule_pullback") && is.null(rule$forward)) {
+    if (!is.function(rule)) {
       cli_abort(c(
-        "{.arg rule} must have a forward pass where it is a {.fn rule_pullback}.",
-        x = "Got a pullback rule with only a backward pass.",
-        i = "Pass a function as {.arg rule} instead: it receives the arguments, the result and its gradient by name."
+        "{.arg rule} must be a function.",
+        x = "Got {value_repr(rule)}."
       ))
     }
-    if (!is.function(rule) && !inherits(rule, "anvl_rule_pullback")) {
+    if (!is.null(forward) && !is.function(forward)) {
       cli_abort(c(
-        "{.arg rule} must be a function, or a {.fn rule_pullback} with a forward pass.",
-        x = "Got {value_repr(rule)}."
+        "{.arg forward} must be a function or {.code NULL}.",
+        x = "Got {value_repr(forward)}."
       ))
     }
     named_list <- !is_arrayish(args) &&
@@ -3008,12 +3006,12 @@ prim_custom_gradient <- new_primitive(
         x = "Got {value_repr(leaves[[first]])} at `{pjrt::tree_path(build_tree(args), first)}`."
       ))
     }
-    reserved <- intersect(names(args), c("out", "grad", "required"))
+    reserved <- intersect(names(args), c("out", "grad", "required", "residuals"))
     if (length(reserved)) {
       cli_abort(c(
-        "{.arg args} must not have an entry named {.val out}, {.val grad} or {.val required}.",
+        "{.arg args} must not have an entry named {.val out}, {.val grad}, {.val required} or {.val residuals}.",
         x = "Got {cli::qty(length(reserved))}{?an entry/entries} named {.val {reserved}}.",
-        i = "{.arg rule} receives the result of {.arg fn}, its gradient and which gradients are required under these names." # nolint
+        i = "{.arg rule} receives the result of {.arg fn}, its gradient, which gradients are required and the residuals of {.arg forward} under these names." # nolint
       ))
     }
     # Otherwise R refuses the call with `unused argument`, printing the boxes.
@@ -3029,8 +3027,9 @@ prim_custom_gradient <- new_primitive(
       }
     }
     assert_takes(fn, "fn", names(args))
-    if (is.function(rule)) {
-      assert_takes(rule, "rule", c(names(args), "out", "grad", "required"))
+    assert_takes(rule, "rule", c(names(args), "out", "grad", "required", if (!is.null(forward)) "residuals"))
+    if (!is.null(forward)) {
+      assert_takes(forward, "forward", c(names(args), "required"))
     }
 
     current_desc <- current_descriptor(silent = TRUE)
@@ -3042,22 +3041,22 @@ prim_custom_gradient <- new_primitive(
     fn_graph <- trace_fn(fn, args, desc = desc_fn)
 
     # `fn`'s graph takes what it closes over after the arguments; the call's
-    # operands are the arguments, then the same captures. `rule` stays an R
-    # function: the pullback rule traces it once it knows which gradients are
-    # required.
+    # operands are the arguments, then the same captures. `rule` and `forward`
+    # stay R functions: the pullback rule calls them once it knows which
+    # gradients are required.
     captures <- purify_subgraphs(current_desc, list(fn_graph))
 
     out <- graph_desc_add(
       self,
       args = c(flatten(args), captures),
-      params = list(fn = fn_graph, rule = rule, n_captures = length(captures)),
+      params = list(fn = fn_graph, rule = rule, forward = forward, n_captures = length(captures)),
       infer_fn = infer_custom_gradient,
       desc = current_desc
     )
     unflatten(fn_graph$out_tree, out)
   },
   subgraphs = "fn",
-  static = 2:3
+  static = 2:4
 )
 
 #' @title Primitive Sort
@@ -3729,9 +3728,6 @@ prim_gather <- new_primitive(
 #' @description
 #' Computes the Cholesky decomposition of a symmetric positive-definite matrix.
 #' The first two axes form the matrix, and any trailing axes are batch axes.
-#' @details
-#' Differentiation is only implemented for a single matrix: the `pullback` rule
-#' errors on a batched input (an input with more than 2 axes).
 #' @templateVar dtypes any float data type
 #' @templateVar shapes with at least 2 axes, the first two of equal size (a square matrix); any trailing axes are batch axes
 #' @template param_unary_x
@@ -3776,9 +3772,6 @@ prim_chol <- new_primitive(
 #' The first two axes form the matrices, and any trailing axes are batch axes,
 #' which must match between `a` and `b` (no broadcasting).
 #' Here `op` is `A` or `A^T` depending on `transpose_a`.
-#' @details
-#' Differentiation is only implemented for a single system: the `pullback` rule
-#' errors on batched operands (operands with more than 2 axes).
 #' @param a ([`arrayish`])\cr
 #'   Triangular coefficient matrix with at least 2 axes, of shape
 #'   `(n, n, b1, ..., bk)`: the first two axes are of equal size (a square
@@ -3843,12 +3836,13 @@ prim_triangular_solve <- new_primitive(
 #' \eqn{R} is upper triangular.
 #' For an \eqn{m \times n} input with \eqn{k = \min(m, n)}, \eqn{Q} has
 #' shape \eqn{m \times k} and \eqn{R} has shape \eqn{k \times n}.
+#' The first two axes form the matrix, and any trailing axes are batch axes.
 #' @templateVar dtypes any float data type
-#' @templateVar shapes with exactly 2 axes
+#' @templateVar shapes with at least 2 axes, the first two forming the matrix; any trailing axes are batch axes
 #' @template param_unary_x
 #' @return (named `list` of two [`arrayish`])\cr
-#'   Elements `Q` (shape `(m, k)`) and `R`
-#'   (shape `(k, n)`), where `(m, n) = shape(x)` and
+#'   Elements `Q` (shape `(m, k, ...)`) and `R`
+#'   (shape `(k, n, ...)`), where `(m, n, ...) = shape(x)` and
 #'   `k = min(m, n)`. Both have the input's data type.
 #' @templateVar primitive_id qr
 #' @template section_rules
@@ -3883,17 +3877,19 @@ prim_qr <- new_primitive(
 #' layout. \eqn{P} is returned in two equivalent forms: `pivots` (LAPACK's
 #' sequential row-swap encoding) and `permutation` (an explicit
 #' permutation vector).
+#' The first two axes form the matrix, and any trailing axes are batch axes.
 #'
 #' @templateVar dtypes any float data type
-#' @templateVar shapes with exactly 2 axes
+#' @templateVar shapes with at least 2 axes, the first two forming the matrix; any trailing axes are batch axes
 #' @template param_unary_x
 #' @return (named `list` of three [`arrayish`])\cr
-#'   Elements `LU` `(m, n)` with the input's data type; `pivots` `(k,)` at the
-#'   default integer data type (see [`default_dtypes()`]) with `k = min(m, n)`
-#'   (sequential row swaps: row `i` was exchanged with row `pivots[i]` during
-#'   elimination step `i`); and `permutation` `(m,)` at that same data type, a
-#'   permutation vector for \eqn{P} such that `(P %*% A)[i, ]` equals
-#'   `A[permutation[i], ]`.
+#'   Elements `LU` `(m, n, ...)` with the input's data type; `pivots` `(k, ...)`
+#'   at the default integer data type (see [`default_dtypes()`]) with
+#'   `k = min(m, n)` (sequential row swaps: row `i` was exchanged with row
+#'   `pivots[i]` during elimination step `i`); and `permutation` `(m, ...)` at
+#'   that same data type, a permutation vector for \eqn{P} such that
+#'   `(P %*% A)[i, ]` equals `A[permutation[i], ]`. Here `(m, n, ...)` is
+#'   `shape(x)`, and `...` its batch axes.
 #' @templateVar primitive_id lu
 #' @template section_rules
 #' @section StableHLO:
@@ -3937,12 +3933,15 @@ prim_lu <- new_primitive(
 #' Supports any matrix shape on both the host (LAPACK `gesdd`) and CUDA
 #' (cuSOLVER `gesvd`) backends. cuSOLVER's `m >= n` requirement is handled
 #' transparently via a layout flip for wide matrices.
+#'
+#' The first two axes form the matrix, and any trailing axes are batch axes.
 #' @templateVar dtypes any float data type
-#' @templateVar shapes with exactly 2 axes
+#' @templateVar shapes with at least 2 axes, the first two forming the matrix; any trailing axes are batch axes
 #' @template param_unary_x
 #' @return (named `list` of three [`arrayish`])\cr
-#'   Elements `d` (length `k`), `u` (shape
-#'   `(m, k)`), and `vt` (shape `(k, n)`). All have the input's data type.
+#'   Elements `d` (shape `(k, ...)`), `u` (shape
+#'   `(m, k, ...)`), and `vt` (shape `(k, n, ...)`), where
+#'   `(m, n, ...) = shape(x)`. All have the input's data type.
 #' @templateVar primitive_id svd
 #' @template section_rules
 #' @section StableHLO:
@@ -3976,12 +3975,14 @@ prim_svd <- new_primitive(
 #' vector of (real) eigenvalues in ascending order. Output names and
 #' order match [base::eigen()], which unlike this primitive also handles
 #' non-symmetric matrices.
+#' The first two axes form the matrix, and any trailing axes are batch axes.
 #' @templateVar dtypes any float data type
-#' @templateVar shapes a symmetric square matrix with exactly 2 axes
+#' @templateVar shapes with at least 2 axes, the first two forming a symmetric square matrix; any trailing axes are batch axes
 #' @template param_unary_x
 #' @return (named `list` of two [`arrayish`])\cr
-#'   Elements `values` (length `n`) and `vectors`
-#'   (shape `(n, n)`). Both have the input's data type.
+#'   Elements `values` (shape `(n, ...)`) and `vectors`
+#'   (shape `(n, n, ...)`), where `(n, n, ...) = shape(x)`. Both have the
+#'   input's data type.
 #' @templateVar primitive_id eigh
 #' @template section_rules
 #' @section StableHLO:

@@ -139,6 +139,7 @@ gradient of zero.
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{pullback}
+\item \code{vectorize}
 }
 }
 

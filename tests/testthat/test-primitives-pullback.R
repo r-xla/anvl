@@ -468,18 +468,16 @@ describe("prim_custom_gradient", {
       rule = function(x, n, out, grad, required) list(x = grad * n * x^(n - 1L))
     )
   }
-  # The same with a forward pass, which keeps x^(n - 1) for the backward one.
+  # The same with a forward pass, which keeps x^(n - 1) as a residual for rule.
   pow_fwd <- function(x, n) {
     prim_custom_gradient(
       list(x = x, n = n),
       fn = pow_loop,
-      rule = rule_pullback(forward = function(inputs, params, required) {
-        p <- inputs$x^(inputs$n - 1L)
-        list(
-          outputs = p * inputs$x,
-          backward = function(inputs, outputs, grads, params, required) list(x = grads * inputs$n * p)
-        )
-      })
+      forward = function(x, n, required) {
+        p <- x^(n - 1L)
+        list(out = p * x, residuals = list(p = p))
+      },
+      rule = function(x, n, out, grad, required, residuals) list(x = grad * n * residuals$p)
     )
   }
   d <- function(f) function(x, n) nv_sum(gradient(f, wrt = "x")(x, n)$x)
@@ -715,71 +713,65 @@ describe("prim_custom_gradient", {
   })
 
   describe("with a forward pass", {
-    it("differentiates with the backward pass, which reads what the forward pass kept", {
+    it("differentiates with rule, which reads the residuals of the forward pass", {
       f <- function(x, n) nv_sum(pow_fwd(x, n))
       expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(x, 3L)$x), c(3, 12, 27))
     })
 
-    it("differentiates the gradient again through the operations of both passes", {
+    it("differentiates the gradient again through the operations of the forward pass and rule", {
       f <- function(x, n) nv_sum(pow_fwd(x, n))
       expect_equal(as.numeric(jit(gradient(d(f), wrt = "x"))(x, 3L)$x), c(6, 12, 18))
       expect_equal(as.numeric(jit(gradient(d(d(f)), wrt = "x"))(x, 3L)$x), c(6, 6, 6))
     })
 
-    it("runs fn, and traces the forward pass only when the result is differentiated", {
+    it("runs fn, and calls the forward pass only when the result is differentiated", {
       f <- function(x) {
         nv_sum(prim_custom_gradient(
           list(x = x),
           fn = function(x) x * x,
-          rule = rule_pullback(forward = function(inputs, params, required) stop("forward was traced"))
+          forward = function(x, required) stop("forward was called"),
+          rule = function(x, out, grad, required, residuals) list(x = grad)
         ))
       }
       expect_equal(as.numeric(jit(f)(x)), 14)
-      expect_error(jit(gradient(f))(x), "forward was traced")
+      expect_error(jit(gradient(f))(x), "forward was called")
     })
 
-    it("passes both passes the entries of args by name, no params, and which entries are required", {
+    it("passes the forward pass and rule the entries of args by name, and which entries are required", {
       seen <- list()
       f <- function(a, b) {
         nv_sum(prim_custom_gradient(
           list(a = a, b = b),
           fn = function(a, b) a * b,
-          rule = rule_pullback(forward = function(inputs, params, required) {
-            seen$forward <<- list(names(inputs), params, required)
-            list(
-              outputs = inputs$a * inputs$b,
-              backward = function(inputs, outputs, grads, params, required) {
-                seen$backward <<- list(names(inputs), params, required)
-                list(a = grads * inputs$b)
-              }
-            )
-          })
+          forward = function(a, b, required) {
+            seen$forward <<- required
+            list(out = a * b, residuals = list(b = b))
+          },
+          rule = function(a, b, out, grad, required, residuals) {
+            seen$rule <<- list(required, names(residuals))
+            list(a = grad * residuals$b)
+          }
         ))
       }
       expect_equal(as.numeric(jit(gradient(f, wrt = "a"))(x, y)$a), c(4, 5, 6))
-      expect_equal(seen$forward, list(c("a", "b"), list(), c(a = TRUE, b = FALSE)))
-      expect_equal(seen$backward, list(c("a", "b"), list(), c(a = TRUE, b = FALSE)))
+      expect_equal(seen$forward, c(a = TRUE, b = FALSE))
+      expect_equal(seen$rule, list(c(a = TRUE, b = FALSE), "b"))
     })
 
-    it("differentiates trees of arguments and results", {
+    it("differentiates trees of arguments, results and residuals", {
       f <- function(p) {
         r <- prim_custom_gradient(
           list(p = p),
-          fn = function(p) list(s = p$w + p$b, d = p$w - p$b),
-          rule = rule_pullback(forward = function(inputs, params, required) {
-            p <- inputs$p
-            list(
-              outputs = list(s = p$w + p$b, d = p$w - p$b),
-              backward = function(inputs, outputs, grads, params, required) {
-                list(p = list(w = grads$s + grads$d, b = grads$s - grads$d))
-              }
-            )
-          })
+          fn = function(p) list(s = p$w * p$b, d = p$w - p$b),
+          forward = function(p, required) list(out = list(s = p$w * p$b, d = p$w - p$b), residuals = list(p = p)),
+          rule = function(p, out, grad, required, residuals) {
+            list(p = list(w = grad$s * residuals$p$b + grad$d, b = grad$s * residuals$p$w - grad$d))
+          }
         )
         nv_sum(r$s * 3 + r$d)
       }
       grads <- jit(gradient(f))(list(w = nv_scalar(1, "f64"), b = nv_scalar(2, "f64")))
-      expect_equal(as.numeric(grads$p$w), 4)
+      expect_equal(as.numeric(grads$p$w), 7)
       expect_equal(as.numeric(grads$p$b), 2)
     })
 
@@ -789,85 +781,69 @@ describe("prim_custom_gradient", {
       expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(nv_scalar(FALSE), x)$x), c(1, 1, 1))
     })
 
-    it("lets both passes close over arrays", {
+    it("lets the forward pass and rule close over arrays", {
       k <- nv_scalar(5, dtype = "f64")
       f <- function(x) {
         nv_sum(prim_custom_gradient(
           list(x = x),
           fn = function(x) x * k,
-          rule = rule_pullback(forward = function(inputs, params, required) {
-            list(
-              outputs = inputs$x * k,
-              backward = function(inputs, outputs, grads, params, required) list(x = grads * k * 2)
-            )
-          })
+          forward = function(x, required) list(out = x * k, residuals = list()),
+          rule = function(x, out, grad, required, residuals) list(x = grad * k * 2)
         ))
       }
       expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(10, 10, 10))
     })
 
-    it("refuses a forward or backward pass that closes over a traced value", {
+    it("refuses a forward pass that closes over a traced value", {
       differentiate <- function(forward) {
         f <- function(x, y) {
           s <- y * 2
           nv_sum(prim_custom_gradient(
             list(x = x),
             fn = function(x) x * s,
-            rule = rule_pullback(forward = forward(s))
+            forward = forward(s),
+            rule = function(x, out, grad, required, residuals) list(x = grad)
           ))
         }
         jit(gradient(f, wrt = "x"))(x, nv_scalar(2, dtype = "f64"))
       }
       expect_snapshot(
         error = TRUE,
-        differentiate(function(s) {
-          function(inputs, params, required) {
-            list(
-              outputs = inputs$x * s,
-              backward = function(inputs, outputs, grads, params, required) list(x = grads)
-            )
-          }
-        })
+        differentiate(function(s) function(x, required) list(out = x * s, residuals = list()))
       )
+      # a residual it returns as it is, too
       expect_snapshot(
         error = TRUE,
-        differentiate(function(s) {
-          function(inputs, params, required) {
-            list(
-              outputs = inputs$x * 4,
-              backward = function(inputs, outputs, grads, params, required) list(x = grads * s)
-            )
-          }
-        })
+        differentiate(function(s) function(x, required) list(out = x * 4, residuals = list(s = s)))
       )
     })
 
-    it("refuses a forward pass that does not return its outputs and a backward pass", {
+    it("refuses a forward pass that does not return the result and the residuals", {
       differentiate <- function(forward) {
-        f <- function(x) {
-          nv_sum(prim_custom_gradient(list(x = x), fn = function(x) x, rule = rule_pullback(forward = forward)))
-        }
-        jit(gradient(f))(x)
-      }
-      expect_snapshot(error = TRUE, differentiate(function(inputs, params, required) inputs$x))
-      expect_snapshot(
-        error = TRUE,
-        differentiate(function(inputs, params, required) list(outputs = inputs$x, backward = "b"))
-      )
-    })
-
-    it("refuses outputs of another structure or type than the result of fn", {
-      differentiate <- function(outputs) {
         f <- function(x) {
           nv_sum(prim_custom_gradient(
             list(x = x),
             fn = function(x) x,
-            rule = rule_pullback(forward = function(inputs, params, required) {
-              list(
-                outputs = outputs(inputs$x),
-                backward = function(inputs, outputs, grads, params, required) list(x = grads)
-              )
-            })
+            forward = forward,
+            rule = function(x, out, grad, required, residuals) list(x = grad)
+          ))
+        }
+        jit(gradient(f))(x)
+      }
+      expect_snapshot(error = TRUE, differentiate(function(x, required) x))
+      expect_snapshot(error = TRUE, differentiate(function(x, required) list(out = x)))
+      expect_snapshot(error = TRUE, differentiate(function(x, required) list(out = x, residuals = "r")))
+      expect_snapshot(error = TRUE, differentiate(function(x, required) list(out = x, residuals = list(a = "r"))))
+    })
+
+    it("refuses a result of another structure or type than the result of fn", {
+      differentiate <- function(out) {
+        f <- function(x) {
+          nv_sum(prim_custom_gradient(
+            list(x = x),
+            fn = function(x) x,
+            forward = function(x, required) list(out = out(x), residuals = list()),
+            rule = function(x, out, grad, required, residuals) list(x = grad)
           ))
         }
         jit(gradient(f))(x)
@@ -876,14 +852,13 @@ describe("prim_custom_gradient", {
       expect_snapshot(error = TRUE, differentiate(function(x) nv_convert(x, "f32")))
     })
 
-    it("refuses a backward pass that leaves out a required gradient", {
+    it("refuses a rule that leaves out a required gradient", {
       f <- function(x) {
         nv_sum(prim_custom_gradient(
           list(x = x),
           fn = function(x) x,
-          rule = rule_pullback(forward = function(inputs, params, required) {
-            list(outputs = inputs$x, backward = function(inputs, outputs, grads, params, required) list())
-          })
+          forward = function(x, required) list(out = x, residuals = list()),
+          rule = function(x, out, grad, required, residuals) list()
         ))
       }
       expect_snapshot(error = TRUE, jit(gradient(f))(x))
