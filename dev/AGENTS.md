@@ -51,9 +51,9 @@ anvl-specific:
     fails in CI. A test that asserts the *registered* pair calls
     `local_registered_default_dtypes()` (`helper.R`) to clear the
     override.
-- anvl tracks the **dev** versions of its r-xla dependencies, pjrt from
-  its `develop` branch:
-  `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt@develop", "r-xla/stablehlo"))`.
+- anvl tracks the **dev** versions of its r-xla dependencies, pjrt and
+  stablehlo from their `develop` branches:
+  `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt@develop", "r-xla/stablehlo@develop"))`.
 
 ## Two-Layer API
 

@@ -180,10 +180,10 @@ bwd_graph <- graph_gradient(graph, wrt = c("x", "y"))
 bwd_graph
 ```
 
-    ## <AnvlGraph> [%c1: f32[]] (%x1: f32[], %x2: f32[]) {
+    ## <AnvlGraph> (%x1: f32[], %x2: f32[]) {
     ##   %1: f32[] = mul(%x1, %x2)
-    ##   %2: f32[] = mul(%c1, %x2)
-    ##   %3: f32[] = mul(%c1, %x1)
+    ##   %2: f32[] = mul(1:f32, %x2)
+    ##   %3: f32[] = mul(1:f32, %x1)
     ##   return (%2, %3)
     ## }
 
@@ -209,7 +209,7 @@ prim_mul[["stablehlo"]]
     ##     operands <- lapply(list(...), hlo_broadcast_scalar, output_types = output_types)
     ##     list(do.call(hlo_fn, c(unname(operands), list(output_types = output_types))))
     ## }
-    ## <environment: 0x61fece83a5a0>
+    ## <environment: 0x5e0fd68c4bf8>
 
 The
 [`stablehlo()`](https://r-xla.github.io/anvl/dev/reference/stablehlo.md)
@@ -521,11 +521,11 @@ h_graph <- trace_fn(h, list(x = x, y = y))
 h_graph
 ```
 
-    ## <AnvlGraph> [%c1: f32[]] (%x1: f32[], %x2: f32[]) {
+    ## <AnvlGraph> (%x1: f32[], %x2: f32[]) {
     ##   %1: f32[] = add(%x1, %x2)
     ##   %2: f32[] = mul(%1, %x1)
-    ##   %3: f32[] = mul(%c1, %x1)
-    ##   %4: f32[] = mul(%c1, %1)
+    ##   %3: f32[] = mul(1:f32, %x1)
+    ##   %4: f32[] = mul(1:f32, %1)
     ##   return (%3, %4)
     ## }
 

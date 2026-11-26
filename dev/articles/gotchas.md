@@ -259,6 +259,28 @@ an `NA` is fixed by the dtype you build at. Scan the data yourself with
 [`anyNA()`](https://rdrr.io/r/base/NA.html) if you want to hear about a
 missing value the dtype accepts.
 
+The same rules hold for an R value passed to a
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)-compiled
+function, or written in its body: it is built at the dtype it takes, as
+[`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
+builds it. On the device the missing value is just a very negative
+integer, which the arithmetic below happily uses:
+
+``` r
+
+f <- jit(function(x) x + 1L)
+f(NA_integer_)
+```
+
+    ## Warning: Input `x` contains at least one "NA", stored on the device as "-2147483648".
+    ## ℹ The value materializes as "NA" again in R, which `as_array()` reports on the
+    ##   way back.
+    ## ℹ Use `suppressWarnings()` to silence this.
+
+    ## AnvlArray
+    ##  -2.1475e+09
+    ## [ CPUi32{} ]
+
 Converters like
 [`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md)
 do take a `check` argument, with three levels: `"warn"` (the default)

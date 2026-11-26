@@ -63,9 +63,9 @@ graph
 #>   return %1
 #> }
 graph_gradient(graph, "lhs")
-#> <AnvlGraph> [%c1: f32[]] (%x1: f32[], %x2: f32[]) {
+#> <AnvlGraph> (%x1: f32[], %x2: f32[]) {
 #>   %1: f32[] = mul(%x1, %x2)
-#>   %2: f32[] = mul(%c1, %x2)
+#>   %2: f32[] = mul(1:f32, %x2)
 #>   return %2
 #> }
 ```

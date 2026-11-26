@@ -299,10 +299,10 @@ with respect to which arguments to compute the gradient.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">bwd_graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/graph_gradient.html">graph_gradient</a></span><span class="op">(</span><span class="va">graph</span>, wrt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"x"</span>, <span class="st">"y"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">bwd_graph</span></span></code></pre></div>
-<pre><code><span><span class="co">## &lt;AnvlGraph&gt; [%c1: f32[]] (%x1: f32[], %x2: f32[]) {</span></span>
+<pre><code><span><span class="co">## &lt;AnvlGraph&gt; (%x1: f32[], %x2: f32[]) {</span></span>
 <span><span class="co">##   %1: f32[] = mul(%x1, %x2)</span></span>
-<span><span class="co">##   %2: f32[] = mul(%c1, %x2)</span></span>
-<span><span class="co">##   %3: f32[] = mul(%c1, %x1)</span></span>
+<span><span class="co">##   %2: f32[] = mul(1:f32, %x2)</span></span>
+<span><span class="co">##   %3: f32[] = mul(1:f32, %x1)</span></span>
 <span><span class="co">##   return (%2, %3)</span></span>
 <span><span class="co">## }</span></span></code></pre>
 </div>
@@ -324,7 +324,7 @@ transformation are attached to each primitive.</p>
 <span><span class="co">##     operands &lt;- lapply(list(...), hlo_broadcast_scalar, output_types = output_types)</span></span>
 <span><span class="co">##     list(do.call(hlo_fn, c(unname(operands), list(output_types = output_types))))</span></span>
 <span><span class="co">## }</span></span>
-<span><span class="co">## &lt;environment: 0x61fece83a5a0&gt;</span></span></code></pre>
+<span><span class="co">## &lt;environment: 0x5e0fd68c4bf8&gt;</span></span></code></pre>
 <p>The <code><a href="../reference/stablehlo.html">stablehlo()</a></code> function creates a
 <code><a href="https://r-xla.github.io/stablehlo/reference/Func.html" class="external-link">stablehlo::Func</a></code> object and sequentially translates the
 <code>GraphStatement</code>s into StableHLO operations.</p>
@@ -561,11 +561,11 @@ abstract representation.</p>
 <div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">h_graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="va">h</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">y</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">h_graph</span></span></code></pre></div>
-<pre><code><span><span class="co">## &lt;AnvlGraph&gt; [%c1: f32[]] (%x1: f32[], %x2: f32[]) {</span></span>
+<pre><code><span><span class="co">## &lt;AnvlGraph&gt; (%x1: f32[], %x2: f32[]) {</span></span>
 <span><span class="co">##   %1: f32[] = add(%x1, %x2)</span></span>
 <span><span class="co">##   %2: f32[] = mul(%1, %x1)</span></span>
-<span><span class="co">##   %3: f32[] = mul(%c1, %x1)</span></span>
-<span><span class="co">##   %4: f32[] = mul(%c1, %1)</span></span>
+<span><span class="co">##   %3: f32[] = mul(1:f32, %x1)</span></span>
+<span><span class="co">##   %4: f32[] = mul(1:f32, %1)</span></span>
 <span><span class="co">##   return (%3, %4)</span></span>
 <span><span class="co">## }</span></span></code></pre>
 <p>Afterwards, this graph is lowered to StableHLO and subsequently

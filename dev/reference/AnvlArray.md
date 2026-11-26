@@ -202,10 +202,17 @@ are always rejected, except when:
 1.  Creating `float` arrays where we convert the `NA` to `NaN`.
 
 2.  When creating an `i32` from an R
-    [`integer()`](https://rdrr.io/r/base/integer.html). There, we throw
-    a warning, but the resulting `AnvlArray` gets the bit representation
-    of `NA_integer_`, which is `INT_MIN` (`-2147483648`). Disallowing
-    this would prevent round-trips between the data types.
+    [`integer()`](https://rdrr.io/r/base/integer.html) (or
+    [`logical()`](https://rdrr.io/r/base/logical.html)). The resulting
+    `AnvlArray` gets the bit representation of `NA_integer_`, which is
+    `INT_MIN` (`-2147483648`), an ordinary number on the device. This
+    throws a warning; disallowing it would prevent round-trips between
+    the data types.
+
+The same holds for an R value that enters a
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)-compiled
+function, as an argument or written in its body: it is built at the data
+type it takes as `nv_array()` builds it.
 
 See the [Gotchas](https://r-xla.github.io/anvl/articles/gotchas.html)
 article for more information.
@@ -274,8 +281,8 @@ nv_scalar(3.14)
 # an uninitialized 2x3 array (contents are unspecified)
 nv_empty(shape = c(2L, 3L), dtype = "f32")
 #> AnvlArray
-#>  -2.2791e-01 -1.0044e-01 -1.5186e-03
-#>   3.4102e-41  3.4102e-41  3.4102e-41
+#>  -4.6396e-30 -4.6396e-30 -4.6396e-30
+#>   3.5746e-41  3.5746e-41  3.5746e-41
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---

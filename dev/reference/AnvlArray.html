@@ -252,11 +252,15 @@ has no notion of a missing (<code>NA</code>) value.
 When creating a new <code>AnvlArray</code>, the input is therefore checked for the
 presence of such values.
 <code>NA</code>s are always rejected, except when:</p><ol><li><p>Creating <code>float</code> arrays where we convert the <code>NA</code> to <code>NaN</code>.</p></li>
-<li><p>When creating an <code>i32</code> from an R <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>.
-There, we throw a warning, but the resulting <code>AnvlArray</code> gets the bit
-representation of <code>NA_integer_</code>, which is <code>INT_MIN</code> (<code>-2147483648</code>).
-Disallowing this would prevent round-trips between the data types.</p></li>
-</ol><p>See the <a href="https://r-xla.github.io/anvl/articles/gotchas.html">Gotchas</a> article for more information.</p>
+<li><p>When creating an <code>i32</code> from an R <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code> (or <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical()</a></code>).
+The resulting <code>AnvlArray</code> gets the bit representation of <code>NA_integer_</code>,
+which is <code>INT_MIN</code> (<code>-2147483648</code>), an ordinary number on the device.
+This throws a warning; disallowing it would prevent round-trips between
+the data types.</p></li>
+</ol><p>The same holds for an R value that enters a <code><a href="jit.html">jit()</a></code>-compiled function,
+as an argument or written in its body: it is built at the data type it takes
+as <code>nv_array()</code> builds it.</p>
+<p>See the <a href="https://r-xla.github.io/anvl/articles/gotchas.html">Gotchas</a> article for more information.</p>
     </div>
     <div class="section level2">
     <h2 id="out-of-range-values">Out of Range values<a class="anchor" aria-label="anchor" href="#out-of-range-values"></a></h2>
@@ -318,8 +322,8 @@ converting an array with <code><a href="nv_convert.html">nv_convert()</a></code>
 <span class="r-in"><span><span class="co"># an uninitialized 2x3 array (contents are unspecified)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_empty</span><span class="op">(</span>shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  -2.2791e-01 -1.0044e-01 -1.5186e-03</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   3.4102e-41  3.4102e-41  3.4102e-41</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  -4.6396e-30 -4.6396e-30 -4.6396e-30</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   3.5746e-41  3.5746e-41  3.5746e-41</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Extractors ---</span></span></span>

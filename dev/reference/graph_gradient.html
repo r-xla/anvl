@@ -140,9 +140,9 @@ prefer them unless you need to operate on graphs directly.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   return %1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
 <span class="r-in"><span><span class="fu">graph_gradient</span><span class="op">(</span><span class="va">graph</span>, <span class="st">"lhs"</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlGraph&gt; [%c1: f32[]] (%x1: f32[], %x2: f32[]) {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlGraph&gt; (%x1: f32[], %x2: f32[]) {</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   %1: f32[] = mul(%x1, %x2)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   %2: f32[] = mul(%c1, %x2)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   %2: f32[] = mul(1:f32, %x2)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   return %2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
 </code></pre></div>
