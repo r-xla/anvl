@@ -17,6 +17,9 @@ coin <- function() {
 ints <- function(lower, upper) {
   function(shape) shaped(sample(lower:upper, prod(shape), replace = TRUE), shape)
 }
+fixed <- function(values) {
+  function(shape) shaped(values, shape)
+}
 shaped <- function(values, shape) {
   if (length(shape)) array(values, shape) else values
 }
@@ -31,8 +34,10 @@ anvl_array <- function(x, dtype) {
 # one an `i32` array -- the arguments to differentiate with respect to, the
 # arguments that are scalars, which the primitive broadcasts to the shape of
 # the others, the shapes of the other arguments where they are not `c(2, 3)`,
-# static parameters, whether to check forward-over-reverse, and the tolerance
-# of the comparison with finite differences.
+# static parameters, whether to check forward-over-reverse, the tolerance of
+# the comparison with finite differences, and, for a primitive that does not
+# take the arguments as such, the function that calls it with them, a named
+# list, in place of the parameters.
 pushforward_case <- function(
   args,
   wrt = names(args),
@@ -40,21 +45,31 @@ pushforward_case <- function(
   shapes = list(),
   params = list(),
   hvp = TRUE,
-  tolerance = 1e-6
+  tolerance = 1e-6,
+  call = NULL
 ) {
-  list(args = args, wrt = wrt, scalar = scalar, shapes = shapes, params = params, hvp = hvp, tolerance = tolerance)
+  list(
+    args = args,
+    wrt = wrt,
+    scalar = scalar,
+    shapes = shapes,
+    params = params,
+    hvp = hvp,
+    tolerance = tolerance,
+    call = call
+  )
 }
 
-# The results of a primitive as a list, with one entry per output.
+# The results of a primitive as an unnamed list, with one entry per output.
 as_outputs <- function(r) {
-  if (is.list(r) && !is_arrayish(r)) r else list(r)
+  if (is.list(r) && !is_arrayish(r)) unname(r) else list(r)
 }
 
 binary_case <- function(lhs = unif(-2, 2), rhs = unif(-2, 2)) {
   pushforward_case(list(lhs = lhs, rhs = rhs))
 }
 
-# The pushforward rules of their own.
+# The pushforward rules of their own, named `<primitive>[/<variant>]`.
 pushforward_cases <- list(
   # at f64 a conversion to f64 is the identity, at f32 one that changes the
   # data type
@@ -138,7 +153,7 @@ check_pushforward_rule <- function(name, case) {
   directions <- lapply(case$wrt, \(nm) shaped(rnorm(length(args[[nm]])), dim(args[[nm]])))
   names(directions) <- case$wrt
 
-  f <- with_formals(names(args), \(a) do.call(prim, c(a, case$params)))
+  f <- with_formals(names(args), case$call %||% \(a) do.call(prim, c(a, case$params)))
   x <- arrays_at("f64")
   t <- lapply(directions, anvl_array, dtype = "f64")
   outs <- trace_fn(f, x)$outputs
@@ -224,13 +239,13 @@ describe("pushforward rules", {
     nms <- names(asNamespace("anvl"))
     prims <- Filter(\(p) inherits(p, "AnvlPrimitive"), mget(nms[startsWith(nms, "prim_")], asNamespace("anvl")))
     own <- Filter(\(p) !is.null(p[["pushforward"]]) && !derived_from_pullback(p), prims)
-    expect_setequal(names(pushforward_cases), sub("^prim_", "", names(own)))
+    expect_setequal(unique(sub("/.*", "", names(pushforward_cases))), sub("^prim_", "", names(own)))
   })
 
   for (name in names(pushforward_cases)) {
     it(sprintf("of prim_%s agree with finite differences and the pullback", name), {
       withr::local_seed(1L)
-      check_pushforward_rule(name, pushforward_cases[[name]])
+      check_pushforward_rule(sub("/.*", "", name), pushforward_cases[[name]])
     })
   }
 
