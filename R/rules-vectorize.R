@@ -352,3 +352,31 @@ prim_scan[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, siz
   )
   c(Map(batch_operand, out$carry, carry_b, MoreArgs = list(size = size)), ys)
 })
+
+# The batch axis is folded into an axis of the operands whose slices
+# `prim_convolution()` keeps apart: the batch axis of `x` when only `x` is
+# mapped over, the output feature axis of `kernel` when only `kernel` is, and
+# both feature axes -- one feature group per slice -- when both are. Where
+# groups of the convolution's own are in the way, and for an empty batch, it
+# goes slice by slice.
+prim_convolution[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+  x <- inputs[[1L]]
+  kernel <- inputs[[2L]]
+  only_x <- batched[[1L]] && !batched[[2L]]
+  if (size == 0L || params$batch_group_count != 1L || (!only_x && params$feature_group_count != 1L)) {
+    convolve <- function(operands) list(do.call(prim_convolution, c(operands, params)))
+    return(vectorize_by_loop(convolve, inputs, batched, size))
+  }
+  if (only_x) {
+    x <- merge_batch_axis(x, params$x_batch_axis)
+    out_axis <- params$output_batch_axis
+  } else {
+    kernel <- merge_batch_axis(kernel, params$kernel_output_feature_axis)
+    out_axis <- params$output_feature_axis
+    if (batched[[1L]]) {
+      x <- merge_batch_axis(x, params$x_feature_axis)
+      params$feature_group_count <- size
+    }
+  }
+  split_batch_axis(do.call(prim_convolution, c(list(x, kernel), params)), out_axis, size)
+})

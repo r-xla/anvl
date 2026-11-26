@@ -809,3 +809,20 @@ move_axis <- function(x, from, to) {
   perm <- append(perm, from, after = to - 1L)
   prim_transpose(x, perm)
 }
+
+# `x` with its trailing batch axis folded into its axis `axis`. Along the
+# merged axis, the elements of `axis` run fastest, so each slice of the batch
+# is one contiguous block of it.
+merge_batch_axis <- function(x, axis) {
+  x <- move_axis(x, naxes(x), axis + 1L)
+  s <- shape(x)
+  prim_reshape(x, c(s[seq_len(axis - 1L)], s[[axis]] * s[[axis + 1L]], s[-seq_len(axis + 1L)]))
+}
+
+# Undoes `merge_batch_axis()`: splits a batch axis of size `size` off the axis
+# `axis` of `x` and moves it last.
+split_batch_axis <- function(x, axis, size) {
+  s <- shape(x)
+  x <- prim_reshape(x, c(s[seq_len(axis - 1L)], s[[axis]] %/% size, size, s[-seq_len(axis)]))
+  move_axis(x, axis + 1L, naxes(x))
+}

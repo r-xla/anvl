@@ -748,6 +748,69 @@ describe("prim_scan", {
   })
 })
 
+describe("prim_convolution", {
+  conv1d <- function(feature_group_count = 1L, batch_group_count = 1L) {
+    function(x, kernel) {
+      prim_convolution(
+        x,
+        kernel,
+        x_batch_axis = 1L,
+        x_feature_axis = 2L,
+        x_spatial_axes = 3L,
+        kernel_output_feature_axis = 1L,
+        kernel_input_feature_axis = 2L,
+        kernel_spatial_axes = 3L,
+        output_batch_axis = 1L,
+        output_feature_axis = 2L,
+        output_spatial_axes = 3L,
+        window_strides = 1L,
+        padding = matrix(c(1L, 0L), nrow = 1L),
+        x_dilation = 1L,
+        kernel_dilation = 1L,
+        feature_group_count = feature_group_count,
+        batch_group_count = batch_group_count
+      )
+    }
+  }
+
+  it("vectorizes", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      conv1d(),
+      x = rand_array(c(2L, 2L, 5L, 3L)),
+      kernel = rand_array(c(4L, 2L, 3L, 3L)),
+      tolerance = 1e-5
+    )
+  })
+
+  it("vectorizes a convolution with feature groups", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      conv1d(feature_group_count = 2L),
+      x = rand_array(c(2L, 4L, 5L, 3L)),
+      kernel = rand_array(c(2L, 2L, 3L, 3L)),
+      tolerance = 1e-5
+    )
+  })
+
+  it("vectorizes a convolution with batch groups", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      conv1d(batch_group_count = 2L),
+      x = rand_array(c(4L, 3L, 5L, 3L)),
+      kernel = rand_array(c(2L, 3L, 3L, 3L)),
+      tolerance = 1e-5
+    )
+  })
+
+  it("vectorizes an empty batch", {
+    out <- jit(vectorize(conv1d()))(rand_array(c(2L, 2L, 5L, 0L)), rand_array(c(4L, 2L, 3L, 0L)))
+    expect_equal(shape(out), c(2L, 4L, 4L, 0L))
+    out <- jit(vectorize(conv1d(), in_axes = list(x = -1L)))(rand_array(c(2L, 2L, 5L, 0L)), rand_array(c(4L, 2L, 3L)))
+    expect_equal(shape(out), c(2L, 4L, 4L, 0L))
+  })
+})
+
 # Every primitive with a vectorize rule must have been applied by one of the
 # `autotest_vectorize()` calls above (see helper-vectorize.R), except one that
 # gets the rule of its tag, of which one per tag suffices.
