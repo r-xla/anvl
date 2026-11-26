@@ -353,6 +353,8 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/pullback.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/quickr_device.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/reexports.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/register_backend.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/register_rule_type.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/rule_pullback.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/shape.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/shp.html</loc></url>

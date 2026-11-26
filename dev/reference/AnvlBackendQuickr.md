@@ -1,5 +1,7 @@
 # Quickr Backend
 
+**\[experimental\]**
+
 Constructs the quickr backend, which stores array data as plain R arrays
 and compiles jitted functions to R code via the
 [quickr](https://CRAN.R-project.org/package=quickr) package.

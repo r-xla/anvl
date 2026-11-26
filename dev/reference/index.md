@@ -662,7 +662,13 @@ Backend-related functionality and implementations
 - [`AnvlBackendPjrt()`](https://r-xla.github.io/anvl/dev/reference/AnvlBackendPjrt.md)
   : PJRT Backend
 - [`AnvlBackendQuickr()`](https://r-xla.github.io/anvl/dev/reference/AnvlBackendQuickr.md)
-  : Quickr Backend
+  **\[experimental\]** : Quickr Backend
+- [`AnvlBackend()`](https://r-xla.github.io/anvl/dev/reference/AnvlBackend.md)
+  **\[experimental\]** : Create a Backend
+- [`register_backend()`](https://r-xla.github.io/anvl/dev/reference/register_backend.md)
+  **\[experimental\]** : Register a Backend
+- [`register_rule_type()`](https://r-xla.github.io/anvl/dev/reference/register_rule_type.md)
+  **\[experimental\]** : Register a Rule Type
 
 ## Device
 
@@ -768,8 +774,6 @@ Utilities for working with nested structures
 
 ### Miscellaneous
 
-- [`AnvlBackend()`](https://r-xla.github.io/anvl/dev/reference/AnvlBackend.md)
-  : Create a Backend
 - [`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md)
   : Get Active Backend
 - [`jit_cache_size()`](https://r-xla.github.io/anvl/dev/reference/jit_cache_size.md)

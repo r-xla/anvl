@@ -54,6 +54,12 @@
   `safetensors::safe_load_file(framework = "anvl")` reads them.
 - The `"quickr"` backend accepts a raw payload in
   [`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md).
+- Experimental:
+  [`AnvlBackend()`](https://r-xla.github.io/anvl/dev/reference/AnvlBackend.md),
+  [`register_backend()`](https://r-xla.github.io/anvl/dev/reference/register_backend.md)
+  and the new
+  [`register_rule_type()`](https://r-xla.github.io/anvl/dev/reference/register_rule_type.md)
+  let a package add a backend, with its own rules for the primitives.
 
 ### Bug fixes
 

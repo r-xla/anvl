@@ -5,7 +5,17 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Create a Backend — AnvlBackend"><meta name="description" content="Create a Backend"><meta property="og:description" content="Create a Backend"><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Create a Backend — AnvlBackend"><meta name="description" content="
+A backend defines how arrays are stored, converted to R and placed on
+devices, and how jit() runs a function. AnvlBackend() bundles the
+methods that do this, and register_backend() makes the result selectable
+by name. anvl registers two backends itself, AnvlBackendPjrt() and
+AnvlBackendQuickr(), and a package can add more."><meta property="og:description" content="
+A backend defines how arrays are stored, converted to R and placed on
+devices, and how jit() runs a function. AnvlBackend() bundles the
+methods that do this, and register_backend() makes the result selectable
+by name. anvl registers two backends itself, AnvlBackendPjrt() and
+AnvlBackendQuickr(), and a package can add more."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -79,7 +89,12 @@
     </div>
 
     <div class="ref-description section level2">
-    <p>Create a Backend</p>
+    <p><a href="https://lifecycle.r-lib.org/articles/stages.html#experimental" class="external-link"><img src="figures/lifecycle-experimental.svg" alt="[Experimental]"></a></p>
+<p>A backend defines how arrays are stored, converted to R and placed on
+devices, and how <code><a href="jit.html">jit()</a></code> runs a function. <code>AnvlBackend()</code> bundles the
+methods that do this, and <code><a href="register_backend.html">register_backend()</a></code> makes the result selectable
+by name. anvl registers two backends itself, <code><a href="AnvlBackendPjrt.html">AnvlBackendPjrt()</a></code> and
+<code><a href="AnvlBackendQuickr.html">AnvlBackendQuickr()</a></code>, and a package can add more.</p>
     </div>
 
     <div class="section level2">
@@ -166,7 +181,10 @@ footer, passing <code>...</code> (e.g. <code>max_rows</code> for the pjrt backen
 <dd><p>(<code>function(f, static, cache_size, &lt;options&gt;, device = NULL)</code>)<br>
 Creates the backend's implementation of a JIT-compiled function and returns
 it as a <code>function</code>. The formals in place of <code>&lt;options&gt;</code> are the
-backend-specific options <code><a href="jit.html">jit()</a></code> accepts through <code>...</code>.</p></dd>
+backend-specific options <code><a href="jit.html">jit()</a></code> accepts through <code>...</code>. The returned
+function is given the formals of <code>f</code>, so it reads its arguments by name,
+e.g. with <code><a href="https://rdrr.io/r/base/match.call.html" class="external-link">match.call()</a></code>, rather than through <code>...</code>. It is only called
+outside a trace: inside one, <code><a href="jit.html">jit()</a></code> calls <code>f</code> itself.</p></dd>
 
 
 <dt id="arg-await-data">await_data<a class="anchor" aria-label="anchor" href="#arg-await-data"></a></dt>
@@ -178,12 +196,33 @@ without async execution.</p></dd>
 <dt id="arg-default-dtypes">default_dtypes<a class="anchor" aria-label="anchor" href="#arg-default-dtypes"></a></dt>
 <dd><p>(<code>NULL</code> | <code>list(float, int)</code>)<br>
 The default data types for this backend.
-Can be overwritten, see <code><a href="default_dtypes.html">default_dtypes()</a></code>.</p></dd>
+Can be overwritten, see <code><a href="default_dtypes.html">default_dtypes()</a></code>. Only the internal backend
+that holds the constants of a trace has none; a backend that can be
+selected needs them.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>(<code>AnvlBackend</code>)</p>
+    </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>An array of the backend is an <code><a href="AnvlArray.html">AnvlArray</a></code> that <code>new_data</code> and <code>new_empty</code>
+construct and the other methods take apart; see <code>new_data</code> for its
+structure.</p>
+<p>A device of the backend is an object whose class inherits from
+<code>"AnvlDevice"</code>, such as <code>structure("cpu", class = c("MyDevice", "AnvlDevice"))</code>. Its class needs a <code><a href="backend.html">backend()</a></code> method that returns the
+name the backend is registered under, and two devices must be comparable
+with <code>==</code>.</p>
+<p>The <code>jit</code> method should trace the function into an <code><a href="AnvlGraph.html">AnvlGraph</a></code> with
+<code><a href="trace_fn.html">trace_fn()</a></code>, so that every backend runs the same graph, and then lower or
+evaluate each statement of the graph with a rule of the primitive it applies:
+a rule of a type registered with <code><a href="register_rule_type.html">register_rule_type()</a></code>, which
+<code>statement$primitive[[&lt;type&gt;]]</code> returns.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
+    <div class="dont-index"><p><code><a href="register_backend.html">register_backend()</a></code>, <code><a href="register_rule_type.html">register_rule_type()</a></code></p></div>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

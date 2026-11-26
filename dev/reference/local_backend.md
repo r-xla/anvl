@@ -19,7 +19,8 @@ with_backend(backend, code)
 - backend:
 
   (`character(1)`)  
-  Backend to use (`"pjrt"` or `"quickr"`).
+  Backend to use: `"pjrt"`, `"quickr"`, or one a package added with
+  [`register_backend()`](https://r-xla.github.io/anvl/dev/reference/register_backend.md).
 
 - envir:
 

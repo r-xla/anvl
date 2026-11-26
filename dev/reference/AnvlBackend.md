@@ -1,6 +1,17 @@
 # Create a Backend
 
-Create a Backend
+**\[experimental\]**
+
+A backend defines how arrays are stored, converted to R and placed on
+devices, and how
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) runs a
+function. `AnvlBackend()` bundles the methods that do this, and
+[`register_backend()`](https://r-xla.github.io/anvl/dev/reference/register_backend.md)
+makes the result selectable by name. anvl registers two backends itself,
+[`AnvlBackendPjrt()`](https://r-xla.github.io/anvl/dev/reference/AnvlBackendPjrt.md)
+and
+[`AnvlBackendQuickr()`](https://r-xla.github.io/anvl/dev/reference/AnvlBackendQuickr.md),
+and a package can add more.
 
 ## Usage
 
@@ -103,7 +114,12 @@ AnvlBackend(
   returns it as a `function`. The formals in place of `<options>` are
   the backend-specific options
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) accepts
-  through `...`.
+  through `...`. The returned function is given the formals of `f`, so
+  it reads its arguments by name, e.g. with
+  [`match.call()`](https://rdrr.io/r/base/match.call.html), rather than
+  through `...`. It is only called outside a trace: inside one,
+  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) calls `f`
+  itself.
 
 - await_data:
 
@@ -117,7 +133,38 @@ AnvlBackend(
   (`NULL` \| `list(float, int)`)  
   The default data types for this backend. Can be overwritten, see
   [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
+  Only the internal backend that holds the constants of a trace has
+  none; a backend that can be selected needs them.
 
 ## Value
 
 (`AnvlBackend`)
+
+## Details
+
+An array of the backend is an
+[`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
+that `new_data` and `new_empty` construct and the other methods take
+apart; see `new_data` for its structure.
+
+A device of the backend is an object whose class inherits from
+`"AnvlDevice"`, such as
+`structure("cpu", class = c("MyDevice", "AnvlDevice"))`. Its class needs
+a [`backend()`](https://r-xla.github.io/anvl/dev/reference/backend.md)
+method that returns the name the backend is registered under, and two
+devices must be comparable with `==`.
+
+The `jit` method should trace the function into an
+[`AnvlGraph`](https://r-xla.github.io/anvl/dev/reference/AnvlGraph.md)
+with
+[`trace_fn()`](https://r-xla.github.io/anvl/dev/reference/trace_fn.md),
+so that every backend runs the same graph, and then lower or evaluate
+each statement of the graph with a rule of the primitive it applies: a
+rule of a type registered with
+[`register_rule_type()`](https://r-xla.github.io/anvl/dev/reference/register_rule_type.md),
+which `statement$primitive[[<type>]]` returns.
+
+## See also
+
+[`register_backend()`](https://r-xla.github.io/anvl/dev/reference/register_backend.md),
+[`register_rule_type()`](https://r-xla.github.io/anvl/dev/reference/register_rule_type.md)

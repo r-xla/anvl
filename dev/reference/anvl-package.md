@@ -10,8 +10,9 @@ of a function as another R function.
 ## Options
 
 - `anvl.backend` (`character(1)`): the backend every operation runs on.
-  Must be one of `"pjrt"` and `"quickr"`. If not set, `"pjrt"` is used.
-  Also see
+  Must be `"pjrt"`, `"quickr"`, or a backend a package added with
+  [`register_backend()`](https://r-xla.github.io/anvl/dev/reference/register_backend.md).
+  If not set, `"pjrt"` is used. Also see
   [`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md),
   [`local_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md)
   and
