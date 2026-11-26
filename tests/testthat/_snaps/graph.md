@@ -93,10 +93,10 @@
     Code
       graph
     Output
-      <AnvlGraph> [%c1: f64[]] (%x1: f64[]) {
+      <AnvlGraph> (%x1: f64[]) {
         %1: f64[] = mul(%x1, %x1)
-        %2: f64[] = mul(%c1, %x1)
-        %3: f64[] = mul(%c1, %x1)
+        %2: f64[] = mul(1:f64, %x1)
+        %3: f64[] = mul(1:f64, %x1)
         %4: f64[] = add(%2, %3)
         return %4
       }
