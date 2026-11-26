@@ -70,7 +70,7 @@ NULL
 NULL
 
 globals <- new.env()
-globals$interpretation_rules <- c("stablehlo", "quickr", "pullback")
+globals$interpretation_rules <- c("stablehlo", "quickr", "pullback", "vectorize")
 globals[["descriptor_stash"]] <- list()
 globals[["current_descriptor"]] <- NULL
 globals[["lowering_platform"]] <- NULL

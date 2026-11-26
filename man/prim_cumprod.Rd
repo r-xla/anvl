@@ -30,6 +30,7 @@ running AND. \code{\link[=nv_cumprod]{nv_cumprod()}} multiplies zeroes and ones 
 
 \itemize{
 \item \code{stablehlo}
+\item \code{vectorize}
 }
 }
 

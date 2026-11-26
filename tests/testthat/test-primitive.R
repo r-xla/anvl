@@ -100,6 +100,20 @@ describe("new_primitive", {
     prim_identity <- new_primitive("identity_ext", fn, register = FALSE)
     expect_s3_class(trace_fn(prim_identity, list(nv_aval("f32", 2L))), "AnvlGraph")
   })
+
+  it("stores the tags of the primitive", {
+    fn <- function(x) graph_desc_add(self, list(x = x), infer_fn = infer_numeric_uni)[[1L]]
+    prim_neg <- new_primitive("negate_tagged", fn, tags = c("elementwise", "other"), register = FALSE)
+    expect_identical(primitive_def(prim_neg)$tags, c("elementwise", "other"))
+    expect_identical(primitive_def(new_primitive("untagged", fn, register = FALSE))$tags, character())
+    expect_error(new_primitive("negate_tagged", fn, tags = 1L, register = FALSE), "tags")
+  })
+
+  it("stores the AnvlPrimitive in the definition", {
+    fn <- function(x) graph_desc_add(self, list(x = x), infer_fn = infer_numeric_uni)[[1L]]
+    prim_neg <- new_primitive("negate_stored", fn, register = FALSE)
+    expect_s3_class(primitive_def(prim_neg)$fn, "AnvlPrimitive")
+  })
 })
 
 describe("the call a primitive's error reports", {

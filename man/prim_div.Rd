@@ -28,6 +28,7 @@ Divides two arrays element-wise.
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{pullback}
+\item \code{vectorize}
 }
 }
 

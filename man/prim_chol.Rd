@@ -27,15 +27,12 @@ A matrix that is not positive definite factors to \code{NaN}.
 Computes the Cholesky decomposition of a symmetric positive-definite matrix.
 The first two axes form the matrix, and any trailing axes are batch axes.
 }
-\details{
-Differentiation is only implemented for a single matrix: the \code{pullback} rule
-errors on a batched input (an input with more than 2 axes).
-}
 \section{Implemented Rules}{
 
 \itemize{
 \item \code{stablehlo}
 \item \code{pullback}
+\item \code{vectorize}
 }
 }
 

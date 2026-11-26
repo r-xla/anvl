@@ -33,6 +33,7 @@ modifying the underlying data.
 \itemize{
 \item \code{stablehlo}
 \item \code{pullback}
+\item \code{vectorize}
 }
 }
 

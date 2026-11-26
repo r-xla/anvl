@@ -23,6 +23,7 @@ Element-wise inverse tangent.
 \itemize{
 \item \code{stablehlo}
 \item \code{pullback}
+\item \code{vectorize}
 }
 }
 

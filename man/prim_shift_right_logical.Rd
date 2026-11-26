@@ -28,6 +28,7 @@ Element-wise logical right bit shift.
 \itemize{
 \item \code{stablehlo}
 \item \code{pullback}
+\item \code{vectorize}
 }
 }
 
