@@ -28,6 +28,7 @@ Reverses the order of elements along specified axes.
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{pullback}
+\item \code{pushforward}
 \item \code{vectorize}
 }
 }

@@ -1,7 +1,9 @@
 # A primitive tagged "elementwise" gets its pushforward rule from its pullback
-# rule (`pushforward_from_pullback()`), which the pullback tests cover, so only
-# the derivation itself is checked here, on a few primitives that take each of
-# its paths. Every other pushforward rule has an entry in `pushforward_cases`.
+# rule (`pushforward_from_pullback()`), which the pullback tests cover, and one
+# tagged "linear" is its own pushforward (`pushforward_linear()`), so only the
+# derivations themselves are checked here, on a few primitives that take each
+# of their paths. Every other pushforward rule has an entry in
+# `pushforward_cases`.
 # `check_pushforward_rule()` runs the same checks on each against references
 # that do not use the pushforward rules. torch has no forward mode to compare
 # with.
@@ -73,10 +75,26 @@ derived_cases <- list(
   eq = binary_case()
 )
 
-# Whether the pushforward rule of `prim` is the one `pushforward_from_pullback()`
-# derives from its pullback rule.
-derived_from_pullback <- function(prim) {
-  identical(body(prim[["pushforward"]]), body(pushforward_from_pullback(prim[["pullback"]])))
+# Pushforward rules of the primitives tagged "linear": an operand alone,
+# several whose tangents go in together, a float operand without a tangent, and
+# integer operands passed through.
+linear_cases <- list(
+  transpose = pushforward_case(list(x = unif(-2, 2)), params = list(perm = c(2L, 1L))),
+  concatenate = pushforward_case(list(a = unif(-2, 2), b = unif(-2, 2)), params = list(axis = 2L)),
+  dynamic_update_slice = pushforward_case(
+    list(x = unif(-2, 2), update = unif(-2, 2), i = ints(1L, 2L), j = ints(1L, 2L)),
+    wrt = "update",
+    shapes = list(update = c(1L, 2L), i = integer(), j = integer())
+  )
+)
+
+# Whether the pushforward rule of `prim` is one derived from its tag: by
+# `pushforward_from_pullback()` from its pullback rule, or by
+# `pushforward_linear()`.
+derived_from_tag <- function(prim) {
+  rule <- body(prim[["pushforward"]])
+  identical(rule, body(pushforward_from_pullback(prim[["pullback"]]))) ||
+    identical(rule, body(pushforward_linear(prim)))
 }
 
 # `body(args)`, for `args` a named list, as a function with one formal per name.
@@ -112,9 +130,7 @@ central_difference <- function(fn, x, t, h) {
 #     <u, J t> must equal <J^T u, t>;
 #   - forward-over-reverse, unless `case$hvp` is `FALSE`: the tangent of the
 #     gradient against a central difference of the gradient, which needs a
-#     pushforward rule for whatever the pullback rule computes with -- not yet
-#     with a scalar operand, whose cotangent the pullback rule sums with
-#     `prim_sum()`;
+#     pushforward rule for whatever the pullback rule computes with;
 #   - at f32, that the tangent has the data type of the output.
 # An output that is not a float has no derivative, and so no tangent.
 check_pushforward_rule <- function(name, case) {
@@ -158,7 +174,7 @@ check_pushforward_rule <- function(name, case) {
   h <- 1e-5
   u <- lapply(outs[is_float], \(o) anvl_array(shaped(rnorm(prod(shape(o))), shape(o)), dtype = "f64"))
   has_pullback <- !is.null(prim[["pullback"]])
-  check_hvp <- has_pullback && case$hvp && !length(case$scalar)
+  check_hvp <- has_pullback && case$hvp
   run <- jit(function(x, t, u) {
     along <- c(lapply(names(t), \(nm) t[nm]), list(t))
     # `g` of the arguments in `wrt` alone, the others held at `x`
@@ -223,7 +239,7 @@ describe("pushforward rules", {
   it("have a case for every primitive with a rule of its own", {
     nms <- names(asNamespace("anvl"))
     prims <- Filter(\(p) inherits(p, "AnvlPrimitive"), mget(nms[startsWith(nms, "prim_")], asNamespace("anvl")))
-    own <- Filter(\(p) !is.null(p[["pushforward"]]) && !derived_from_pullback(p), prims)
+    own <- Filter(\(p) !is.null(p[["pushforward"]]) && !derived_from_tag(p), prims)
     expect_setequal(names(pushforward_cases), sub("^prim_", "", names(own)))
   })
 
@@ -258,6 +274,21 @@ describe("pushforward_from_pullback", {
     it(sprintf("derives a pushforward rule that agrees with finite differences and the pullback for %s", name), {
       withr::local_seed(1L)
       check_pushforward_rule(sub("/.*", "", name), derived_cases[[name]])
+    })
+  }
+})
+
+describe("pushforward_linear", {
+  it("derives the pushforward rule of every primitive tagged linear", {
+    for (prim in primitives_tagged("linear")) {
+      expect_identical(body(prim[["pushforward"]]), body(pushforward_linear(prim)), label = primitive_def(prim)$name)
+    }
+  })
+
+  for (name in names(linear_cases)) {
+    it(sprintf("derives a pushforward rule that agrees with finite differences and the pullback for %s", name), {
+      withr::local_seed(1L)
+      check_pushforward_rule(name, linear_cases[[name]])
     })
   }
 })

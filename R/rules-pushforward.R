@@ -53,3 +53,29 @@ prim_convert[["pushforward"]] <- function(inputs, outputs, tangents, params) {
   out <- outputs[[1L]]
   list(if (is_dtype_float(dtype(out))) prim_convert(tangents[[1L]], dtype(out)))
 }
+
+# Pushforward rules of the linear primitives -----------------------------------
+#
+# A primitive tagged `"linear"` is linear in its float operands jointly, so it
+# is its own derivative: the tangent of its result is the primitive applied to
+# the tangents of those operands, a zero standing in for a missing one, with
+# its other operands -- start indices, which have no tangent -- and its
+# parameters unchanged.
+
+# The pushforward rule of the linear primitive `prim`.
+pushforward_linear <- function(prim) {
+  force(prim)
+  function(inputs, outputs, tangents, params) {
+    operands <- Map(
+      function(x, tangent) tangent %||% if (is_dtype_float(dtype(x))) zeros_like(x) else x,
+      inputs,
+      tangents
+    )
+    list(do.call(prim, c(unname(operands), params)))
+  }
+}
+
+for (prim in primitives_tagged("linear")) {
+  prim[["pushforward"]] <- pushforward_linear(prim)
+}
+rm(prim)

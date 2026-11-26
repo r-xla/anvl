@@ -123,7 +123,7 @@ another backend is an error. Only helpers *about* the backend name one (`install
 
 ## Primitive System
 
-Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defined in `R/primitive.R`). The returned object is both callable (it wraps `fn` with `jit()`) and carries an `AnvlPrimitiveDef` metadata object via `attr(., "definition")`. Primitives are stored as `prim_<name>` variables, and the string passed to `new_primitive()` is that same `<name>` -- not the StableHLO op it lowers to -- so printed graphs and error messages name a function the reader can look up. `test-primitives-meta.R` enforces this. A primitive can carry tags, `new_primitive(tags = )`, a plain `character()` for internal use that says what kind of operation it is (the tags in use, `"elementwise"`, `"reduction"` and `"cumulative"`, are listed in `R/primitive.R`); a rule shared by every primitive of a kind, or derived from another of their rules, is assigned from the tag (`primitives_tagged()`), so a new primitive of that kind gets it without being added to a list. `new_primitive()` lexically binds `self` (the `AnvlPrimitiveDef`) into the body's enclosing environment, so inside a primitive body you write `graph_desc_add(self, ...)` — never the primitive name as a string. A primitive with nothing for a user to call it for is not exported, and has a comment instead of roxygen docs (`prim_fork_rng_state()`, which only `side_effect_fork()` calls). Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
+Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defined in `R/primitive.R`). The returned object is both callable (it wraps `fn` with `jit()`) and carries an `AnvlPrimitiveDef` metadata object via `attr(., "definition")`. Primitives are stored as `prim_<name>` variables, and the string passed to `new_primitive()` is that same `<name>` -- not the StableHLO op it lowers to -- so printed graphs and error messages name a function the reader can look up. `test-primitives-meta.R` enforces this. A primitive can carry tags, `new_primitive(tags = )`, a plain `character()` for internal use that says what kind of operation it is (the tags in use, `"elementwise"`, `"reduction"`, `"cumulative"` and `"linear"`, are listed in `R/primitive.R`); a rule shared by every primitive of a kind, or derived from another of their rules, is assigned from the tag (`primitives_tagged()`), so a new primitive of that kind gets it without being added to a list. `new_primitive()` lexically binds `self` (the `AnvlPrimitiveDef`) into the body's enclosing environment, so inside a primitive body you write `graph_desc_add(self, ...)` — never the primitive name as a string. A primitive with nothing for a user to call it for is not exported, and has a comment instead of roxygen docs (`prim_fork_rng_state()`, which only `side_effect_fork()` calls). Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
 
 - **`stablehlo`** -- JIT lowering rules in `R/rules-stablehlo.R`. These convert traced operations into StableHLO IR. Since stablehlo uses 0-based indexing, convert indices by subtracting 1.
 - **`pullback`** -- Reverse-mode autodiff rules in `R/rules-pullback.R`, built with `rule_pullback()`. A rule type that serves a transformation is named after it: `pullback()` (and `gradient()`, which builds on it) uses the `pullback` rule.
@@ -131,7 +131,9 @@ Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defin
   `function(inputs, outputs, tangents, params)` returning one tangent per output, `NULL` for a
   zero. A `NULL` input tangent is a zero too. A primitive tagged `"elementwise"` gets its pushforward rule from its pullback rule in
   `R/rules-pushforward.R`: its derivative is diagonal, so the pullback rule applied to a tangent
-  gives that tangent's pushforward.
+  gives that tangent's pushforward. A primitive tagged `"linear"` (linear in its float operands
+  jointly) is its own pushforward: the primitive applied to the tangents, with its other operands
+  and its parameters unchanged.
 - **`quickr`** -- R-native lowering rules in `R/rules-quickr.R` for the quickr backend.
 - **`vectorize`** -- Batching rules for `vectorize()` in `R/rules-vectorize.R`, built with `rule_vectorize()`.
   Rules receive a trailing batch axis, so existing axis indices keep their values. Use
@@ -202,8 +204,8 @@ Each rule of each primitive should be tested. Tests are organized as:
   pushforward rule of its own needs an entry in `pushforward_cases` (inputs from its domain, the
   arguments to differentiate), and each entry is checked against central differences, against the
   pullback (`<u, J t> == <J^T u, t>`), and forward-over-reverse against central differences of
-  the gradient. A rule derived from the pullback rule (tag `"elementwise"`) needs no entry: a few
-  `derived_cases` check the derivation itself. torch has no forward mode to compare with.
+  the gradient. A rule derived from a tag (`"elementwise"`, `"linear"`) needs no entry: a few
+  `derived_cases` and `linear_cases` check the derivations themselves. torch has no forward mode to compare with.
 - `tests/testthat/test-primitives-vectorize.R` -- every vectorize rule through `autotest_vectorize()`
   (`helper-vectorize.R`), which compares against applying the primitive slice by slice
 
