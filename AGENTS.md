@@ -205,7 +205,8 @@ Each rule of each primitive should be tested. Tests are organized as:
   arguments to differentiate), and each entry is checked against central differences, against the
   pullback (`<u, J t> == <J^T u, t>`), and forward-over-reverse against central differences of
   the gradient. A rule derived from a tag (`"elementwise"`, `"linear"`) needs no entry: a few
-  `derived_cases` and `linear_cases` check the derivations themselves. torch has no forward mode to compare with.
+  `derived_cases` and `linear_cases` check the derivations themselves. torch has no forward mode
+  to compare with.
 - `tests/testthat/test-primitives-vectorize.R` -- every vectorize rule through `autotest_vectorize()`
   (`helper-vectorize.R`), which compares against applying the primitive slice by slice
 
