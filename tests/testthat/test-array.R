@@ -134,6 +134,38 @@ test_that("nv_scalar", {
   expect_snapshot(x)
 })
 
+describe("a missing value in nv_array()", {
+  it("becomes NaN at a float, without a word", {
+    for (dt in c("f32", "f64")) {
+      expect_no_warning(x <- nv_scalar(NA_real_, dtype = dt))
+      expect_dtype(x, dt)
+      expect_true(is.na(as_array(x)))
+    }
+    expect_true(is.nan(as_array(nv_scalar(NaN, dtype = "f64"))))
+    expect_true(is.nan(as_array(nv_scalar(NA_integer_, dtype = "f32"))))
+  })
+
+  it("is kept at i32, with a warning", {
+    expect_warning(x <- nv_scalar(NA_integer_, dtype = "i32"), "-2147483648")
+    expect_true(is.na(as_array(x, check = FALSE)))
+    expect_warning(x <- nv_array(c(1L, NA), dtype = "i32"), "-2147483648")
+    expect_identical(as.vector(as_array(x, check = FALSE)), c(1L, NA))
+    expect_warning(nv_matrix(NA_integer_, 2L, 2L, dtype = "i32"), "-2147483648")
+  })
+
+  it("is an error at every other data type", {
+    expect_error(nv_scalar(NA_integer_, dtype = "i64"), "cannot be converted to \"i64\"")
+    expect_error(nv_scalar(NA_integer_, dtype = "i16"), "cannot be converted to \"i16\"")
+    expect_error(nv_scalar(NA_real_, dtype = "i32"), "cannot be converted to \"i32\"")
+    expect_error(nv_scalar(NA), "cannot be converted to \"bool\"")
+  })
+
+  it("warns for an array created inside jit() when the program is compiled", {
+    f <- jit(function(x) x + nv_scalar(NA_integer_, dtype = "i32"))
+    expect_warning(f(nv_scalar(1L, dtype = "i32")), "-2147483648")
+  })
+})
+
 describe("nv_dtype_constructors", {
   it("create an array of the data type in their name", {
     constructors <- list(

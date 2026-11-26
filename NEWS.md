@@ -33,6 +33,12 @@
 
 ## Bug fixes
 
+* A missing value (`NA_real_`, `NA_integer_`, `NA`) passed to a jitted function
+  or an operation as an R scalar, or written in a traced body, behaves as in
+  `nv_array()` at the data type it takes, instead of being refused with a
+  self-contradictory error. An `NA` in an R array passed to a jitted function
+  is now reported at `i32` too.
+
 * An empty `wrt` in `gradient()`, `value_and_gradient()` and `graph_gradient()`
   differentiates with respect to no argument, rather than all of them.
 * `nv_array(byrow = TRUE)` refuses data that does not fill `shape` instead of

@@ -88,10 +88,15 @@
 #' presence of such values.
 #' `NA`s are always rejected, except when:
 #' 1. Creating `float` arrays where we convert the `NA` to `NaN`.
-#' 2. When creating an `i32` from an R `integer()`.
-#'    There, we throw a warning, but the resulting `AnvlArray` gets the bit
-#'    representation of `NA_integer_`, which is `INT_MIN` (`-2147483648`).
-#'    Disallowing this would prevent round-trips between the data types.
+#' 2. When creating an `i32` from an R `integer()` (or `logical()`).
+#'    The resulting `AnvlArray` gets the bit representation of `NA_integer_`,
+#'    which is `INT_MIN` (`-2147483648`), an ordinary number on the device.
+#'    This throws a warning; disallowing it would prevent round-trips between
+#'    the data types.
+#'
+#' The same holds for an R value that enters a [`jit()`]-compiled function,
+#' as an argument or written in its body: it is built at the data type it takes
+#' as `nv_array()` builds it.
 #'
 #' See `r roxy_article("gotchas")` for more information.
 #'
