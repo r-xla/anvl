@@ -595,7 +595,9 @@ prim_scan[["pullback"]] <- rule_pullback(forward = function(inputs, params, requ
   n_out <- length(body$outputs) - n_carry
   caps <- inputs[cap_idx]
 
-  carry_needed <- which(scan_carry_requires(body, required, carry_idx))
+  # A carry slot that no gradient reaches, such as a random state or a
+  # counter, is neither differentiated nor has to be.
+  carry_needed <- which(carry_closure(body, required[carry_idx], required[-carry_idx], graph_requiring_outputs))
   xs_needed <- xs_idx[required[xs_idx]]
   cap_needed <- cap_idx[required[cap_idx]]
   vjp <- split_vjp(body, c(carry_needed, xs_needed, cap_needed))
@@ -724,32 +726,6 @@ prim_scan[["pullback"]] <- rule_pullback(forward = function(inputs, params, requ
     }
   )
 })
-
-# Which carry slots of a scan carry a gradient: a slot does if its `init`
-# requires one, or if the body makes it depend on something that does -- a
-# required `xs` or capture, or another such slot. The set only grows, so this
-# reaches its fixed point within `n_carry` rounds. A slot outside it, such as
-# a random state or a counter, is neither differentiated nor has to be.
-scan_carry_requires <- function(body, required, carry_idx) {
-  seeds <- required
-  repeat {
-    seed <- hashtab()
-    for (k in seq_along(body$inputs)) {
-      seed[[body$inputs[[k]]]] <- seeds[[k]]
-    }
-    env <- propagate_requirements(body, seed)
-    out_req <- vapply(
-      body$outputs[carry_idx],
-      function(out) !is_graph_literal(out) && isTRUE(env[[out]]),
-      logical(1L)
-    )
-    grown <- seeds[carry_idx] | out_req
-    if (identical(grown, seeds[carry_idx])) {
-      return(grown)
-    }
-    seeds[carry_idx] <- grown
-  }
-}
 
 # The pullback rule replaces the forward pass of the call, where it is known
 # which entries of `args` require a gradient. Without `forward`, the call is

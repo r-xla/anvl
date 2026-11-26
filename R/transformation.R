@@ -60,6 +60,25 @@ graph_operands <- function(graph, args_flat) {
   )
 }
 
+# Which of the values a loop carries have a property that spreads through its
+# body `body` -- being batched, carrying a gradient or a tangent: those `carry`
+# flags, which enter with it, and those the body gives it from them and from
+# the inputs after the carry that `other` flags, until that adds no more.
+# `outputs_of(graph, flags)` says which outputs of `graph` have it, given the
+# inputs `flags` flags, e.g. `graph_batched_outputs()` or
+# `graph_requiring_outputs()`. The set only grows, so this ends within as many
+# rounds as there are values.
+carry_closure <- function(body, carry, other, outputs_of) {
+  n <- length(carry)
+  repeat {
+    out <- outputs_of(body, c(carry, other))[seq_len(n)]
+    if (!any(out & !carry)) {
+      return(carry)
+    }
+    carry <- carry | out
+  }
+}
+
 # A transformation such as `gradient()`, named `name`, works on the trace the
 # function it returns is called in. Errors name `call`, the call of that
 # function.

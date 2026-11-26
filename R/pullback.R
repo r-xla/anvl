@@ -375,6 +375,18 @@ propagate_requirements <- function(graph, required_env) {
   required_env
 }
 
+# Which outputs of `graph` require a gradient where the inputs `seeds` flags
+# do, by `propagate_requirements()`; in forward mode, which outputs a tangent
+# of those inputs reaches.
+graph_requiring_outputs <- function(graph, seeds) {
+  required_env <- hashtab()
+  for (k in seq_along(graph$inputs)) {
+    required_env[[graph$inputs[[k]]]] <- seeds[[k]]
+  }
+  required_env <- propagate_requirements(graph, required_env)
+  vapply(graph$outputs, \(out) !is_graph_literal(out) && isTRUE(required_env[[out]]), logical(1L))
+}
+
 # Replays `graph`'s forward pass into `desc`, call by call. `split_vjp()` uses
 # it to rebuild a sub-graph -- a branch of `prim_if()`, the body of
 # `prim_scan()` -- `graph_apply()` to rerun a closed graph, and

@@ -624,21 +624,6 @@ graph_batched_outputs <- function(graph, batched) {
   vapply(graph$outputs, batched_of, logical(1L))
 }
 
-# Which of the values a loop carries are batched: those `carry` flags, which
-# enter batched, and those the loop body `body` batches from them and from the
-# batched ones among the inputs after the carry, which `other` flags, until
-# that adds no more.
-carry_batched <- function(body, carry, other) {
-  n <- length(carry)
-  repeat {
-    out <- graph_batched_outputs(body, c(carry, other))[seq_len(n)]
-    if (!any(out & !carry)) {
-      return(carry)
-    }
-    carry <- carry | out
-  }
-}
-
 # The rule of a primitive that cannot work on the whole batch at once: applies
 # `apply`, a function of the operands of one slice that returns the list of its
 # outputs, to one slice after the other, in a `prim_scan()` over the batch axis
