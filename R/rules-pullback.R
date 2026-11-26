@@ -433,6 +433,17 @@ prim_sum[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params,
   )
 })
 
+# The elements of `x` that attain its extremum `y` along the reduced `axes`, the
+# result of `prim_max()` or `prim_min()`: `mask`, an array of data type `dtype`
+# and the shape of `x` that is 1 at them, and `count`, the number of them, at
+# the shape of `y`. They share the derivative of the extremum equally. `baxes`
+# are the axes of `x` that `y` broadcasts back along.
+extremum_selection <- function(x, y, axes, drop, dtype) {
+  baxes <- reduction_broadcast_axes(x, y, axes, drop)
+  mask <- prim_convert(prim_eq(x, prim_broadcast_in_axes(y, shape(x), baxes)), dtype = dtype)
+  list(mask = mask, count = prim_sum(mask, axes = axes, drop = drop), baxes = baxes)
+}
+
 prim_max[["pullback"]] <- prim_min[["pullback"]] <- rule_pullback(function(
   inputs,
   outputs,
@@ -440,26 +451,15 @@ prim_max[["pullback"]] <- prim_min[["pullback"]] <- rule_pullback(function(
   params,
   required
 ) {
-  axes <- params$axes
-  drop <- params$drop
   x <- inputs[[1L]]
   grad <- grads[[1L]]
 
   list(
     if (required[[1L]]) {
-      baxes <- reduction_broadcast_axes(x, grad, axes, drop)
-
-      y <- outputs[[1L]]
-      y_bc <- prim_broadcast_in_axes(y, shape(x), baxes)
-
-      grad_bc <- prim_broadcast_in_axes(grad, shape(x), baxes)
-      mask <- prim_eq(x, y_bc)
-      mask_f <- prim_convert(mask, dtype = dtype(grad_bc))
-
-      count <- prim_sum(mask_f, axes = axes, drop = drop)
-      count_bc <- prim_broadcast_in_axes(count, shape(x), baxes)
-
-      prim_div(prim_mul(grad_bc, mask_f), count_bc)
+      sel <- extremum_selection(x, outputs[[1L]], params$axes, params$drop, dtype(grad))
+      grad_bc <- prim_broadcast_in_axes(grad, shape(x), sel$baxes)
+      count_bc <- prim_broadcast_in_axes(sel$count, shape(x), sel$baxes)
+      prim_div(prim_mul(grad_bc, sel$mask), count_bc)
     }
   )
 })
@@ -1280,6 +1280,47 @@ prim_sort[["pullback"]] <- rule_pullback(forward = function(inputs, params, requ
   )
 })
 
+# The values of `x` at the positions along `axis` that `indices` gives, an
+# integer array of `x`'s shape except along `axis`: element `[..., j, ...]` of
+# the result is `x[..., indices[..., j, ...], ...]`, where the other axes are
+# batch axes.
+take_along_axis <- function(x, indices, axis) {
+  rank <- naxes(x)
+  batching <- seq_len(rank)[-axis]
+  prim_gather(
+    x = x,
+    start_indices = indices,
+    slice_sizes = rep(1L, rank),
+    offset_axes = integer(0L),
+    collapsed_slice_axes = axis,
+    x_batching_axes = batching,
+    start_indices_batching_axes = batching,
+    start_index_map = axis,
+    index_vector_axis = rank + 1L
+  )
+}
+
+# Scatters `update` into `x` at the positions along `axis` that `indices`
+# gives, an integer array of the shape of `update`, as `take_along_axis()`
+# reads them, combining with `update_fn`.
+put_along_axis <- function(x, indices, update, axis, unique_indices, update_fn = "replace") {
+  rank <- naxes(x)
+  batching <- seq_len(rank)[-axis]
+  prim_scatter(
+    x = x,
+    scatter_indices = indices,
+    update = update,
+    update_window_axes = integer(0L),
+    inserted_window_axes = axis,
+    x_batching_axes = batching,
+    scatter_indices_batching_axes = batching,
+    scatter_axes_to_x_axes = axis,
+    index_vector_axis = rank + 1L,
+    unique_indices = unique_indices,
+    update_fn = update_fn
+  )
+}
+
 # top_k pullback: scatter the values gradient at the forward indices into a
 # zero buffer of the input shape. Using the actual forward indices (rather
 # than recomputing a permutation) is correct by construction even when
@@ -1299,32 +1340,8 @@ prim_top_k[["pullback"]] <- rule_pullback(forward = function(inputs, params, req
         return(list(NULL))
       }
       grad_values <- grads[[1L]]
-      full_shape <- shape(x)
-      rank <- length(full_shape)
-      batching <- seq_len(rank - 1L) + 1L
-
-      zero_input <- prim_fill(
-        0L,
-        dtype = dtype(grad_values),
-        shape = full_shape
-      )
-
-      # All axes are iteration axes and we have a single index vector axis that
-      # indicates the position to write to (in axis 1 of the input)
-      list(prim_scatter(
-        x = zero_input,
-        # index vectors selecting positions along axis 1 of `x`
-        scatter_indices = indices,
-        update = grad_values,
-        update_window_axes = integer(0L),
-        inserted_window_axes = 1L,
-        x_batching_axes = batching,
-        scatter_indices_batching_axes = batching,
-        scatter_axes_to_x_axes = 1L,
-        # we sort along a single axis -> all axes are iteration axes
-        index_vector_axis = rank + 1L,
-        unique_indices = TRUE
-      ))
+      zero_input <- prim_fill(0L, dtype = dtype(grad_values), shape = shape(x))
+      list(put_along_axis(zero_input, indices, grad_values, axis = 1L, unique_indices = TRUE))
     }
   )
 })
@@ -1353,66 +1370,65 @@ prim_concatenate[["pullback"]] <- rule_pullback(function(inputs, outputs, grads,
 })
 
 
+# The product of the elements of `x` along the reduced `axes` other than each
+# one, at the shape of `x`: the derivative of `prim_prod(x, axes)` with respect
+# to that element.
+prod_of_others <- function(x, axes) {
+  s <- shape(x)
+  reduced_size <- as.integer(prod(s[axes]))
+  if (reduced_size <= 1L) {
+    return(ones_like(x))
+  }
+  # Move reduced axes to the end and collapse them, so the safe formula
+  # below operates along a single trailing axis.
+  non_reduced <- without(seq_along(s), axes)
+  perm <- c(non_reduced, axes)
+  collapsed_shape <- c(s[non_reduced], reduced_size)
+  rank <- length(collapsed_shape)
+  operand_c <- prim_reshape(prim_transpose(x, perm), collapsed_shape)
+
+  # PyTorch's prod_safe_zeros_backward: the product of all *other* elements
+  # at position k along the reduced axis is decomposed as (exclusive cumprod
+  # left) * (exclusive cumprod right). No division, smooth in the inputs, hence
+  # safe at zeros and twice-differentiable.
+  n <- reduced_size
+  ones_shape <- collapsed_shape
+  ones_shape[rank] <- 1L
+  ones <- prim_fill(1L, dtype = dtype(x), shape = ones_shape)
+  full_strides <- rep(1L, rank)
+
+  starts_n <- rep(1L, rank)
+  limits_n <- collapsed_shape
+  limits_n[rank] <- n - 1L
+  narrow_n <- prim_static_slice(operand_c, starts_n, limits_n, full_strides)
+  exclusive_normal <- prim_cumprod(
+    prim_concatenate(ones, narrow_n, axis = rank),
+    axis = rank
+  )
+
+  starts_r <- rep(1L, rank)
+  starts_r[rank] <- 2L
+  narrow_r <- prim_rev(
+    prim_static_slice(operand_c, starts_r, collapsed_shape, full_strides),
+    axes = rank
+  )
+  exclusive_reverse <- prim_rev(
+    prim_cumprod(prim_concatenate(ones, narrow_r, axis = rank), axis = rank),
+    axes = rank
+  )
+
+  others <- prim_mul(exclusive_normal, exclusive_reverse)
+  prim_transpose(prim_reshape(others, s[perm]), order(perm))
+}
+
 prim_prod[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
   if (!required[[1L]]) {
     return(list(NULL))
   }
-  axes <- params$axes
-  drop <- params$drop
   x <- inputs[[1L]]
   grad <- grads[[1L]]
-
-  # Move reduced axes to the end and collapse them, so the safe formula
-  # below operates along a single trailing axis.
-  s <- shape(x)
-  non_reduced <- without(seq_along(s), axes)
-  perm <- c(non_reduced, axes)
-  reduced_size <- as.integer(prod(s[axes]))
-  collapsed_shape <- c(s[non_reduced], reduced_size)
-  rank <- length(collapsed_shape)
-
-  operand_c <- prim_reshape(prim_transpose(x, perm), collapsed_shape)
-  grad_squeezed <- if (drop) grad else prim_reshape(grad, s[non_reduced])
-  grad_bc <- prim_broadcast_in_axes(grad_squeezed, collapsed_shape, seq_len(rank - 1L))
-
-  out_c <- if (reduced_size <= 1L) {
-    grad_bc
-  } else {
-    # PyTorch's prod_safe_zeros_backward: the gradient at position k along the
-    # reduced axis is the product of all *other* elements along that axis,
-    # decomposed as (exclusive cumprod left) * (exclusive cumprod right). No
-    # division, smooth in the inputs, hence safe at zeros and twice-differentiable.
-    n <- reduced_size
-    ones_shape <- collapsed_shape
-    ones_shape[rank] <- 1L
-    ones <- prim_fill(1L, dtype = dtype(x), shape = ones_shape)
-    full_strides <- rep(1L, rank)
-
-    starts_n <- rep(1L, rank)
-    limits_n <- collapsed_shape
-    limits_n[rank] <- n - 1L
-    narrow_n <- prim_static_slice(operand_c, starts_n, limits_n, full_strides)
-    exclusive_normal <- prim_cumprod(
-      prim_concatenate(ones, narrow_n, axis = rank),
-      axis = rank
-    )
-
-    starts_r <- rep(1L, rank)
-    starts_r[rank] <- 2L
-    narrow_r <- prim_rev(
-      prim_static_slice(operand_c, starts_r, collapsed_shape, full_strides),
-      axes = rank
-    )
-    exclusive_reverse <- prim_rev(
-      prim_cumprod(prim_concatenate(ones, narrow_r, axis = rank), axis = rank),
-      axes = rank
-    )
-
-    prim_mul(grad_bc, prim_mul(exclusive_normal, exclusive_reverse))
-  }
-
-  out <- prim_transpose(prim_reshape(out_c, s[perm]), order(perm))
-  list(out)
+  grad_bc <- prim_broadcast_in_axes(grad, shape(x), reduction_broadcast_axes(x, grad, params$axes, params$drop))
+  list(prim_mul(grad_bc, prod_of_others(x, params$axes)))
 })
 
 # cumulative (scan) pullback rules ---------------------------------------------
@@ -1433,23 +1449,12 @@ prim_cumsum[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, para
   if (!required[[1L]]) {
     return(list(NULL))
   }
-  axis <- params$axis
   x <- inputs[[1L]]
-  indices <- outputs[[2L]]
-  grad <- grads[[1L]]
-  rank <- naxes(x)
-
-  batching <- seq_len(rank)[-axis]
-  list(prim_scatter(
-    x = zeros_like(x),
-    scatter_indices = indices,
-    update = grad,
-    update_window_axes = integer(0L),
-    inserted_window_axes = axis,
-    x_batching_axes = batching,
-    scatter_indices_batching_axes = batching,
-    scatter_axes_to_x_axes = axis,
-    index_vector_axis = rank + 1L,
+  list(put_along_axis(
+    zeros_like(x),
+    outputs[[2L]],
+    grads[[1L]],
+    axis = params$axis,
     unique_indices = FALSE,
     update_fn = "add"
   ))
@@ -1611,95 +1616,100 @@ scatter_update_in_bounds <- function(
   prim_broadcast_in_axes(in_bounds, update_shape, scatter_axes)
 }
 
-prim_scatter[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
-  update_window_axes <- params$update_window_axes
-  inserted_window_axes <- params$inserted_window_axes
-  x_batching_axes <- params$x_batching_axes
-  scatter_indices_batching_axes <- params$scatter_indices_batching_axes
-  scatter_axes_to_x_axes <- params$scatter_axes_to_x_axes
-  index_vector_axis <- params$index_vector_axis
-  indices_are_sorted <- params$indices_are_sorted
-  unique_indices <- params$unique_indices
-
-  x <- inputs[[1L]]
-  scatter_indices <- inputs[[2L]]
-  update <- inputs[[3L]]
-  grad <- grads[[1L]]
-
-  # Only an update function given by name is differentiated: what a function
-  # computes is not looked into.
+# The name of the `update_fn` of a call of `prim_scatter()` with `params`, whose
+# derivative `what` ("gradient" or "pushforward") is taken, with respect to
+# `update` if `wrt_update`. Only an update function given by name is
+# differentiated: what a function computes is not looked into.
+scatter_derivative_kind <- function(params, wrt_update, what) {
   kind <- params$update_op
   if (is.null(kind)) {
     cli_abort(c(
-      "The gradient of {.fn prim_scatter} is not implemented for an {.arg update_fn} that is a function.",
+      "The {what} of {.fn prim_scatter} is not implemented for an {.arg update_fn} that is a function.",
       i = "Pass {.arg update_fn} by name instead: {.or {.val {names(scatter_update_fns)}}}."
     ))
   }
-  if (kind == "mul" && required[[3L]] && !unique_indices) {
+  if (kind == "mul" && wrt_update && !params$unique_indices) {
     cli_abort(c(
-      "The gradient of a multiplying {.fn prim_scatter} with respect to {.arg update} needs {.code unique_indices = TRUE}.",
-      i = "With repeated indices, the gradient of one update depends on every other update to its position."
+      "The {what} of a multiplying {.fn prim_scatter} with respect to {.arg update} needs {.code unique_indices = TRUE}.",
+      i = "With repeated indices, the derivative with respect to one update depends on every other update to its position."
     ))
   }
+  kind
+}
 
-  update_shape <- shape(update)
-  x_shape <- shape(x)
-
+# The positions a call of `prim_scatter()` with `params` and `scatter_indices`
+# writes an update of shape `update_shape` to, in an `x` of shape `x_shape`:
+# * `scatter_at(x, update, update_fn, unique_indices)` scatters another
+#   `update` into another `x` there,
+# * `gather_at(x, unique_indices)` gathers the values of another `x` there, at
+#   the shape of the update,
+# * `update_in_bounds()` says which elements of the update land in `x` (see
+#   `scatter_update_in_bounds()`).
+scatter_positions <- function(params, scatter_indices, update_shape, x_shape) {
   slice_sizes <- scatter_to_gather_slice_sizes(
     update_shape = update_shape,
     x_shape = x_shape,
-    update_window_axes = update_window_axes,
-    inserted_window_axes = inserted_window_axes,
-    x_batching_axes = x_batching_axes
+    update_window_axes = params$update_window_axes,
+    inserted_window_axes = params$inserted_window_axes,
+    x_batching_axes = params$x_batching_axes
   )
+  list(
+    scatter_at = function(x, update, update_fn, unique_indices = params$unique_indices) {
+      prim_scatter(
+        x = x,
+        scatter_indices = scatter_indices,
+        update = update,
+        update_window_axes = params$update_window_axes,
+        inserted_window_axes = params$inserted_window_axes,
+        x_batching_axes = params$x_batching_axes,
+        scatter_indices_batching_axes = params$scatter_indices_batching_axes,
+        scatter_axes_to_x_axes = params$scatter_axes_to_x_axes,
+        index_vector_axis = params$index_vector_axis,
+        indices_are_sorted = params$indices_are_sorted,
+        unique_indices = unique_indices,
+        update_fn = update_fn
+      )
+    },
+    gather_at = function(x, unique_indices = params$unique_indices) {
+      prim_gather(
+        x = x,
+        start_indices = scatter_indices,
+        slice_sizes = slice_sizes,
+        offset_axes = params$update_window_axes,
+        collapsed_slice_axes = params$inserted_window_axes,
+        x_batching_axes = params$x_batching_axes,
+        start_indices_batching_axes = params$scatter_indices_batching_axes,
+        start_index_map = params$scatter_axes_to_x_axes,
+        index_vector_axis = params$index_vector_axis,
+        indices_are_sorted = params$indices_are_sorted,
+        unique_indices = unique_indices
+      )
+    },
+    update_in_bounds = function() {
+      scatter_update_in_bounds(
+        scatter_indices = scatter_indices,
+        update_shape = update_shape,
+        x_shape = x_shape,
+        slice_sizes = slice_sizes,
+        update_window_axes = params$update_window_axes,
+        scatter_axes_to_x_axes = params$scatter_axes_to_x_axes,
+        index_vector_axis = params$index_vector_axis
+      )
+    }
+  )
+}
 
-  # Scatter into and gather from `x` at the forward scatter's positions.
-  scatter_at <- function(x, update, update_fn, unique_indices = params$unique_indices) {
-    prim_scatter(
-      x = x,
-      scatter_indices = scatter_indices,
-      update = update,
-      update_window_axes = update_window_axes,
-      inserted_window_axes = inserted_window_axes,
-      x_batching_axes = x_batching_axes,
-      scatter_indices_batching_axes = scatter_indices_batching_axes,
-      scatter_axes_to_x_axes = scatter_axes_to_x_axes,
-      index_vector_axis = index_vector_axis,
-      indices_are_sorted = indices_are_sorted,
-      unique_indices = unique_indices,
-      update_fn = update_fn
-    )
-  }
-  gather_at <- function(x, unique_indices = params$unique_indices) {
-    prim_gather(
-      x = x,
-      start_indices = scatter_indices,
-      slice_sizes = slice_sizes,
-      offset_axes = update_window_axes,
-      collapsed_slice_axes = inserted_window_axes,
-      x_batching_axes = x_batching_axes,
-      start_indices_batching_axes = scatter_indices_batching_axes,
-      start_index_map = scatter_axes_to_x_axes,
-      index_vector_axis = index_vector_axis,
-      indices_are_sorted = indices_are_sorted,
-      unique_indices = unique_indices
-    )
-  }
+prim_scatter[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  update <- inputs[[3L]]
+  grad <- grads[[1L]]
+
+  kind <- scatter_derivative_kind(params, required[[3L]], "gradient")
+  at <- scatter_positions(params, inputs[[2L]], shape(update), shape(x))
   # A gather clamps an out-of-bounds index into `x`, but the forward scatter
   # dropped that update, so its gradient is zero.
-  update_in_bounds <- function() {
-    scatter_update_in_bounds(
-      scatter_indices = scatter_indices,
-      update_shape = update_shape,
-      x_shape = x_shape,
-      slice_sizes = slice_sizes,
-      update_window_axes = update_window_axes,
-      scatter_axes_to_x_axes = scatter_axes_to_x_axes,
-      index_vector_axis = index_vector_axis
-    )
-  }
   in_bounds_only <- function(update_grad) {
-    prim_ifelse(update_in_bounds(), update_grad, 0)
+    prim_ifelse(at$update_in_bounds(), update_grad, 0)
   }
 
   grad_x <- NULL
@@ -1710,13 +1720,14 @@ prim_scatter[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, par
       # `x` keeps the gradient where no update overwrote it. Scattering zeros
       # is idempotent, so this holds for repeated indices too.
       if (required[[1L]]) {
-        grad_x <- scatter_at(grad, zeros_like(update), "replace")
+        grad_x <- at$scatter_at(grad, zeros_like(update), "replace")
       }
       if (required[[3L]]) {
-        grad_update <- if (unique_indices) {
-          in_bounds_only(gather_at(grad))
+        grad_update <- if (params$unique_indices) {
+          in_bounds_only(at$gather_at(grad))
         } else {
-          scatter_replace_winners_grad(grad, update_shape, update_window_axes, x_shape, scatter_at, gather_at)
+          winners <- scatter_replace_winners(at, shape(update), params$update_window_axes, shape(x))
+          prim_ifelse(winners, at$gather_at(grad, FALSE), 0)
         }
       }
     },
@@ -1727,50 +1738,44 @@ prim_scatter[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, par
         grad_x <- grad
       }
       if (required[[3L]]) {
-        grad_update <- in_bounds_only(gather_at(grad))
+        grad_update <- in_bounds_only(at$gather_at(grad))
         if (kind == "sub") grad_update <- prim_negate(grad_update)
       }
     },
     mul = {
       # result = x * (product of the updates to the position)
       if (required[[1L]]) {
-        grad_x <- prim_mul(grad, scatter_at(ones_like(x), update, "mul"))
+        grad_x <- prim_mul(grad, at$scatter_at(ones_like(x), update, "mul"))
       }
       if (required[[3L]]) {
         # unique indices: result = x * update at the update's position
-        grad_update <- in_bounds_only(gather_at(prim_mul(grad, x)))
+        grad_update <- in_bounds_only(at$gather_at(prim_mul(grad, x)))
       }
     },
     max = ,
     min = {
-      # The gradient goes to the values the result equals -- `x` and every
-      # update that ties with it share it equally, as for prim_pmax() and
-      # prim_max().
-      out <- outputs[[1L]]
-      grad_dtype <- dtype(grad)
-      retained <- prim_convert(prim_eq(x, out), dtype = grad_dtype)
-      won <- prim_and(prim_eq(update, gather_at(out)), update_in_bounds())
-      won <- prim_convert(won, dtype = grad_dtype)
-      n_winners <- prim_add(retained, scatter_at(zeros(grad_dtype, x_shape), won, "add"))
-      grad_share <- prim_div(grad, n_winners)
+      w <- scatter_extremum_winners(x, update, outputs[[1L]], at, dtype(grad))
+      grad_share <- prim_div(grad, w$count)
       if (required[[1L]]) {
-        grad_x <- prim_mul(grad_share, retained)
+        grad_x <- prim_mul(grad_share, w$retained)
       }
-      if (required[[3L]]) grad_update <- prim_mul(won, gather_at(grad_share))
+      if (required[[3L]]) grad_update <- prim_mul(w$won, at$gather_at(grad_share))
     }
   )
 
   list(
     grad_x,
     # The indices are not differentiable.
-    if (required[[2L]]) zeros_like(scatter_indices),
+    if (required[[2L]]) zeros_like(inputs[[2L]]),
     grad_update
   )
 })
 
-# The gradient of the updates of a replacing scatter whose indices may repeat.
-# XLA does not say which update wins a position, so we use the ID trick from
-# JAX's scatter JVP:
+# Which updates of a replacing scatter whose indices may repeat are the ones
+# written, as a boolean array of the shape `update_shape` of the updates, given
+# the positions `at` of the scatter (see `scatter_positions()`). XLA does not
+# say which update wins a position, so we use the ID trick from JAX's scatter
+# JVP:
 # https://github.com/jax-ml/jax/blob/ecd3795959e91c3c28cec8696f4c82f2a28bc086/jax/_src/lax/slicing.py
 # Example: (x has shape (2,)) x[c(1, 1)] <- c(2, 3) --> we don't know whether 2
 # or 3 was assigned to position 1.
@@ -1778,10 +1783,8 @@ prim_scatter[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, par
 # 2. Assign unique indices x[c(1, 1)] <- c(1, 2)
 # 3. gather the winners: x[c(1, 1)], which e.g. gives c(2, 2)
 # 4. Compare c(1, 2) == c(2, 2) = c(FALSE, TRUE) -> second one wins
-# 5. Mask out the losers; grad[1] <- 0
-# An update the forward scatter dropped as out of bounds never wins, so it gets
-# no gradient either.
-scatter_replace_winners_grad <- function(grad, update_shape, update_window_axes, x_shape, scatter_at, gather_at) {
+# An update the forward scatter dropped as out of bounds never wins.
+scatter_replace_winners <- function(at, update_shape, update_window_axes, x_shape) {
   # a) Create unique positive IDs for each update "batch" position
   ids_shape <- update_shape
   ids_shape[update_window_axes] <- 1L
@@ -1791,15 +1794,25 @@ scatter_replace_winners_grad <- function(grad, update_shape, update_window_axes,
   update_ids <- prim_broadcast_in_axes(update_ids, update_shape, seq_along(update_shape))
 
   # b) Scatter IDs to see which update "wins" at each position
-  scattered_ids <- scatter_at(prim_fill(0L, dtype = id_dtype, shape = x_shape), update_ids, "replace", FALSE)
+  scattered_ids <- at$scatter_at(prim_fill(0L, dtype = id_dtype, shape = x_shape), update_ids, "replace", FALSE)
 
-  # c) Gather scattered IDs back to update positions
-  gathered_ids <- gather_at(scattered_ids, FALSE)
+  # c) Gather scattered IDs back to update positions: an update wins where it
+  # finds its own ID
+  prim_eq(update_ids, at$gather_at(scattered_ids, FALSE))
+}
 
-  # d) Gather gradient and mask: only winning updates get gradient
-  grad_at_positions <- gather_at(grad, FALSE)
-  mask <- prim_eq(update_ids, gathered_ids)
-  prim_ifelse(mask, grad_at_positions, 0)
+# Which of `x` and the updates of a scatter with `update_fn` "max" or "min"
+# attain its result `out`, given the positions `at` of the scatter (see
+# `scatter_positions()`), as arrays of data type `dtype`: `retained`, of the
+# shape of `x`, is 1 where `x` does, `won`, of the shape of the updates, is 1
+# at an update that does, and `count` is how many do at each position of `x`.
+# They share the derivative of the result equally, as for `prim_pmax()` and
+# `prim_max()`.
+scatter_extremum_winners <- function(x, update, out, at, dtype) {
+  retained <- prim_convert(prim_eq(x, out), dtype = dtype)
+  won <- prim_convert(prim_and(prim_eq(update, at$gather_at(out)), at$update_in_bounds()), dtype = dtype)
+  count <- prim_add(retained, at$scatter_at(zeros(dtype, shape(x)), won, "add"))
+  list(retained = retained, won = won, count = count)
 }
 
 # The masks below are of the shape `shape` of a batch of square matrices: the
