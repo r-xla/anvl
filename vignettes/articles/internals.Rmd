@@ -342,7 +342,7 @@ trace_fn(weigh_vec, list(x = nv_aval("f32", c(3L, 2L)), w = nv_aval("f32", 2L)))
 
 Because the batch axis comes last, every axis a primitive's parameters name keeps its number in the batched operands.
 So for the element-wise primitives, the reductions and the cumulative primitives, the rule is the primitive itself, called with the same parameters once the unbatched operands are broadcast: `rule_vectorize()` without arguments builds it, and every primitive of these kinds gets it from its tag.
-Other rules adapt a parameter to the extra axis -- `transpose` appends it to its permutation (`vec_axis_map()`), `reshape` to its shape (`vec_shape()`) -- or are functions of their own: `dot_general` and `gather` turn the batch axes into batching axes of their own, so that the whole batch is a single operation.
+Other rules adapt a parameter to the extra axis -- `transpose` appends it to its permutation (`vec_axis_map()`), `reshape` to its shape (`vec_shape()`) -- or are functions of their own: `dot_general`, `gather` and `scatter` turn the batch axes into batching axes of their own, so that the whole batch is a single operation.
 A primitive without a vectorize rule only takes unbatched inputs.
 Batch axes last is also what XLA's kernels want (see [axis reversal](#axis-reversal)).
 
@@ -351,7 +351,7 @@ So `out_axes` can return an output as it is only if no argument mapped over reac
 
 The replay goes into the enclosing trace, which an outer `vectorize()` may in turn replay, so nested calls compose: the rules of the outer call see the primitives the inner one left, such as a `dot_general` with the batching axes its rule added.
 A primitive whose rule turns the batch axis into a batching axis of its own must therefore take any number of them, as every level of nesting appends one more: vectorizing a dot product twice gives a `dot_general` with `batching_axes = list(c(2, 3), c(2, 3))`.
-`dot_general` and `gather` take a vector of batching axes for this reason.
+`dot_general`, `gather` and `scatter` take a vector of batching axes for this reason.
 The random state is an input like any other; with `randomness = "different"`, it is batched, so a draw has a batched input and its rule draws for every slice (see the [loops and branches](#loops-and-branches) section).
 
 ## More Internals

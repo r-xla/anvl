@@ -191,11 +191,6 @@ describe("prim_dynamic_slice", {
 })
 
 describe("prim_gather", {
-  # integer indices into an axis of size `n`, with a trailing batch axis
-  rand_indices <- function(shape, n) {
-    rand_array(shape, dtype = "i32", sample = function(k) sample.int(n, k, replace = TRUE))
-  }
-
   it("vectorizes gathering rows of a matrix", {
     withr::local_seed(1L)
     autotest_vectorize(
@@ -257,6 +252,118 @@ describe("prim_gather", {
       x = rand_array(c(2L, 5L, 3L, 4L)),
       i = rand_indices(c(2L, 6L, 4L), 5L)
     )
+  })
+})
+
+describe("prim_scatter", {
+  # scatters the elements of `update` into the vector `x` at the indices in
+  # the rows of the matrix `i`
+  scatter_elements <- function(x, i, update, ...) {
+    prim_scatter(
+      x,
+      i,
+      update,
+      update_window_axes = integer(),
+      inserted_window_axes = 1L,
+      x_batching_axes = integer(),
+      scatter_indices_batching_axes = integer(),
+      scatter_axes_to_x_axes = 1L,
+      index_vector_axis = 2L,
+      ...
+    )
+  }
+  add <- function(old, new) old + new
+
+  it("vectorizes a scatter of single elements", {
+    withr::local_seed(1L)
+    # distinct indices within a slice, so that which update wins is defined
+    i <- nv_array(as.integer(replicate(3L, sample.int(5L, 2L))), shape = c(2L, 1L, 3L), dtype = "i32")
+    autotest_vectorize(scatter_elements, x = rand_array(c(5L, 3L)), i = i, update = rand_array(c(2L, 3L)))
+  })
+
+  it("vectorizes a scatter with an update function", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x, i, update) scatter_elements(x, i, update, update_fn = add),
+      x = rand_array(c(5L, 3L)),
+      i = rand_indices(c(4L, 1L, 3L), 5L),
+      update = rand_array(c(4L, 3L))
+    )
+  })
+
+  it("vectorizes a scatter whose index vector axis is implicit", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x, i, update) scatter_elements(x, i, update, update_fn = add),
+      x = rand_array(c(5L, 3L)),
+      i = rand_indices(c(4L, 3L), 5L),
+      update = rand_array(c(4L, 3L))
+    )
+  })
+
+  it("vectorizes a scatter of windows", {
+    withr::local_seed(1L)
+    scatter_windows <- function(x, i, update) {
+      prim_scatter(
+        x,
+        i,
+        update,
+        update_window_axes = seq_len(naxes(x) - 1L) + 1L,
+        inserted_window_axes = 1L,
+        x_batching_axes = integer(),
+        scatter_indices_batching_axes = integer(),
+        scatter_axes_to_x_axes = 1L,
+        index_vector_axis = 2L,
+        update_fn = add
+      )
+    }
+    i <- rand_indices(c(2L, 1L, 3L), 4L)
+    autotest_vectorize(scatter_windows, x = rand_array(c(4L, 3L, 3L)), i = i, update = rand_array(c(2L, 3L, 3L)))
+    autotest_vectorize(
+      scatter_windows,
+      x = rand_array(c(4L, 3L, 2L, 3L)),
+      i = i,
+      update = rand_array(c(2L, 3L, 2L, 3L))
+    )
+  })
+
+  it("vectorizes a scatter with batching axes of its own", {
+    withr::local_seed(1L)
+    autotest_vectorize(
+      function(x, i, update) {
+        prim_scatter(
+          x,
+          i,
+          update,
+          update_window_axes = integer(),
+          inserted_window_axes = 2L,
+          x_batching_axes = 1L,
+          scatter_indices_batching_axes = 1L,
+          scatter_axes_to_x_axes = 2L,
+          index_vector_axis = 3L,
+          update_fn = add
+        )
+      },
+      x = rand_array(c(2L, 5L, 3L)),
+      i = rand_indices(c(2L, 4L, 1L, 3L), 5L),
+      update = rand_array(c(2L, 4L, 3L))
+    )
+  })
+
+  it("keeps the hints of indices it does not map over, and the uniqueness of ones it does", {
+    f <- function(x, i, update) scatter_elements(x, i, update, indices_are_sorted = TRUE, unique_indices = TRUE)
+    # the parameters of the scatter in the trace of `f` vectorized over `in_axes`
+    params_of <- function(i, in_axes) {
+      args <- list(x = nv_aval("f32", c(5L, 3L)), i = i, update = nv_aval("f32", c(2L, 3L)))
+      graph <- trace_fn(vectorize(f, in_axes = in_axes), args)
+      Find(\(s) s$primitive$name == "scatter", graph$statements)$params
+    }
+    p <- params_of(nv_aval("i32", c(2L, 1L)), list(x = -1L, update = -1L))
+    expect_true(p$indices_are_sorted)
+    expect_true(p$unique_indices)
+    p <- params_of(nv_aval("i32", c(2L, 1L, 3L)), list(x = -1L, i = -1L, update = -1L))
+    expect_false(p$indices_are_sorted)
+    expect_true(p$unique_indices)
   })
 })
 

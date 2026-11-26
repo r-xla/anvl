@@ -209,3 +209,8 @@ move_batch_axis <- function(x, axis) {
 rand_array <- function(shape, dtype = "f32", sample = stats::rnorm) {
   nv_array(sample(prod(shape)), shape = shape, dtype = dtype)
 }
+
+# An `i32` array of shape `shape` of indices into an axis of size `n`.
+rand_indices <- function(shape, n) {
+  rand_array(shape, dtype = "i32", sample = function(k) sample.int(n, k, replace = TRUE))
+}

@@ -107,6 +107,39 @@ prim_gather[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, s
   list(do.call(prim_gather, c(list(x, start_indices), params)))
 })
 
+# Every slice of the output is a slice of `x` with the updates of its own slice,
+# so `x` and `update` both get the batch axis. The batch axis of
+# `scatter_indices` makes it a pair of batching axes of `x` and the indices,
+# which match the slices of `x` with the indices into them, and the last scatter
+# axis of `update`; an index vector axis that is implicit, after the last axis,
+# moves behind it. Indices sorted within one slice need not be across the batch,
+# but unique ones stay unique, as the batching axes tell the slices apart.
+# Without it, the batch axis of `x` is one more window axis, the last, which the
+# last axis of `update` spans whole. The update computation closes over no
+# traced value, so it is the same for every slice.
+prim_scatter[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+  x <- batch_operand(inputs[[1L]], batched[[1L]], size)
+  scatter_indices <- inputs[[2L]]
+  update <- batch_operand(inputs[[3L]], batched[[3L]], size)
+  if (batched[[2L]]) {
+    n_indices <- naxes(scatter_indices)
+    if (params$index_vector_axis == n_indices) {
+      params$index_vector_axis <- n_indices + 1L
+    }
+    params$x_batching_axes <- c(params$x_batching_axes, naxes(x))
+    params$scatter_indices_batching_axes <- c(params$scatter_indices_batching_axes, n_indices)
+    params$indices_are_sorted <- FALSE
+  } else {
+    params$update_window_axes <- c(params$update_window_axes, naxes(update))
+  }
+  graph_desc_add(
+    prim_scatter,
+    c(list(x, scatter_indices, update), inputs[-(1:3)]),
+    params = params,
+    infer_fn = infer_scatter
+  )
+})
+
 # The batch axis of a batched operand becomes a batching axis when both are
 # batched, and a free axis otherwise: the last free axis of `lhs` or of `rhs`.
 # `dot_general` places the free axes of `lhs` first, then those of `rhs`, then
