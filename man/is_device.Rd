@@ -11,8 +11,7 @@ is_device(x)
 }
 \value{
 (\code{logical(1)})\cr
-Whether \code{x} is a device of one of the backends: a \code{PJRTDevice}, or an
-object whose class inherits from \code{"AnvlDevice"} (see \code{\link[=AnvlBackend]{AnvlBackend()}}).
+Whether \code{x} is a device of one of the backends.
 }
 \description{
 Test Whether an Object Is a Device

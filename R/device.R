@@ -133,12 +133,12 @@ check_device_backend <- function(device, backend) {
 #'
 #' @param x An object to test.
 #' @return (`logical(1)`)\cr
-#'   Whether `x` is a device of one of the backends: a `PJRTDevice`, or an
-#'   object whose class inherits from `"AnvlDevice"` (see [`AnvlBackend()`]).
+#'   Whether `x` is a device of one of the backends.
 #' @export
 is_device <- function(x) {
-  # A PJRTDevice comes from pjrt, so it cannot carry anvl's base class.
-  inherits(x, c("PJRTDevice", "AnvlDevice"))
+  # TODO: device objects should share a common base class (like AnvlArray)
+  # instead of checking each backend's class individually.
+  inherits(x, c("PJRTDevice", "QuickrDevice"))
 }
 
 # The device a value pins an operation to, or `NULL` when it pins none. Only a

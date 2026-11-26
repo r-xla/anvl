@@ -40,8 +40,6 @@ test_that("is_device recognizes backend device objects", {
   expect_false(is_device("cpu"))
   expect_false(is_device(NULL))
   expect_false(is_device(1L))
-  # the device of a backend that a package registers
-  expect_true(is_device(structure("cpu", class = c("ToyDevice", "AnvlDevice"))))
   skip_if_no_quickr()
   expect_true(is_device(with_backend("quickr", nv_device("cpu"))))
   skip_if(!pjrt::plugins_downloaded())

@@ -33,6 +33,7 @@
 * Experimental: `AnvlBackend()`, `register_backend()` and the new
   `register_rule_type()` let a package add a backend, with its own rules for
   the primitives.
+  that the program takes as an additional input.
 
 ## Bug fixes
 
