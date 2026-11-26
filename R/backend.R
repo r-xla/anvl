@@ -23,10 +23,11 @@ NULL
 #' name the backend is registered under, and two devices must be comparable
 #' with `==`.
 #'
-#' The `jit` method typically traces the function into an [`AnvlGraph`] with
-#' [`trace_fn()`] and then lowers or evaluates each statement of the graph with
-#' a rule of the primitive it applies: a rule of a type registered with
-#' [`register_rule_type()`], which `statement$primitive[[<type>]]` returns.
+#' The `jit` method should trace the function into an [`AnvlGraph`] with
+#' [`trace_fn()`], so that every backend runs the same graph, and then lower or
+#' evaluate each statement of the graph with a rule of the primitive it applies:
+#' a rule of a type registered with [`register_rule_type()`], which
+#' `statement$primitive[[<type>]]` returns.
 #'
 #' @param new_data (`function(data, dtype, shape, device, row_major = FALSE)`)\cr
 #'   Constructs an AnvlArray of the given `dtype` and `shape` (an `integer()`
