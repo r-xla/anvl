@@ -3,6 +3,32 @@ NULL
 
 #' Create a Backend
 #'
+#' @description
+#' `r lifecycle::badge("experimental")`
+#'
+#' A backend defines how arrays are stored, converted to R and placed on
+#' devices, and how [`jit()`] runs a function. `AnvlBackend()` bundles the
+#' methods that do this, and [`register_backend()`] makes the result selectable
+#' by name. anvl registers two backends itself, [`AnvlBackendPjrt()`] and
+#' [`AnvlBackendQuickr()`], and a package can add more.
+#'
+#' @details
+#' An array of the backend is an [`AnvlArray`] that `new_data` and `new_empty`
+#' construct and the other methods take apart; see `new_data` for its
+#' structure.
+#'
+#' A device of the backend is an object whose class inherits from
+#' `"AnvlDevice"`, such as `structure("cpu", class = c("MyDevice",
+#' "AnvlDevice"))`. Its class needs a [`backend()`] method that returns the
+#' name the backend is registered under, and two devices must be comparable
+#' with `==`.
+#'
+#' The `jit` method should trace the function into an [`AnvlGraph`] with
+#' [`trace_fn()`], so that every backend runs the same graph, and then lower or
+#' evaluate each statement of the graph with a rule of the primitive it applies:
+#' a rule of a type registered with [`register_rule_type()`], which
+#' `statement$primitive[[<type>]]` returns.
+#'
 #' @param new_data (`function(data, dtype, shape, device, row_major = FALSE)`)\cr
 #'   Constructs an AnvlArray of the given `dtype` and `shape` (an `integer()`
 #'   vector, which [`nv_array()`] has already worked out) from R data. Must return
@@ -33,15 +59,20 @@ NULL
 #' @param jit (`function(f, static, cache_size, <options>, device = NULL)`)\cr
 #'   Creates the backend's implementation of a JIT-compiled function and returns
 #'   it as a `function`. The formals in place of `<options>` are the
-#'   backend-specific options [`jit()`] accepts through `...`.
+#'   backend-specific options [`jit()`] accepts through `...`. The returned
+#'   function is given the formals of `f`, so it reads its arguments by name,
+#'   e.g. with `match.call()`, rather than through `...`. It is only called
+#'   outside a trace: inside one, [`jit()`] calls `f` itself.
 #' @param await_data (`function(x)`)\cr Blocks until the array's underlying data
 #'   is ready. Called by [`await()`] for `AnvlArray`s; a no-op for backends
 #'   without async execution.
 #' @param default_dtypes (`NULL` | `list(float, int)`)\cr
 #'   The default data types for this backend.
-#'   Can be overwritten, see [`default_dtypes()`].
+#'   Can be overwritten, see [`default_dtypes()`]. Only the internal backend
+#'   that holds the constants of a trace has none; a backend that can be
+#'   selected needs them.
 #' @return (`AnvlBackend`)
-#' @keywords internal
+#' @seealso [`register_backend()`], [`register_rule_type()`]
 #' @export
 AnvlBackend <- function(
   new_data,
@@ -64,42 +95,73 @@ AnvlBackend <- function(
       int = as_dtype(default_dtypes$int)
     )
   }
-  structure(
-    list(
-      new_data = new_data,
-      new_empty = new_empty,
-      dtype = dtype,
-      shape = shape,
-      as_array = as_array,
-      as_raw = as_raw,
-      platform = platform,
-      device = device,
-      new_device = new_device,
-      print_data = print_data,
-      jit = jit,
-      await_data = await_data,
-      default_dtypes = default_dtypes
-    ),
-    class = "AnvlBackend"
+  methods <- list(
+    new_data = new_data,
+    new_empty = new_empty,
+    dtype = dtype,
+    shape = shape,
+    as_array = as_array,
+    as_raw = as_raw,
+    platform = platform,
+    device = device,
+    new_device = new_device,
+    print_data = print_data,
+    jit = jit,
+    await_data = await_data
   )
+  for (name in names(methods)) {
+    assert_function(methods[[name]], .var.name = name)
+  }
+  structure(c(methods, list(default_dtypes = default_dtypes)), class = "AnvlBackend")
 }
 
-# `backend` is deliberately left unevaluated and built on first use.
-#
-# Registration happens as top-level code, which R evaluates when the namespace
-# is *installed* and then restores from the lazy-load database on load. A
-# backend constructed there would be a set of closures serialized before
-# anything can instrument the namespace, which is why covr reported every
-# backend method as untested however often the tests called it -- the methods
-# it instruments and the ones the registry holds were different objects
-# (r-lib/covr#556). A promise is forced by the first array operation instead,
-# long after load, and builds its methods from whatever the namespace holds
-# then. R forces it once and caches the value, so this costs nothing per call.
+#' Register a Backend
+#'
+#' @description
+#' `r lifecycle::badge("experimental")`
+#'
+#' Makes a backend selectable under `name`: [`local_backend()`] and
+#' [`with_backend()`] accept the name, and so does the option `anvl.backend`.
+#' A package that provides a backend calls this from its `.onLoad()` hook,
+#' together with [`register_rule_type()`] for the rules it attaches to the
+#' primitives. Registering a backend under a name that is already taken
+#' replaces the backend registered there.
+#'
+#' @param name (`character(1)`)\cr
+#'   The name of the backend: the `backend` field of its arrays, and what
+#'   [`backend()`] returns for its arrays and devices. It must not be
+#'   `"float"` or `"int"`, which the option `anvl.default_dtypes` reserves for
+#'   the data type categories.
+#' @param backend ([`AnvlBackend`])\cr
+#'   The backend. It is evaluated on first use rather than in this call.
+#' @return (`NULL`)\cr
+#'   Invisibly. Called for its side effect.
+#' @seealso [`AnvlBackend()`], [`register_rule_type()`], [`local_backend()`]
+#' @export
 register_backend <- function(name, backend) {
+  assert_string(name, min.chars = 1L)
   if (name %in% c("float", "int")) {
     cli_abort("A backend must not be named after a data type category ({.val float} or {.val int}).")
   }
-  delayedAssign(name, backend, eval.env = environment(), assign.env = globals$backends)
+  # `backend` is deliberately left unevaluated and built on first use.
+  #
+  # anvl registers its own backends as top-level code, which R evaluates when
+  # the namespace is *installed* and then restores from the lazy-load database
+  # on load. A backend constructed there would be a set of closures serialized
+  # before anything can instrument the namespace, which is why covr reported
+  # every backend method as untested however often the tests called it -- the
+  # methods it instruments and the ones the registry holds were different
+  # objects (r-lib/covr#556). A promise is forced by the first array operation
+  # instead, long after load, and builds its methods from whatever the
+  # namespace holds then. R forces it once and caches the value, so this costs
+  # nothing per call.
+  delayedAssign(
+    name,
+    assert_class(backend, "AnvlBackend"),
+    eval.env = environment(),
+    assign.env = globals$backends
+  )
+  invisible(NULL)
 }
 
 # Compare two device objects for equality, returning FALSE when they are of
@@ -253,7 +315,8 @@ assert_backend <- function(backend) {
 #' values materialize at its default data types (see [`default_dtypes()`]).
 #'
 #' @param backend (`character(1)`)\cr
-#'   Backend to use (`"pjrt"` or `"quickr"`).
+#'   Backend to use: `"pjrt"`, `"quickr"`, or one a package added with
+#'   [`register_backend()`].
 #' @param envir (`environment`)\cr
 #'   The environment to scope the change to.
 #' @param code (any)\cr

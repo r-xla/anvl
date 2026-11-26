@@ -38,6 +38,7 @@ Imports:
 Suggests:
     bit64,
     knitr,
+    lifecycle,
     quarto,
     rmarkdown,
     quickr (>= 0.3.0),

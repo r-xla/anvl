@@ -41,11 +41,39 @@ is_higher_order_primitive <- function(x) {
 }
 
 
+#' Register a Rule Type
+#'
+#' @description
+#' `r lifecycle::badge("experimental")`
+#'
+#' Makes `name` a type of rule that primitives can carry: afterwards,
+#' `prim_<id>[[name]] <- rule` attaches a rule of that type to a primitive and
+#' `prim_<id>[[name]]` returns it, or `NULL` for a primitive without one. A
+#' backend added with [`register_backend()`] registers the type of the rules
+#' it lowers or evaluates the primitives with, as the `"pjrt"` backend lowers
+#' them with their `"stablehlo"` rules and the `"quickr"` backend with their
+#' `"quickr"` rules. Registering a type again has no further effect.
+#'
+#' @param name (`character(1)`)\cr
+#'   The rule type.
+#' @return (`NULL`)\cr
+#'   Invisibly. Called for its side effect.
+#' @seealso [`AnvlPrimitiveDef`], [`register_backend()`]
+#' @export
+register_rule_type <- function(name) {
+  assert_string(name, min.chars = 1L)
+  globals$interpretation_rules <- union(globals$interpretation_rules, name)
+  invisible(NULL)
+}
+
 #' @method [[<- AnvlPrimitiveDef
 #' @export
 `[[<-.AnvlPrimitiveDef` <- function(x, name, value) {
   if (!(name %in% globals$interpretation_rules)) {
-    cli_abort("Invalid field name {.field {name}} for primitive {.field {x$name}}")
+    cli_abort(c(
+      "Invalid field name {.field {name}} for primitive {.field {x$name}}",
+      i = "A new type of rule must first be registered with {.fn register_rule_type}."
+    ))
   }
   x$rules[[name]] <- value
   x
