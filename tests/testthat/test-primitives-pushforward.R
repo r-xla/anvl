@@ -19,6 +19,9 @@ coin <- function() {
 ints <- function(lower, upper) {
   function(shape) shaped(sample(lower:upper, prod(shape), replace = TRUE), shape)
 }
+fixed <- function(values) {
+  function(shape) shaped(values, shape)
+}
 shaped <- function(values, shape) {
   if (length(shape)) array(values, shape) else values
 }
@@ -35,7 +38,8 @@ anvl_array <- function(x, dtype) {
 # the others, the shapes of the other arguments where they are not `c(2, 3)`,
 # static parameters, whether to check forward-over-reverse, the tolerance of
 # the comparison with finite differences, and, for a primitive that does not
-# take the arguments one by one, a function of their named list that calls it.
+# take the arguments one by one, a function of their named list that calls it,
+# in place of the parameters.
 pushforward_case <- function(
   args,
   wrt = names(args),
@@ -58,16 +62,57 @@ pushforward_case <- function(
   )
 }
 
-# The results of a primitive as a list, with one entry per output.
+f64 <- function(...) nv_array(c(...), dtype = "f64")
+
+# The results of a primitive as an unnamed list, with one entry per output.
 as_outputs <- function(r) {
-  if (is.list(r) && !is_arrayish(r)) r else list(r)
+  if (is.list(r) && !is_arrayish(r)) unname(r) else list(r)
 }
 
 binary_case <- function(lhs = unif(-2, 2), rhs = unif(-2, 2)) {
   pushforward_case(list(lhs = lhs, rhs = rhs))
 }
 
-# The pushforward rules of their own.
+# `prim_convolution()` of a batch of 1-d signals `x`, with axes (batch, feature,
+# spatial), and a `kernel` with axes (output feature, input feature, spatial),
+# strided and padded.
+conv1d_params <- list(
+  x_batch_axis = 1L,
+  x_feature_axis = 2L,
+  x_spatial_axes = 3L,
+  kernel_input_feature_axis = 2L,
+  kernel_output_feature_axis = 1L,
+  kernel_spatial_axes = 3L,
+  output_batch_axis = 1L,
+  output_feature_axis = 2L,
+  output_spatial_axes = 3L,
+  window_strides = 2L,
+  padding = matrix(1L, 1L, 2L),
+  x_dilation = 1L,
+  kernel_dilation = 1L
+)
+
+# `prim_scatter()` of rows of `update` into the rows of `x`, a 5x3, that
+# `indices` gives; an index of 9 is out of bounds.
+scatter_rows_case <- function(indices, update_fn, unique_indices = FALSE) {
+  pushforward_case(
+    list(x = unif(-2, 2), scatter_indices = fixed(indices), update = unif(-2, 2)),
+    wrt = c("x", "update"),
+    shapes = list(x = c(5L, 3L), scatter_indices = c(length(indices), 1L), update = c(length(indices), 3L)),
+    params = list(
+      update_window_axes = 2L,
+      inserted_window_axes = 1L,
+      x_batching_axes = integer(),
+      scatter_indices_batching_axes = integer(),
+      scatter_axes_to_x_axes = 1L,
+      index_vector_axis = 2L,
+      unique_indices = unique_indices,
+      update_fn = update_fn
+    )
+  )
+}
+
+# The pushforward rules of their own, named `<primitive>[/<variant>]`.
 pushforward_cases <- list(
   # at f64 a conversion to f64 is the identity, at f32 one that changes the
   # data type
@@ -82,7 +127,64 @@ pushforward_cases <- list(
   ),
   which_max = pushforward_case(list(x = unif(-2, 2)), params = list(axis = 1L)),
   which_min = pushforward_case(list(x = unif(-2, 2)), params = list(axis = 2L)),
-  bitcast_convert = pushforward_case(list(x = unif(-2, 2)), params = list(dtype = "i64"))
+  bitcast_convert = pushforward_case(list(x = unif(-2, 2)), params = list(dtype = "i64")),
+  dot_general = pushforward_case(
+    list(lhs = unif(-2, 2), rhs = unif(-2, 2)),
+    shapes = list(rhs = c(3L, 4L)),
+    params = list(contracting_axes = list(2L, 1L), batching_axes = list(integer(), integer()))
+  ),
+  "dot_general/batched" = pushforward_case(
+    list(lhs = unif(-2, 2), rhs = unif(-2, 2)),
+    shapes = list(lhs = c(2L, 3L, 2L), rhs = c(3L, 4L, 2L)),
+    params = list(contracting_axes = list(2L, 1L), batching_axes = list(3L, 3L))
+  ),
+  convolution = pushforward_case(
+    list(x = unif(-2, 2), kernel = unif(-2, 2)),
+    shapes = list(x = c(2L, 3L, 6L), kernel = c(4L, 3L, 3L)),
+    params = conv1d_params
+  ),
+  max = pushforward_case(list(x = unif(-2, 2)), shapes = list(x = c(3L, 4L)), params = list(axes = 2L)),
+  "max/keep" = pushforward_case(
+    list(x = unif(-2, 2)),
+    shapes = list(x = c(3L, 4L)),
+    params = list(axes = 1L, drop = FALSE)
+  ),
+  min = pushforward_case(list(x = unif(-2, 2)), params = list(axes = c(1L, 2L))),
+  # the pullback rule computes with prim_cumprod, which has no pushforward rule
+  prod = pushforward_case(
+    list(x = unif(0.5, 1.5)),
+    shapes = list(x = c(3L, 4L)),
+    params = list(axes = 1L),
+    hvp = FALSE
+  ),
+  "prod/zero" = pushforward_case(
+    list(x = fixed(c(0.5, 0, 1.5, 0.8, 1.2, 0, 0.9, 1.1, 0, 0.7, 1.3, 0.6))),
+    shapes = list(x = c(3L, 4L)),
+    params = list(axes = 2L),
+    hvp = FALSE
+  ),
+  cummax = pushforward_case(list(x = unif(-2, 2)), shapes = list(x = c(4L, 3L)), params = list(axis = 1L)),
+  cummin = pushforward_case(list(x = unif(-2, 2)), shapes = list(x = c(3L, 4L)), params = list(axis = 2L)),
+  sort = pushforward_case(list(x = unif(-2, 2)), call = \(a) prim_sort(unname(a), axis = 2L)),
+  # the key and its payloads, one of them an integer without a tangent
+  "sort/payloads" = pushforward_case(
+    list(key = unif(-2, 2), payload = unif(-2, 2), index = ints(1L, 3L)),
+    wrt = c("key", "payload"),
+    call = \(a) prim_sort(unname(a), axis = 1L, decreasing = TRUE)
+  ),
+  top_k = pushforward_case(list(x = unif(-2, 2)), shapes = list(x = c(5L, 3L)), params = list(k = 3L, indices = TRUE)),
+  "top_k/values" = pushforward_case(
+    list(x = unif(-2, 2)),
+    shapes = list(x = c(5L, 3L)),
+    params = list(k = 2L, indices = FALSE)
+  ),
+  scatter = scatter_rows_case(c(4L, 2L), "replace", unique_indices = TRUE),
+  "scatter/replace" = scatter_rows_case(c(4L, 2L, 4L, 9L), "replace"),
+  "scatter/add" = scatter_rows_case(c(4L, 2L, 4L, 9L), "add"),
+  "scatter/sub" = scatter_rows_case(c(4L, 2L, 4L), "sub"),
+  "scatter/mul" = scatter_rows_case(c(4L, 2L, 9L), "mul", unique_indices = TRUE),
+  "scatter/max" = scatter_rows_case(c(4L, 2L, 4L, 9L), "max"),
+  "scatter/min" = scatter_rows_case(c(4L, 2L, 4L), "min")
 )
 
 # Pushforward rules derived from the pullback rule, named
@@ -192,7 +294,7 @@ check_pushforward_rule <- function(name, case) {
   }
 
   # `f` with its float outputs alone, as an unnamed list
-  g <- with_formals(names(args), \(a) unname(as_outputs(do.call(f, a))[is_float]))
+  g <- with_formals(names(args), \(a) as_outputs(do.call(f, a))[is_float])
   h <- 1e-5
   u <- lapply(outs[is_float], \(o) anvl_array(shaped(rnorm(prod(shape(o))), shape(o)), dtype = "f64"))
   has_pullback <- !is.null(prim[["pullback"]])
@@ -262,16 +364,43 @@ describe("pushforward rules", {
     nms <- names(asNamespace("anvl"))
     prims <- Filter(\(p) inherits(p, "AnvlPrimitive"), mget(nms[startsWith(nms, "prim_")], asNamespace("anvl")))
     own <- Filter(\(p) !is.null(p[["pushforward"]]) && !derived_from_tag(p), prims)
-    expect_setequal(names(pushforward_cases), sub("^prim_", "", names(own)))
+    expect_setequal(unique(sub("/.*", "", names(pushforward_cases))), sub("^prim_", "", names(own)))
   })
 
   for (name in names(pushforward_cases)) {
     it(sprintf("of prim_%s agree with finite differences and the pullback", name), {
       withr::local_seed(1L)
       # `prim_print()` prints at every run
-      utils::capture.output(check_pushforward_rule(name, pushforward_cases[[name]]))
+      utils::capture.output(check_pushforward_rule(sub("/.*", "", name), pushforward_cases[[name]]))
     })
   }
+
+  it("of prim_scatter differentiate an update_fn given by name, with respect to the update of a multiplying one only with unique indices", {
+    scatter <- function(x, update, update_fn) {
+      prim_scatter(
+        x,
+        nv_array(matrix(c(2L, 2L)), dtype = "i32"),
+        update,
+        update_window_axes = integer(),
+        inserted_window_axes = 1L,
+        x_batching_axes = integer(),
+        scatter_indices_batching_axes = integer(),
+        scatter_axes_to_x_axes = 1L,
+        index_vector_axis = 2L,
+        update_fn = update_fn
+      )
+    }
+    push <- function(update_fn, ...) {
+      jit(function(x, update) {
+        pushforward(\(x, update) scatter(x, update, update_fn), x, update)(...)
+      })(nv_array(c(1, 2, 3), dtype = "f64"), nv_array(c(10, 20), dtype = "f64"))
+    }
+    expect_error(push(\(old, new) old + new, f64(1, 1, 1)), "not implemented for an `update_fn` that is a function")
+    expect_error(push("mul", NULL, f64(1, 1)), "needs `unique_indices = TRUE`")
+    # the tangent of `x` alone needs no unique indices: it is multiplied by
+    # both updates to its position
+    expect_equal(push("mul", f64(1, 1, 1)), f64(1, 200, 1))
+  })
 
   it("of prim_convert give no tangent to an integer result, nor one to the float result of an integer", {
     x <- nv_array(c(1.5, 2.5), dtype = "f64")

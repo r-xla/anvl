@@ -80,6 +80,7 @@ Most users want \code{\link[=nv_conv1d]{nv_conv1d()}} / \code{\link[=nv_conv2d]{
 \itemize{
 \item \code{stablehlo}
 \item \code{pullback}
+\item \code{pushforward}
 \item \code{vectorize}
 }
 }
