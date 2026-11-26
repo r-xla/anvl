@@ -526,8 +526,8 @@ describe("vectorize", {
   it("refuses to give every slice random numbers of its own through a primitive without a rule", {
     prim_neg <- unary_primitive()
     f <- function(x) x + prim_neg(nv_runif(shape = 2L, dtype = "f32"))
-    expect_error(jit(vectorize(f))(x), "random numbers of its own in `prim_negate_test\\(\\)`")
-    expect_error(jit(vectorize(f))(x), "randomness = \"common\"")
+    expect_error(jit(vectorize(f))(x), "random numbers that differ between the slices to `prim_negate_test\\(\\)`")
+    expect_error(jit(vectorize(f))(x), "every slice will then draw identical random numbers")
     expect_equal(shape(jit(vectorize(f, randomness = "common"))(x)), c(2L, 3L))
   })
 

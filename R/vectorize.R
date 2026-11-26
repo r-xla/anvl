@@ -557,8 +557,8 @@ abort_no_vectorize_rule <- function(primitive, state_only, call) {
   }
   cli_abort(
     c(
-      "{.fn vectorize} cannot give every slice random numbers of its own in {.fn {paste0('prim_', primitive$name)}} yet.",
-      i = "Draw the same numbers for every slice with {.code randomness = \"common\"}."
+      "{.fn vectorize} cannot yet pass random numbers that differ between the slices to {.fn {paste0('prim_', primitive$name)}}.", # nolint
+      i = "Setting {.code randomness = \"common\"} will allow this to run, but be warned that every slice will then draw identical random numbers." # nolint
     ),
     call = call
   )
