@@ -834,6 +834,79 @@ describe("prim_convolution", {
   })
 })
 
+describe("prim_custom_gradient", {
+  # x^3 * w with a hand-written derivative, without and with a forward pass
+  cube <- function(x, w) {
+    prim_custom_gradient(
+      list(x = x, w = w),
+      fn = function(x, w) x * x * x * w,
+      rule = function(x, w, out, grad, required) list(x = grad * 3 * x * x * w, w = grad * x * x * x)
+    )
+  }
+  cube_fwd <- function(x, w) {
+    prim_custom_gradient(
+      list(x = x, w = w),
+      fn = function(x, w) x * x * x * w,
+      forward = function(x, w, required) {
+        sq <- x * x
+        list(out = sq * x * w, residuals = list(sq = sq))
+      },
+      rule = function(x, w, out, grad, required, residuals) {
+        list(x = grad * 3 * residuals$sq * w, w = grad * residuals$sq * x)
+      }
+    )
+  }
+  x <- nv_array(matrix(c(1, 2, 3, 4, 5, 6), 2L), dtype = "f32")
+  w <- nv_array(c(0.5, 2), dtype = "f32")
+  xr <- as_r(x)
+  wr <- as.numeric(as_r(w))
+
+  it("vectorizes", {
+    withr::local_seed(1L)
+    autotest_vectorize(cube, x = rand_array(c(2L, 3L)), w = rand_array(c(2L, 3L)))
+    autotest_vectorize(cube_fwd, x = rand_array(c(2L, 3L)), w = rand_array(c(2L, 3L)))
+  })
+
+  it("differentiates with the rule mapped over the slices, summing the gradient of what they share", {
+    for (f in list(cube, cube_fwd)) {
+      loss <- function(x, w) nv_sum(vectorize(f, in_axes = list(x = -1L))(x, w))
+      grads <- jit(gradient(loss))(x, w)
+      expect_equal(as_r(grads$x), 3 * xr^2 * wr, tolerance = 1e-6)
+      expect_equal(as.numeric(as_r(grads$w)), rowSums(xr^3), tolerance = 1e-5)
+    }
+  })
+
+  it("vectorizes the gradient of a call", {
+    for (f in list(cube, cube_fwd)) {
+      d <- function(x, w) gradient(\(x, w) nv_sum(f(x, w)), wrt = "x")(x, w)$x
+      expect_equal(as_r(jit(vectorize(d, in_axes = list(x = -1L)))(x, w)), 3 * xr^2 * wr, tolerance = 1e-6)
+    }
+  })
+
+  it("lets random numbers that differ between the slices reach it", {
+    f <- function(x) nv_dpois(x, lambda = nv_runif(shape = integer(), min = 1, max = 2, dtype = "f32"))
+    v <- nv_array(c(1, 2, 3), dtype = "f32")
+    local_nv_seed(1L)
+    out <- as.numeric(as_r(jit(vectorize(f))(v)))
+    local_nv_seed(1L)
+    f_jit <- jit(f)
+    expected <- vapply(c(1, 2, 3), \(k) as_r(f_jit(nv_scalar(k, dtype = "f32"))), numeric(1L))
+    expect_equal(out, expected, tolerance = 1e-6)
+  })
+
+  it("vectorizes nv_ppois(), whose custom gradient has a forward pass, and its gradient", {
+    q <- nv_array(c(1, 3, 5), dtype = "f64")
+    lambda <- nv_array(c(0.5, 2, 4), dtype = "f64")
+    expect_equal(as.numeric(as_r(jit(vectorize(nv_ppois))(q, lambda))), stats::ppois(c(1, 3, 5), c(0.5, 2, 4)))
+    loss <- function(q, lambda) nv_sum(vectorize(nv_ppois)(q, lambda))
+    # the derivative of ppois(q, lambda) in lambda is -dpois(q, lambda)
+    expect_equal(
+      as.numeric(as_r(jit(gradient(loss, wrt = "lambda"))(q, lambda)$lambda)),
+      -stats::dpois(c(1, 3, 5), c(0.5, 2, 4))
+    )
+  })
+})
+
 # Every primitive with a vectorize rule must have been applied by one of the
 # `autotest_vectorize()` calls above (see helper-vectorize.R), except one that
 # gets the rule of its tag, of which one per tag suffices.

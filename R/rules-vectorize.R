@@ -377,6 +377,84 @@ prim_scan[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, siz
   c(Map(batch_operand, out$carry, carry_b, MoreArgs = list(size = size)), ys)
 })
 
+# A call on the batch: `fn` replayed with the batch axis, and `forward` and
+# `rule` mapped over the slices with `vectorize()`, which gives each slice its
+# own `out`, `grad` and residuals and passes an argument that is not mapped over
+# as it is. The gradient of such an argument is the sum of those of the slices.
+prim_custom_gradient[["vectorize"]] <- rule_vectorize(function(inputs, batched, params, size) {
+  fn <- params$fn
+  arg_idx <- seq_len(length(inputs) - params$n_captures)
+  captures <- inputs[-arg_idx]
+  args <- unflatten(fn$in_tree, inputs[arg_idx])
+  arg_names <- names(args)
+  # by entry, whether each array is mapped over, and the `in_axes` that says so
+  mapped <- unflatten(fn$in_tree, as.list(batched[arg_idx]))
+  as_axes <- function(m) {
+    if (is.list(m)) {
+      lapply(m, as_axes)
+    } else if (m) {
+      -1L
+    }
+  }
+  in_axes <- lapply(mapped, as_axes)
+  any_mapped <- any(batched[arg_idx])
+
+  fn_batched <- function(...) {
+    entries <- list(...)[arg_names]
+    outs <- graph_vectorize_as(fn, c(flatten(entries), captures), batched, size, rep(TRUE, length(fn$outputs)))
+    unflatten(fn$out_tree, outs)
+  }
+
+  forward <- params$forward
+  forward_batched <- if (!is.null(forward)) {
+    function(...) {
+      a <- list(...)
+      one <- function(entries) do.call(forward, c(entries, list(required = a$required)))
+      if (!any_mapped) {
+        # every slice computes the same, which only needs the batch axis
+        res <- one(a[arg_names])
+        return(map_tree(res, \(x) batch_operand(as_anvl_array(x), FALSE, size)))
+      }
+      vectorize(one, in_axes = list(entries = in_axes))(a[arg_names])
+    }
+  }
+
+  rule <- params$rule
+  rule_batched <- function(...) {
+    a <- list(...)
+    required <- a$required
+    one <- function(entries, out, grad, residuals = NULL) {
+      extra <- if (!is.null(forward)) list(residuals = residuals)
+      grads <- do.call(rule, c(entries, list(out = out, grad = grad, required = required), extra))
+      grads[intersect(names(required)[required], names(grads))]
+    }
+    axes <- list(entries = in_axes, out = -1L, grad = -1L)
+    call_args <- list(entries = a[arg_names], out = a$out, grad = a$grad)
+    if (!is.null(forward)) {
+      call_args$residuals <- a$residuals
+      if (length(flatten(a$residuals))) {
+        axes$residuals <- -1L
+      }
+    }
+    grads <- do.call(vectorize(one, in_axes = axes), call_args)
+    # a slice's gradient of an array it shares with the others adds to theirs
+    stats::setNames(
+      lapply(names(grads), function(nm) {
+        g <- grads[[nm]]
+        leaves <- Map(
+          function(leaf, is_mapped) if (is_mapped) leaf else nv_sum(leaf, axes = naxes(leaf)),
+          flatten(g),
+          flatten(mapped[[nm]])
+        )
+        unflatten(build_tree(g), leaves)
+      }),
+      names(grads)
+    )
+  }
+
+  flatten(prim_custom_gradient(args, fn = fn_batched, rule = rule_batched, forward = forward_batched))
+})
+
 # The batch axis is folded into an axis of the operands whose slices
 # `prim_convolution()` keeps apart: the batch axis of `x` when only `x` is
 # mapped over, the output feature axis of `kernel` when only `kernel` is, and
