@@ -232,8 +232,8 @@ check_pushforward_rule <- function(name, case) {
     return(invisible())
   }
 
-  # `f` with its float outputs alone, as a list
-  g <- with_formals(names(args), \(a) as_outputs(do.call(f, a))[is_float])
+  # `f` with its float outputs alone, as an unnamed list like the cotangents `u`
+  g <- with_formals(names(args), \(a) unname(as_outputs(do.call(f, a))[is_float]))
   h <- 1e-5
   u <- lapply(outs[is_float], \(o) anvl_array(shaped(rnorm(prod(shape(o))), shape(o)), dtype = "f64"))
   has_pullback <- !is.null(prim[["pullback"]])
