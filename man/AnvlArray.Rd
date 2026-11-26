@@ -11,16 +11,9 @@
 \alias{nv_empty_like}
 \title{AnvlArray}
 \usage{
-nv_array(
-  data,
-  shape = "auto",
-  dtype = NULL,
-  device = NULL,
-  byrow = FALSE,
-  check = NULL
-)
+nv_array(data, shape = "auto", dtype = NULL, device = NULL, byrow = FALSE)
 
-nv_scalar(data, dtype = NULL, device = NULL, check = NULL)
+nv_scalar(data, dtype = NULL, device = NULL)
 
 nv_matrix(
   data,
@@ -28,8 +21,7 @@ nv_matrix(
   ncol = NULL,
   dtype = NULL,
   device = NULL,
-  byrow = FALSE,
-  check = NULL
+  byrow = FALSE
 )
 
 nv_empty(shape, dtype, device = NULL)
@@ -90,14 +82,6 @@ axes, fill the array in row-major order rather than the
 default column-major order.
 Only allowed when \code{data} is an R object — passing an existing
 \code{AnvlArray} together with \code{byrow = TRUE} is an error.}
-
-\item{check}{(\code{NULL} | \code{character(1)} | \code{FALSE})\cr
-How to report a missing value that the data type keeps as an ordinary
-number (see \emph{Missing values}): \code{"warn"} warns and creates the array, \code{"err"}
-aborts, and \code{FALSE} skips the scan for it. For the \code{"pjrt"} backend the
-default (\code{NULL}) is the option \code{pjrt.upload_check}, and \code{"warn"} when it is
-not set; backends that keep R's \code{NA} ignore \code{check}. A missing value the
-data type cannot hold is an error whatever this is set to.}
 
 \item{nrow}{(\code{NULL} | \code{integer(1)})\cr
 Number of rows. Inferred from \code{ncol} and the data length if \code{NULL}.
@@ -181,14 +165,13 @@ presence of such values.
 \item When creating an \code{i32} from an R \code{integer()} (or \code{logical()}).
 The resulting \code{AnvlArray} gets the bit representation of \code{NA_integer_},
 which is \code{INT_MIN} (\code{-2147483648}), an ordinary number on the device.
-This is reported at the level of \code{check}: a warning by default.
-Disallowing it would prevent round-trips between the data types.
+This throws a warning; disallowing it would prevent round-trips between
+the data types.
 }
 
 The same holds for an R value that enters a \code{\link[=jit]{jit()}}-compiled function,
 as an argument or written in its body: it is built at the data type it takes
-as \code{nv_array()} builds it. An argument has no \code{check} of its own, so it is
-reported at the level of the option \code{pjrt.upload_check}.
+as \code{nv_array()} builds it.
 
 See the \href{https://r-xla.github.io/anvl/articles/gotchas.html}{Gotchas} article for more information.
 }

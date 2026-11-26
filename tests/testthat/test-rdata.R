@@ -762,10 +762,6 @@ describe("a missing value in an R value", {
     # INT_MIN is an ordinary number on the device.
     out <- suppressWarnings(add(NA_integer_, nv_scalar(1L, dtype = "i32")))
     expect_identical(as_array(out), -2147483647L)
-    withr::local_options(pjrt.upload_check = "err")
-    expect_error(add(NA_integer_, nv_scalar(1L, dtype = "i32")), "Input `x` contains")
-    withr::local_options(pjrt.upload_check = FALSE)
-    expect_no_warning(add(NA_integer_, nv_scalar(1L, dtype = "i32")))
   })
 
   it("is an error where the data type has no missing value", {

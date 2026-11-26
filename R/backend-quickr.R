@@ -162,7 +162,7 @@ compile_quickr <- function(
 #' @export
 AnvlBackendQuickr <- function() {
   backend <- AnvlBackend(
-    new_data = function(data, dtype, shape, device, row_major = FALSE, check = NULL) {
+    new_data = function(data, dtype, shape, device, row_major = FALSE) {
       if (!is.null(device)) {
         backend_device(device, "quickr")
       }

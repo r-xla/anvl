@@ -137,7 +137,7 @@ test_that("nv_scalar", {
 describe("a missing value in nv_array()", {
   it("becomes NaN at a float, without a word", {
     for (dt in c("f32", "f64")) {
-      expect_no_warning(x <- nv_scalar(NA_real_, dtype = dt, check = "err"))
+      expect_no_warning(x <- nv_scalar(NA_real_, dtype = dt))
       expect_dtype(x, dt)
       expect_true(is.na(as_array(x)))
     }
@@ -145,47 +145,24 @@ describe("a missing value in nv_array()", {
     expect_true(is.nan(as_array(nv_scalar(NA_integer_, dtype = "f32"))))
   })
 
-  it("is kept at i32, and reported at the level of `check`", {
+  it("is kept at i32, with a warning", {
     expect_warning(x <- nv_scalar(NA_integer_, dtype = "i32"), "-2147483648")
     expect_true(is.na(as_array(x, check = FALSE)))
-    expect_warning(nv_array(c(1L, NA), dtype = "i32"), "-2147483648")
-    expect_snapshot(nv_array(c(1L, NA), dtype = "i32", check = "err"), error = TRUE)
-    expect_error(nv_scalar(NA, dtype = "i32", check = "err"), "-2147483648")
-    expect_error(nv_matrix(NA_integer_, 2L, 2L, dtype = "i32", check = "err"), "-2147483648")
-    expect_error(nv_matrix(c(1L, NA), 1L, dtype = "i32", check = "err"), "-2147483648")
-    expect_no_warning(x <- nv_array(c(1L, NA), dtype = "i32", check = FALSE))
+    expect_warning(x <- nv_array(c(1L, NA), dtype = "i32"), "-2147483648")
     expect_identical(as.vector(as_array(x, check = FALSE)), c(1L, NA))
+    expect_warning(nv_matrix(NA_integer_, 2L, 2L, dtype = "i32"), "-2147483648")
   })
 
-  it("is reported at the level of the option `pjrt.upload_check` by default", {
-    withr::local_options(pjrt.upload_check = "err")
-    expect_error(nv_scalar(NA_integer_, dtype = "i32"), "-2147483648")
-    expect_no_warning(nv_scalar(NA_integer_, dtype = "i32", check = FALSE))
-    withr::local_options(pjrt.upload_check = FALSE)
-    expect_no_warning(nv_scalar(NA_integer_, dtype = "i32"))
+  it("is an error at every other data type", {
+    expect_error(nv_scalar(NA_integer_, dtype = "i64"), "cannot be converted to \"i64\"")
+    expect_error(nv_scalar(NA_integer_, dtype = "i16"), "cannot be converted to \"i16\"")
+    expect_error(nv_scalar(NA_real_, dtype = "i32"), "cannot be converted to \"i32\"")
+    expect_error(nv_scalar(NA), "cannot be converted to \"bool\"")
   })
 
-  it("is an error at every other data type, whatever `check` is", {
-    for (check in list("warn", "err", FALSE)) {
-      expect_error(nv_scalar(NA_integer_, dtype = "i64", check = check), "cannot be converted to \"i64\"")
-      expect_error(nv_scalar(NA_integer_, dtype = "i16", check = check), "cannot be converted to \"i16\"")
-      expect_error(nv_scalar(NA_real_, dtype = "i32", check = check), "cannot be converted to \"i32\"")
-      expect_error(nv_scalar(NA, check = check), "cannot be converted to \"bool\"")
-    }
-  })
-
-  it("keeps `check` for an array created inside jit(), uploaded when compiled", {
-    f <- function(check) {
-      jit(function(x) x + nv_scalar(NA_integer_, dtype = "i32", check = check))(nv_scalar(1L, dtype = "i32"))
-    }
-    expect_error(f("err"), "-2147483648")
-    expect_no_warning(f(FALSE))
-    expect_warning(f("warn"), "-2147483648")
-  })
-
-  it("validates `check`", {
-    expect_error(nv_array(1L, check = TRUE), "must be")
-    expect_error(nv_scalar(1, check = "error"), "must be")
+  it("warns for an array created inside jit() when the program is compiled", {
+    f <- jit(function(x) x + nv_scalar(NA_integer_, dtype = "i32"))
+    expect_warning(f(nv_scalar(1L, dtype = "i32")), "-2147483648")
   })
 })
 

@@ -27,9 +27,6 @@
 * `safetensors::safe_save_file()` writes `AnvlArray`s, and
   `safetensors::safe_load_file(framework = "anvl")` reads them.
 * The `"quickr"` backend accepts a raw payload in `nv_array()`.
-* `nv_array()`, `nv_scalar()` and `nv_matrix()` gain `check` (`"warn"`, `"err"`
-  or `FALSE`, defaulting to the option `pjrt.upload_check`), which sets how an
-  `NA` kept as `-2147483648` at `i32` is reported.
 
 ## Bug fixes
 
