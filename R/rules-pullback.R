@@ -1818,6 +1818,35 @@ triangular_mask <- function(shape, lower, unit_diagonal) {
   }
 }
 
+# The helpers below take batches of matrices the same way, and are shared by
+# the pullback and pushforward rules of the decompositions.
+
+# The symmetric part `(x + t(x)) / 2` of `x`.
+symmetric_part <- function(x) {
+  prim_mul(prim_add(x, transpose_matrix_axes(x)), 0.5)
+}
+
+# Φ of Murray (2016): the lower triangle of the square `x`, its diagonal
+# halved, so that `Φ(x + t(x))` is `x` for a lower triangular `x`.
+cholesky_phi <- function(x) {
+  shp <- shape(x)
+  halved <- prim_ifelse(diag_mask(shp), prim_mul(x, 0.5), x)
+  prim_ifelse(tri_mask(shp, 0L, lower = TRUE), halved, 0)
+}
+
+# `op(L)^-1 x t(op(L))^-1` for the lower triangular `L`, where `op(L)` is
+# `t(L)` if `transpose`, else `L`: `x` solved against `L` from both sides.
+solve_both_sides <- function(L, x, transpose) {
+  x <- prim_triangular_solve(L, x, left_side = TRUE, lower = TRUE, unit_diagonal = FALSE, transpose_a = transpose)
+  prim_triangular_solve(L, x, left_side = FALSE, lower = TRUE, unit_diagonal = FALSE, transpose_a = !transpose)
+}
+
+# `a %*% x` if `left_side`, else `x %*% a`: `a` multiplies `x` from the side a
+# triangular solve with `left_side` puts its coefficient matrix on.
+matmul_on_side <- function(a, x, left_side) {
+  if (left_side) nv_matmul(a, x) else nv_matmul(x, a)
+}
+
 #' @name prim_chol
 #' @rdname prim_chol
 #' @references
@@ -1838,14 +1867,6 @@ prim_chol[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params
   # Any trailing axes are batch axes, so `t()` is `transpose_matrix_axes()`.
   L <- outputs[[1L]]
   grad <- grads[[1L]]
-  L_shape <- shape(L)
-
-  # Phi: keep lower triangle, halve diagonal, zero upper triangle
-  phi <- function(x) {
-    eye <- prim_convert(diag_mask(L_shape), dtype = dtype(x))
-    x <- prim_div(x, prim_add(1, eye))
-    prim_ifelse(tri_mask(L_shape, 0L, lower = TRUE), x, 0)
-  }
 
   # The stablehlo lowering already zeros out the non-triangular part of L,
   # so grad is clean and no masking is needed here.
@@ -1858,19 +1879,8 @@ prim_chol[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params
   }
   # We almost use Murray (2016) equation 10, but use M / 2 instead of phi(M) which are both
   # equivalent for symmetric perturbations
-  P <- phi(nv_matmul(transpose_matrix_axes(L), grad))
-  S <- prim_mul(prim_add(P, transpose_matrix_axes(P)), 0.5)
-  S <- prim_triangular_solve(L, S, left_side = TRUE, lower = TRUE, unit_diagonal = FALSE, transpose_a = TRUE)
-  grad_A <- prim_triangular_solve(
-    L,
-    S,
-    left_side = FALSE,
-    lower = TRUE,
-    unit_diagonal = FALSE,
-    transpose_a = FALSE
-  )
-
-  list(grad_A)
+  P <- cholesky_phi(nv_matmul(transpose_matrix_axes(L), grad))
+  list(solve_both_sides(L, symmetric_part(P), transpose = TRUE))
 })
 
 #' @name prim_triangular_solve
@@ -1909,8 +1919,7 @@ prim_triangular_solve[["pullback"]] <- rule_pullback(function(inputs, outputs, g
   # Also if unit_diagonal = TRUE the diagonal elements are not read and hence also have no effect
   # i.e. we also zero out those.
   grad_a <- if (required[[1L]]) {
-    x_t <- transpose_matrix_axes(x)
-    raw <- prim_negate(if (left_side) nv_matmul(grad_b, x_t) else nv_matmul(x_t, grad_b))
+    raw <- prim_negate(matmul_on_side(grad_b, transpose_matrix_axes(x), left_side))
     mask <- triangular_mask(shape(a), lower, unit_diagonal)
     if (transpose_a) {
       raw <- transpose_matrix_axes(raw)
