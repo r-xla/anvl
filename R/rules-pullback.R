@@ -1818,6 +1818,12 @@ triangular_mask <- function(shape, lower, unit_diagonal) {
   }
 }
 
+# `x` with the entries a triangular solve with `lower` and `unit_diagonal` does
+# not read zeroed.
+keep_triangle <- function(x, lower, unit_diagonal) {
+  prim_ifelse(triangular_mask(shape(x), lower, unit_diagonal), x, 0)
+}
+
 # The helpers below take batches of matrices the same way, and are shared by
 # the pullback and pushforward rules of the decompositions.
 
@@ -1920,11 +1926,10 @@ prim_triangular_solve[["pullback"]] <- rule_pullback(function(inputs, outputs, g
   # i.e. we also zero out those.
   grad_a <- if (required[[1L]]) {
     raw <- prim_negate(matmul_on_side(grad_b, transpose_matrix_axes(x), left_side))
-    mask <- triangular_mask(shape(a), lower, unit_diagonal)
     if (transpose_a) {
       raw <- transpose_matrix_axes(raw)
     }
-    prim_ifelse(mask, raw, 0)
+    keep_triangle(raw, lower, unit_diagonal)
   }
 
   list(grad_a, if (required[[2L]]) grad_b)

@@ -81,7 +81,7 @@ prim_triangular_solve[["pushforward"]] <- function(inputs, outputs, tangents, pa
   da <- tangents[[1L]]
   rhs <- tangents[[2L]]
   if (!is.null(da)) {
-    da <- prim_ifelse(triangular_mask(shape(da), params$lower, params$unit_diagonal), da, 0)
+    da <- keep_triangle(da, params$lower, params$unit_diagonal)
     if (params$transpose_a) {
       da <- transpose_matrix_axes(da)
     }
