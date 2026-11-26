@@ -14,6 +14,9 @@ unif <- function(lower, upper) {
 coin <- function() {
   function(shape) shaped(runif(prod(shape)) < 0.5, shape)
 }
+ints <- function(lower, upper) {
+  function(shape) shaped(sample(lower:upper, prod(shape), replace = TRUE), shape)
+}
 shaped <- function(values, shape) {
   if (length(shape)) array(values, shape) else values
 }
@@ -24,12 +27,27 @@ anvl_array <- function(x, dtype) {
 }
 
 # A call of a primitive: its arguments, as samplers -- a float sampler gives an
-# array of the data type under test, a logical one a boolean array -- the
-# arguments to differentiate with respect to, the arguments that are scalars,
-# which the primitive broadcasts to the shape of the others, and static
-# parameters.
-pushforward_case <- function(args, wrt = names(args), scalar = character(), params = list()) {
-  list(args = args, wrt = wrt, scalar = scalar, params = params)
+# array of the data type under test, a logical one a boolean array, an integer
+# one an `i32` array -- the arguments to differentiate with respect to, the
+# arguments that are scalars, which the primitive broadcasts to the shape of
+# the others, the shapes of the other arguments where they are not `c(2, 3)`,
+# static parameters, whether to check forward-over-reverse, and the tolerance
+# of the comparison with finite differences.
+pushforward_case <- function(
+  args,
+  wrt = names(args),
+  scalar = character(),
+  shapes = list(),
+  params = list(),
+  hvp = TRUE,
+  tolerance = 1e-6
+) {
+  list(args = args, wrt = wrt, scalar = scalar, shapes = shapes, params = params, hvp = hvp, tolerance = tolerance)
+}
+
+# The results of a primitive as a list, with one entry per output.
+as_outputs <- function(r) {
+  if (is.list(r) && !is_arrayish(r)) r else list(r)
 }
 
 binary_case <- function(lhs = unif(-2, 2), rhs = unif(-2, 2)) {
@@ -86,20 +104,23 @@ central_difference <- function(fn, x, t, h) {
   if (is_graph_box(hi)) (hi - lo) / (2 * h) else Map(\(a, b) (a - b) / (2 * h), hi, lo)
 }
 
-# Checks the pushforward rule of `prim_<name>` on `case`, at f64:
+# Checks the pushforward rule of `prim_<name>` on `case`, at f64, on each of
+# its float outputs:
 #   - the tangent along each argument in `wrt` alone, and along all of them at
 #     once, against a central difference;
-#   - the tangent against the pullback: <u, J t> must equal <J^T u, t>;
-#   - forward-over-reverse: the tangent of the gradient against a central
-#     difference of the gradient, which needs a pushforward rule for whatever
-#     the reverse rule computes with -- not yet with a scalar operand, whose
-#     cotangent the pullback rule sums with `prim_sum()`;
-#   - at f32, that the tangent has the data type of the result.
+#   - the tangent against the pullback, if the primitive has a pullback rule:
+#     <u, J t> must equal <J^T u, t>;
+#   - forward-over-reverse, unless `case$hvp` is `FALSE`: the tangent of the
+#     gradient against a central difference of the gradient, which needs a
+#     pushforward rule for whatever the pullback rule computes with -- not yet
+#     with a scalar operand, whose cotangent the pullback rule sums with
+#     `prim_sum()`;
+#   - at f32, that the tangent has the data type of the output.
 # An output that is not a float has no derivative, and so no tangent.
 check_pushforward_rule <- function(name, case) {
   prim <- getFromNamespace(paste0("prim_", name), "anvl")
-  shape <- c(2L, 3L)
-  args <- Map(\(sample, nm) sample(if (nm %in% case$scalar) integer() else shape), case$args, names(case$args))
+  shape_of <- function(nm) if (nm %in% case$scalar) integer() else case$shapes[[nm]] %||% c(2L, 3L)
+  args <- Map(\(sample, nm) sample(shape_of(nm)), case$args, names(case$args))
   arrays_at <- function(dtype) {
     lapply(args, \(a) {
       anvl_array(
@@ -120,38 +141,48 @@ check_pushforward_rule <- function(name, case) {
   f <- with_formals(names(args), \(a) do.call(prim, c(a, case$params)))
   x <- arrays_at("f64")
   t <- lapply(directions, anvl_array, dtype = "f64")
-  out_dtype <- dtype(trace_fn(f, x)$outputs[[1L]])
+  outs <- trace_fn(f, x)$outputs
+  is_float <- vapply(outs, \(o) is_dtype_float(dtype(o)), logical(1L))
 
-  if (!is_dtype_float(out_dtype)) {
+  if (!any(is_float)) {
     jit(function(x, t) {
-      expect_null(tangent_along(f, x, t))
+      tangents <- as_outputs(tangent_along(f, x, t))
+      expect_true(all(vapply(tangents, is.null, logical(1L))))
       x[[1L]]
     })(x, t)
     return(invisible())
   }
 
+  # `f` with its float outputs alone, as a list
+  g <- with_formals(names(args), \(a) as_outputs(do.call(f, a))[is_float])
   h <- 1e-5
-  u <- nv_array(array(rnorm(prod(shape)), shape), dtype = "f64")
+  u <- lapply(outs[is_float], \(o) anvl_array(shaped(rnorm(prod(shape(o))), shape(o)), dtype = "f64"))
+  has_pullback <- !is.null(prim[["pullback"]])
+  check_hvp <- has_pullback && case$hvp && !length(case$scalar)
   run <- jit(function(x, t, u) {
     along <- c(lapply(names(t), \(nm) t[nm]), list(t))
-    loss <- with_formals(names(x), \(a) sum(do.call(f, a) * u))
-    grad <- gradient(loss, wrt = names(t))
-    # `f` of the arguments in `wrt` alone, the others held at `x`
-    f_wrt <- with_formals(names(t), function(a) {
+    # `g` of the arguments in `wrt` alone, the others held at `x`
+    g_wrt <- with_formals(names(t), function(a) {
       args <- x
       args[names(a)] <- a
-      do.call(f, args)
+      do.call(g, args)
     })
-    jt <- tangent_along(f, x, t)
-    jtu <- do.call(pullback, c(list(f_wrt), x[names(t)]))(u)
+    jt <- tangent_along(g, x, t)
     c(
       list(
-        tangent = lapply(along, \(d) tangent_along(f, x, d)),
-        fd = lapply(along, \(d) central_difference(f, x, d, h)),
-        u_jt = sum(u * jt),
-        jtu_t = Reduce(`+`, Map(\(nm) sum(jtu[[nm]] * t[[nm]]), names(t)))
+        tangent = lapply(along, \(d) tangent_along(g, x, d)),
+        fd = lapply(along, \(d) central_difference(g, x, d, h))
       ),
-      if (!length(case$scalar)) {
+      if (has_pullback) {
+        jtu <- do.call(pullback, c(list(g_wrt), x[names(t)]))(u)
+        list(
+          u_jt = Reduce(`+`, Map(\(a, b) sum(a * b), u, jt)),
+          jtu_t = Reduce(`+`, Map(\(nm) sum(jtu[[nm]] * t[[nm]]), names(t)))
+        )
+      },
+      if (check_hvp) {
+        loss <- with_formals(names(x), \(a) Reduce(`+`, Map(\(o, w) sum(o * w), do.call(g, a), u)))
+        grad <- gradient(loss, wrt = names(t))
         list(hvp = tangent_along(grad, x, t), hvp_fd = central_difference(grad, x, t, h))
       }
     )
@@ -159,19 +190,33 @@ check_pushforward_rule <- function(name, case) {
   res <- run(x, t, u)
 
   labels <- c(paste("along", names(t)), "along all")
+  out_dtypes <- lapply(outs[is_float], dtype)
   for (i in seq_along(res$tangent)) {
-    expect_equal(dtype(res$tangent[[i]]), out_dtype)
-    expect_equal(as_array(res$tangent[[i]]), as_array(res$fd[[i]]), tolerance = 1e-6, label = labels[[i]])
+    for (k in seq_along(out_dtypes)) {
+      label <- if (length(out_dtypes) > 1L) sprintf("%s, output %d", labels[[i]], k) else labels[[i]]
+      expect_equal(dtype(res$tangent[[i]][[k]]), out_dtypes[[k]], label = label)
+      expect_equal(
+        as_array(res$tangent[[i]][[k]]),
+        as_array(res$fd[[i]][[k]]),
+        tolerance = case$tolerance,
+        label = label
+      )
+    }
   }
-  expect_equal(as_array(res$u_jt), as_array(res$jtu_t), tolerance = 1e-10)
+  if (has_pullback) {
+    expect_equal(as_array(res$u_jt), as_array(res$jtu_t), tolerance = 1e-10)
+  }
   for (nm in names(res$hvp)) {
     expect_equal(as_array(res$hvp[[nm]]), as_array(res$hvp_fd[[nm]]), tolerance = 1e-5, label = paste("hvp", nm))
   }
 
   x32 <- arrays_at("f32")
-  tangent32 <- jit(\(x, t) tangent_along(f, x, t))(x32, lapply(directions, anvl_array, dtype = "f32"))
-  expect_equal(dtype(tangent32), dtype(trace_fn(f, x32)$outputs[[1L]]))
-  expect_equal(as_array(tangent32), as_array(res$tangent[[length(res$tangent)]]), tolerance = 1e-4)
+  tangent32 <- jit(\(x, t) tangent_along(g, x, t))(x32, lapply(directions, anvl_array, dtype = "f32"))
+  outs32 <- trace_fn(g, x32)$outputs
+  for (k in seq_along(tangent32)) {
+    expect_equal(dtype(tangent32[[k]]), dtype(outs32[[k]]))
+    expect_equal(as_array(tangent32[[k]]), as_array(res$tangent[[length(res$tangent)]][[k]]), tolerance = 1e-4)
+  }
 }
 
 describe("pushforward rules", {
