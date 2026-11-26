@@ -347,7 +347,7 @@ A primitive without a vectorize rule only takes unbatched inputs.
 Batch axes last is also what XLA's kernels want (see [axis reversal](#axis-reversal)).
 
 Whether a value is batched follows from the graph alone: every output of a statement with a batched input is batched.
-So `out_axes` can return an output as it is only if no argument mapped over reaches it, even if the output happens to be the same for every slice.
+So `out_axes` can return an output as it is only if no batched value reaches it -- no argument mapped over and, with `randomness = "independent"`, no random draw -- even if the output happens to be the same for every slice.
 
 The replay goes into the enclosing trace, which an outer `vectorize()` may in turn replay, so nested calls compose: the rules of the outer call see the primitives the inner one left, such as a `dot_general` with the batching axes its rule added.
 A primitive whose rule turns the batch axis into a batching axis of its own must therefore take any number of them, as every level of nesting appends one more: vectorizing a dot product twice gives a `dot_general` with `batching_axes = list(c(2, 3), c(2, 3))`.

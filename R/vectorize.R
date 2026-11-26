@@ -30,8 +30,9 @@
 #' @param out_axes (`integer(1)` | `list()`)\cr
 #'   Along which axis to stack the outputs of `f`. Specified like `in_axes`,
 #'   but a tree follows the structure of what `f` returns. `NULL` returns an
-#'   output as it is, which only works for one that does not depend on the
-#'   arguments mapped over.
+#'   output as it is, which only works for one that does not differ between
+#'   the slices: it depends neither on the arguments mapped over nor, with
+#'   `randomness = "independent"`, on random numbers.
 #' @param randomness (`character(1)`)\cr
 #'   How the slices draw random numbers. With `"independent"` (the default),
 #'   they draw independent random numbers: every slice draws the numbers a loop
@@ -368,7 +369,7 @@ place_batch_axis <- function(out, batched, axis, size, what, call) {
     if (batched) {
       cli_abort(
         c(
-          "Can only return an output as it is if it does not depend on the arguments mapped over.",
+          "Can only return an output as it is if it does not differ between the slices.",
           x = "{what} does, but {.arg out_axes} is {.code NULL} for it."
         ),
         call = call

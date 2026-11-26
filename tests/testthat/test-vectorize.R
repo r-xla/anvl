@@ -103,10 +103,16 @@ describe("vectorize", {
     expect_equal(as_r(out[[2L]]), array(c(2, 4), dim = 2L))
   })
 
-  it("rejects out_axes NULL for an output that depends on the arguments mapped over", {
+  it("rejects out_axes NULL for an output that differs between the slices", {
     expect_error(
       jit(vectorize(function(x) list(a = x), out_axes = list(a = NULL)))(x),
       "Output `a` does"
+    )
+    # through the random numbers of every slice alone, too
+    f <- function(x) list(a = x, noise = nv_runif(shape = integer(), dtype = "f32"))
+    expect_error(
+      jit(vectorize(f, out_axes = list(a = -1L, noise = NULL)))(x),
+      "Output `noise` does"
     )
   })
 

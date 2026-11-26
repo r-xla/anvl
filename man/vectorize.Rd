@@ -27,8 +27,9 @@ one to a scalar.}
 \item{out_axes}{(\code{integer(1)} | \code{list()})\cr
 Along which axis to stack the outputs of \code{f}. Specified like \code{in_axes},
 but a tree follows the structure of what \code{f} returns. \code{NULL} returns an
-output as it is, which only works for one that does not depend on the
-arguments mapped over.}
+output as it is, which only works for one that does not differ between
+the slices: it depends neither on the arguments mapped over nor, with
+\code{randomness = "independent"}, on random numbers.}
 
 \item{randomness}{(\code{character(1)})\cr
 How the slices draw random numbers. With \code{"independent"} (the default),
