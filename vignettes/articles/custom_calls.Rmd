@@ -15,12 +15,9 @@ knitr::opts_chunk$set(
 ```
 
 {anvl} lowers every primitive to a StableHLO program, which XLA then compiles.
-Some operations have no StableHLO counterpart, or one that is awkward or
-numerically poor.
-For those, XLA offers *custom calls*: you write a C++ function, register it
-with the PJRT runtime under a name, and XLA invokes it at exactly that point
-in the compiled program.
-
+For a computation StableHLO cannot express well, XLA offers *custom calls*:
+you write a C++ function, register it with the PJRT runtime under a name, and
+XLA invokes it at exactly that point in the compiled program.
 This article walks the whole path on CPU, and then shows what changes for
 CUDA.
 
@@ -30,35 +27,61 @@ the XLA-compiled program, so there is nothing for {anvl}'s `quickr` backend
 to call: under `local_backend("quickr")` a function containing a custom call
 fails to compile with *does not support these primitives: custom_call*.
 
-## The example
+## When a custom call pays off
 
-We will implement `hypot(x, y)` -- the length of the hypotenuse,
-`sqrt(x^2 + y^2)`, computed without letting the intermediate `x^2 + y^2`
-over- or underflow.
-StableHLO has no `hypot` op, and the obvious composition loses:
+A custom call is opaque to XLA.
+XLA cannot fuse it with the operations around it, so its operands and result
+are written out to memory in full; [`gradient()`] cannot see into it; and it
+only runs where a handler was registered.
+A formula that anvl's operations can express -- however long -- is therefore
+better left to them: XLA fuses it into a single pass over the data, and it
+stays differentiable and portable.
+
+A custom call pays off where that does not work:
+
+- The work for one element is a **loop whose length depends on the element**:
+  a series summed until it converges, a continued fraction, a root search,
+  rejection sampling.
+  StableHLO's only loop is a `while` over the whole array, so every element
+  goes round it as often as the slowest one, and the whole state crosses the
+  loop boundary on every trip.
+  In C++, each element stops when it is done.
+- A library already does the job.
+  anvl's own linear algebra works this way: [`nv_chol()`], [`nv_qr()`] and
+  [`nv_svd()`] call LAPACK on CPU and cuSOLVER on CUDA.
+
+## The example: the Poisson upper tail
+
+We will compute the upper tail of the Poisson distribution, $P(X > k)$ for
+$X \sim \text{Poisson}(\lambda)$.
+Computing it as one minus the lower tail fails as soon as the tail is small:
 
 ```{r}
-library(anvl)
-x <- nv_array(c(3, 1e-200), dtype = "f64")
-y <- nv_array(c(4, 1e-200), dtype = "f64")
-nv_sqrt(x^2 + y^2)
+1 - ppois(60, 10)
+ppois(60, 10, lower.tail = FALSE)
 ```
 
-The second element should be roughly `1.41e-200`, but `x^2` underflowed to
-zero before the square root ever ran; symmetrically, inputs above `1e154`
-overflow to `Inf`.
-`f32` has the same problem, just at a much smaller exponent -- `1e-30`
-already squares to zero:
+R instead sums a series, starting from the density $d = P(X = k)$.
+Where $\lambda \le k$, it sums the upper series
+$$P(X > k) = d \left(\frac{\lambda}{k + 1} + \frac{\lambda^2}{(k + 1)(k + 2)} + \dots\right),$$
+and where $\lambda > k$ the lower one, which gives $P(X < k)$ and so
+$P(X > k) = 1 - P(X < k) - d$:
+$$P(X < k) = d \left(\frac{k}{\lambda} + \frac{k (k - 1)}{\lambda^2} + \dots\right).$$
+Each term is the previous one times a ratio below one, and the sum stops as
+soon as the rest can no longer change it.
+How soon that is depends on the element: $k = 1000$, $\lambda = 0.5$ needs 5
+terms, $k = \lambda = 1000$ needs 273.
 
-```{r}
-xf <- nv_array(c(3, 1e-30), dtype = "f32")
-yf <- nv_array(c(4, 1e-30), dtype = "f32")
-nv_sqrt(xf^2 + yf^2)
-```
-
-C's `std::hypot` rescales its inputs and gets both right, so we call it --
-for both dtypes, since a handler that only ever accepted `f64` would be of
-little use in code that computes in single precision.
+That is exactly the loop described above.
+anvl's own [`nv_ppois()`] sums these series in a `nv_while()` over the whole
+array, and it takes some 90 lines of carefully tuned anvl code -- unrolled
+steps, rescaling to stay in range, freezing elements that have converged --
+to make that fast.
+The C++ version below is a plain loop of a dozen lines.
+On our development machine, for a million elements with $\lambda$ between 1
+and 150, the first call of a jitted [`nv_ppois()`] took 5.5 s, most of it
+compiling, and later calls 1.3 s; the custom call took 0.5 s and 0.44 s, as a
+single-threaded loop.
 
 ## Step 1: Write the handler
 
@@ -77,70 +100,95 @@ is needed to compile against it.
 // [[Rcpp::plugins(cpp20)]]
 // [[Rcpp::depends(pjrt)]]
 #include <Rcpp.h>
+#include <cfloat>
 #include <cmath>
 #include "xla/ffi/api/ffi.h"
 
 using namespace xla::ffi;
 
+// P(X > k) for X ~ Poisson(lambda), with k a whole number >= 0 and
+// lambda > 0, from the same two series as R's ppois().
+template <typename T>
+static T ppois_upper(T k, T lambda) {
+  if (std::isnan(k) || std::isnan(lambda)) return k + lambda;
+  const T density = std::exp(k * std::log(lambda) - lambda - std::lgamma(k + 1));
+  // lambda <= k: P(X > k) = density * (r1 + r1 r2 + ...), r_n = lambda / (k + n)
+  // lambda > k:  P(X < k) = density * (r1 + r1 r2 + ...), r_n = (k - n + 1) / lambda
+  const bool upper = lambda <= k;
+  const T tol = (sizeof(T) == 4 ? FLT_EPSILON : DBL_EPSILON) / 2;
+  T term = 1, sum = 0;
+  for (int n = 1; n <= 100000; ++n) {
+    const T r = upper ? lambda / (k + n) : (k - n + 1) / lambda;
+    term *= r;
+    // The ratios only shrink, so this term and all after it add up to at most
+    // term / (1 - r). Stop as soon as that can no longer change the sum.
+    if (term <= (1 - r) * sum * tol) break;
+    sum += term;
+  }
+  return upper ? density * sum : 1 - density * (1 + sum);
+}
+
 // The actual work, once the element type is known.
 template <typename T>
-static Error hypot_impl(AnyBuffer x, AnyBuffer y, Result<AnyBuffer> out) {
+static Error ppois_upper_impl(AnyBuffer k, AnyBuffer lambda,
+                              Result<AnyBuffer> out) {
   size_t n = out->element_count();
-  if (x.element_count() != n || y.element_count() != n) {
-    return Error::InvalidArgument("hypot: operands must have the same size");
+  if (k.element_count() != n || lambda.element_count() != n) {
+    return Error::InvalidArgument("ppois_upper: operands must have the same size");
   }
-  const T *xp = x.typed_data<T>();
-  const T *yp = y.typed_data<T>();
+  const T *kp = k.typed_data<T>();
+  const T *lp = lambda.typed_data<T>();
   T *op = out->typed_data<T>();
   for (size_t i = 0; i < n; ++i) {
-    op[i] = std::hypot(xp[i], yp[i]);
+    op[i] = ppois_upper(kp[i], lp[i]);
   }
   return Error::Success();
 }
 
-// Dispatch on the operand dtype; f32 and f64 are what std::hypot covers.
-static Error do_hypot(AnyBuffer x, AnyBuffer y, Result<AnyBuffer> out) {
-  DataType dt = x.element_type();
-  if (y.element_type() != dt || out->element_type() != dt) {
-    return Error::InvalidArgument("hypot: operands and result must have the "
-                                  "same dtype");
+// Dispatch on the dtype; f32 and f64 are what the loop is written for.
+static Error do_ppois_upper(AnyBuffer k, AnyBuffer lambda,
+                            Result<AnyBuffer> out) {
+  DataType dt = k.element_type();
+  if (lambda.element_type() != dt || out->element_type() != dt) {
+    return Error::InvalidArgument("ppois_upper: operands and result must have "
+                                  "the same dtype");
   }
   switch (dt) {
     case DataType::F32:
-      return hypot_impl<float>(x, y, out);
+      return ppois_upper_impl<float>(k, lambda, out);
     case DataType::F64:
-      return hypot_impl<double>(x, y, out);
+      return ppois_upper_impl<double>(k, lambda, out);
     default:
-      return Error::InvalidArgument("hypot: only f32 and f64 are supported");
+      return Error::InvalidArgument("ppois_upper: only f32 and f64 are supported");
   }
 }
 
-XLA_FFI_DEFINE_HANDLER(hypot_handler, do_hypot,
+XLA_FFI_DEFINE_HANDLER(ppois_upper_handler, do_ppois_upper,
                        Ffi::Bind()
-                           .Arg<AnyBuffer>()
-                           .Arg<AnyBuffer>()
-                           .Ret<AnyBuffer>());
+                           .Arg<AnyBuffer>()   // k
+                           .Arg<AnyBuffer>()   // lambda
+                           .Ret<AnyBuffer>()); // P(X > k)
 
 // [[Rcpp::export]]
-SEXP hypot_handler_ptr() {
-  return R_MakeExternalPtr((void *)hypot_handler, R_NilValue, R_NilValue);
+SEXP ppois_upper_handler_ptr() {
+  return R_MakeExternalPtr((void *)ppois_upper_handler, R_NilValue, R_NilValue);
 }
 ```
 
 Three things are happening here:
 
-- `hypot_impl<T>()` is the implementation, and `do_hypot()` picks the `T` at
-  run time. `AnyBuffer` is a buffer of any dtype and rank, so the handler
-  gets to look at `element_type()` and decide. The alternative is a
+- `ppois_upper_impl<T>()` is the implementation, and `do_ppois_upper()` picks
+  the `T` at run time. `AnyBuffer` is a buffer of any dtype and rank, so the
+  handler gets to look at `element_type()` and decide. The alternative is a
   statically typed `Buffer<DataType::F64>`, which pins the handler to one
   dtype and makes XLA reject everything else -- fine for a kernel that only
   ever runs in one precision, but not for one meant to be used from generic
   code.
 - `XLA_FFI_DEFINE_HANDLER()` attaches the *binding specification* to it.
-  Without it the runtime has no way to know that `do_hypot` wants two
-  operands and one result, in that order. The macro defines `hypot_handler`,
-  a plain function pointer.
-- `hypot_handler_ptr()` hands that pointer to R as an external pointer,
+  Without it the runtime has no way to know that `do_ppois_upper` wants two
+  operands and one result, in that order. The macro defines
+  `ppois_upper_handler`, a plain function pointer.
+- `ppois_upper_handler_ptr()` hands that pointer to R as an external pointer,
   which is what the registration function below expects. In a package this
   getter is unnecessary: declare the handler with
   `XLA_FFI_DEFINE_HANDLER_SYMBOL()` instead and look the resulting
@@ -151,28 +199,37 @@ handler has to do it: `typed_data<T>()` only asserts that `T` matches in a
 debug build, and reinterprets the bytes otherwise.
 Hence the explicit comparison of the three `element_type()`s and the
 `default:` branch -- an `i32` operand comes back as
-*hypot: only f32 and f64 are supported* rather than as nonsense.
+*ppois_upper: only f32 and f64 are supported* rather than as nonsense.
 
 A handler may be called from XLA's worker threads, so it must not touch R's
 C API (no allocation, no `Rf_error()`, no printing).
 Report failures by returning an `Error` instead -- XLA aborts the execution
 and {pjrt} re-raises it as an R error.
 
+The loop above handles one element at a time on one thread, which is where
+a production kernel goes further.
+Binding `.Ctx<ThreadPool>()` hands the handler XLA's thread pool to split the
+elements across, and the
+[{highway}](https://github.com/louisaslett/highway) package, used through
+`LinkingTo: highway`, provides Google's Highway library for SIMD: one kernel
+that works on several elements per instruction, compiled for every
+instruction set of the CPU and picked at run time.
+
 ## Step 2: Register it with PJRT
 
 ```{r}
 pjrt::pjrt_register_custom_call(
-  "anvl_hypot",
-  list(cpu = hypot_handler_ptr())
+  "mypkg_ppois_upper",
+  list(cpu = ppois_upper_handler_ptr())
 )
 ```
 
 The target name is a process-global key, so prefix it with something
-specific to your package.
+specific to your package -- `mypkg` stands in for its name here.
 The second argument is one handler per platform, `"cpu"` (a synonym for
 PJRT's own `"host"`) and `"cuda"`.
 Platforms you leave out simply have no implementation: running the call
-there aborts with *No FFI handler registered for `anvl_hypot`*.
+there aborts with *No FFI handler registered for `mypkg_ppois_upper`*.
 
 Registration is *deferred*: if the plugin for a platform is not loaded yet,
 the handler is queued and registered when it is.
@@ -182,74 +239,67 @@ the package is unloaded.
 
 ## Step 3: Call it
 
-[`nv_custom_call()`] takes the target name, the operands, and the shape and
-dtype of each result.
+[`nv_custom_call()`] takes the target name, the operands, and the dtype and
+shape of each result as an [`AbstractArray()`].
 anvl cannot infer the result types -- the handler decides them -- but
 nothing forces you to write them out as literals: [`dtype()`] and [`shape()`]
 of the operands are available at trace time, so a generic call reads
 
 ```{r}
-nv_custom_call("anvl_hypot", x, y, output_types = AbstractArray(dtype(x), shape(x)))
-```
-
-and works for `f32` just as well:
-
-```{r}
-nv_custom_call("anvl_hypot", xf, yf, output_types = AbstractArray(dtype(xf), shape(xf)))
+library(anvl)
+k <- nv_array(c(0, 3, 30, 60), dtype = "f64")
+lambda <- nv_array(c(0.5, 10, 10, 10), dtype = "f64")
+nv_custom_call(
+  "mypkg_ppois_upper",
+  k,
+  lambda,
+  output_types = AbstractArray(dtype(k), shape(k))
+)
+ppois(c(0, 3, 30, 60), c(0.5, 10, 10, 10), lower.tail = FALSE)
 ```
 
 Wrapping that up gives an ordinary-looking `nv_*` function.
-The handler requires both operands to have the same dtype, and anvl's own
-API functions promote before they compute, so the wrapper does too --
-[`nv_promote_to_common()`] is the same helper the built-in binary operations
-use:
+The handler requires both operands to have the same dtype and size, and
+anvl's own API functions promote and broadcast before they compute, so the
+wrapper does too, with the same helpers the built-in functions use:
 
 ```{r}
-nv_hypot <- function(x, y) {
-  operands <- nv_promote_to_common(x, y)
+nv_ppois_upper <- function(k, lambda) {
+  args <- do.call(nv_broadcast_arrays, nv_promote_to_common(k, lambda))
   nv_custom_call(
-    "anvl_hypot",
-    operands[[1L]],
-    operands[[2L]],
-    output_types = AbstractArray(dtype(operands[[1L]]), shape(operands[[1L]]))
+    "mypkg_ppois_upper",
+    args[[1L]],
+    args[[2L]],
+    output_types = AbstractArray(dtype(args[[1L]]), shape(args[[1L]]))
   )
 }
 
-nv_hypot(x, y)
-nv_hypot(xf, yf)
-# an f32 and an f64 operand meet as f64
-nv_hypot(xf, y)
+# a scalar lambda meets four counts
+nv_ppois_upper(k, nv_scalar(10, dtype = "f64"))
 ```
 
-That is the whole binding.
 It works the same inside a JIT-compiled function, where the custom call
 becomes one op among the others -- and since the output types are derived
 from the traced operands, one `jit()`ed function serves both dtypes:
 
 ```{r}
-f <- jit(function(x, y) nv_sum(nv_hypot(x, y)))
-f(x, y)
-f(xf, yf)
+f <- jit(function(k, lambda) nv_sum(nv_ppois_upper(k, lambda)))
+f(k, lambda)
+f(nv_convert(k, "f32"), nv_convert(lambda, "f32"))
 ```
 
-The arguments worth knowing about:
+The handler computes the density through `lgamma()`, which loses a few
+digits for large $k$; [`nv_ppois()`] uses a more careful formula there.
+Matching R's last digits is a matter of numerics, not of the custom call.
 
-- `output_types` is an [`AbstractArray()`] -- a data type and a shape -- or a
-  list of them for a handler with several results. Pass a bare
-  `AbstractArray()` and you get a bare array back; pass a list and you get a
-  list.
+The other arguments of `nv_custom_call()` worth knowing about:
+
 - `attrs` is a named list of values the handler reads through
-  `.Attr<T>("name")` or `.Attrs<Dictionary>()`. Scalars, strings and vectors
-  are converted using anvl's usual dtype defaults; pass a
-  [`stablehlo::ScalarAttr()`] and friends to pin a different one.
+  `.Attr<T>("name")` or `.Attrs<Dictionary>()`. Strings, and numbers and
+  logicals at the default data type of their category, are converted for
+  you; pass a [`stablehlo::ScalarAttr()`] and friends to pin a data type.
 - `operand_layouts` / `result_layouts` fix the memory layout XLA hands the
-  handler: one entry per operand or result, listing its axes in
-  minor-to-major order. They default to R's own column-major order
-  (`seq_len(n)`, axis 1 varying fastest), so the handler sees an array laid
-  out exactly as R lays out the vector it was made from -- which is also
-  what a LAPACK routine wants. `hypot_impl()` walks its equally shaped
-  buffers in lockstep and does not care. A handler written for row-major
-  (C order) buffers wants `rev(seq_len(n))` instead.
+  handler -- see the next section.
 - `aliases` says which operand's buffer each result is written into, so an
   in-place kernel does not force a copy. `aliases = 1L` on a single-result
   call hands the handler the same pointer for operand 1 and the result.
@@ -257,6 +307,39 @@ The arguments worth knowing about:
   defaults to `TRUE` exactly when `output_types` is `NULL`, which is how you
   write a printing or logging call; such a call returns its operands
   unchanged.
+
+## Shapes and layouts: what the handler sees
+
+anvl stores an array the way R does: in column-major order, the first axis
+varying fastest.
+XLA's arrays are row-major, the last axis varying fastest.
+The two agree once every axis is reversed, so anvl hands XLA an array of R
+shape $(d_1, \dots, d_n)$ as one of shape $(d_n, \dots, d_1)$, and the
+bytes stay exactly as R has them.
+A handler therefore sees
+
+- `dimensions()` in reverse order: an R $3 \times 2$ matrix arrives with
+  dimensions `{2, 3}`;
+- the data in R's order: element `[i, j]` of that matrix at offset
+  `(i - 1) + 3 * (j - 1)`, as `matrix()` lays it out and as LAPACK, written
+  for Fortran, expects.
+
+`operand_layouts` and `result_layouts` take one entry per operand or result:
+its R axes, from the one varying fastest in memory to the one varying
+slowest.
+The default, `seq_len(n)` for an $n$-axis array, is R's own order, described
+above.
+A handler written for row-major (C order) buffers asks for
+`rev(seq_len(n))` instead: XLA then rearranges the data before the call, and
+element `[i, j]` sits at offset `2 * (i - 1) + (j - 1)`.
+`dimensions()` stays the reversed R shape either way; the layout only
+decides the order of the bytes.
+Keep the default for a call that may see an array with an axis of size zero:
+XLA's CPU compiler crashes compiling any other layout for one.
+
+The Poisson handler treats its buffers as flat lists of elements, matched up
+by position, so any layout works for it as long as all three buffers share
+one -- which the default guarantees.
 
 ## Making it a primitive
 
@@ -266,31 +349,30 @@ It also shows up in a traced graph as a generic `custom_call` rather than
 an operation with a name of its own.
 
 Both are fixed the same way -- by giving the call its own primitive with a
-pullback rule, exactly as in
-[Adding a Primitive](extending_primitive.html).
+pullback rule, exactly as in [Adding a Primitive](extending_primitive.html).
 The dtype stays generic here too: the shape rule propagates whatever dtype
 the operands were traced with, and the lowering rule is handed the
 `output_types` that follow from it.
 That rule reaches one level lower than `nv_custom_call()` does, emitting
 [`stablehlo::hlo_custom_call()`] directly, because a rule is handed
 `FuncValue`s rather than arrays.
-Those speak XLA's order: an array of R shape `(d1, ..., dn)` is an XLA array
-of shape `(dn, ..., d1)`, so XLA's default row-major layout, `n - 1` down to
-`0`, is R's column-major one:
+Those speak XLA's order: their shapes are the R shapes reversed, and the
+layouts are XLA's, which number the axes of that reversed shape from zero.
+XLA's default layout, `n - 1` down to `0`, is R's column-major order:
 
 ```{r}
-prim_hypot <- new_primitive("hypot", function(x, y) {
-  graph_desc_add(self, list(x = x, y = y), infer_fn = function(x, y) {
-    list(AbstractArray(dtype = dtype(x), shape = shape(x)))
+prim_ppois_upper <- new_primitive("ppois_upper", function(k, lambda) {
+  graph_desc_add(self, list(k = k, lambda = lambda), infer_fn = function(k, lambda) {
+    list(AbstractArray(dtype = dtype(k), shape = shape(k)))
   })[[1L]]
 })
 
-prim_hypot[["stablehlo"]] <- function(x, y, output_types) {
-  layout <- rev(seq_along(shape(x)) - 1L)
+prim_ppois_upper[["stablehlo"]] <- function(k, lambda, output_types) {
+  layout <- rev(seq_along(shape(k)) - 1L)
   list(stablehlo::hlo_custom_call(
-    x,
-    y,
-    call_target_name = "anvl_hypot",
+    k,
+    lambda,
+    call_target_name = "mypkg_ppois_upper",
     api_version = 4L,
     has_side_effect = FALSE,
     output_types = output_types,
@@ -299,38 +381,40 @@ prim_hypot[["stablehlo"]] <- function(x, y, output_types) {
   ))
 }
 
-# d/dx hypot(x, y) = x / hypot(x, y), and the forward result is already there
-prim_hypot[["pullback"]] <- rule_pullback(function(
+prim_ppois_upper[["pullback"]] <- rule_pullback(function(
   inputs,
   outputs,
   grads,
   params,
   required
 ) {
-  x <- inputs[[1L]]
-  y <- inputs[[2L]]
-  r <- outputs[[1L]]
-  grad <- grads[[1L]]
+  k <- inputs[[1L]]
+  lambda <- inputs[[2L]]
   list(
-    if (required[[1L]]) prim_mul(grad, prim_div(x, r)),
-    if (required[[2L]]) prim_mul(grad, prim_div(y, r))
+    # P(X > k) only changes where k passes a whole number
+    if (required[[1L]]) nv_fill_like(k, 0),
+    # d/dlambda P(X > k) = P(X = k)
+    if (required[[2L]]) grads[[1L]] * nv_dpois(k, lambda)
   )
 })
 ```
 
+The pullback rule is ordinary anvl code: XLA runs the handler for the
+values, and the gradient is computed from them by the operations the rule
+emits.
 Now the call differentiates, in either precision:
 
 ```{r}
-g <- function(x, y) nv_sum(prim_hypot(x, y))
-a <- nv_array(c(3, 6), dtype = "f64")
-b <- nv_array(c(4, 8), dtype = "f64")
-jit(gradient(g))(a, b)
-jit(gradient(g))(nv_convert(a, "f32"), nv_convert(b, "f32"))
+g <- jit(gradient(function(k, lambda) nv_sum(prim_ppois_upper(k, lambda)), wrt = "lambda"))
+g(k, lambda)
+dpois(c(0, 3, 30, 60), c(0.5, 10, 10, 10))
+g(nv_convert(k, "f32"), nv_convert(lambda, "f32"))
 ```
 
-A real `nv_hypot()` would then promote its arguments as above and call
-`prim_hypot()` instead of `nv_custom_call()`: the promotion belongs in the
-`nv_*` layer, the primitive takes the dtypes as they come.
+A real `nv_ppois_upper()` would then promote and broadcast its arguments as
+above and call `prim_ppois_upper()` instead of `nv_custom_call()`: the
+promotion belongs in the `nv_*` layer, the primitive takes the dtypes as
+they come.
 
 ## Shipping this in a package
 
@@ -346,8 +430,8 @@ would:
    ```r
    .onLoad <- function(libname, pkgname) {
      pjrt::pjrt_register_custom_call(
-       "anvl_hypot",
-       list(cpu = getNativeSymbolInfo("HypotHandler", PACKAGE = pkgname)$address),
+       "mypkg_ppois_upper",
+       list(cpu = getNativeSymbolInfo("PpoisUpperHandler", PACKAGE = pkgname)$address),
        .package = pkgname
      )
    }
@@ -358,17 +442,49 @@ would:
 Nothing on the R side changes for a GPU.
 A `stablehlo.custom_call` names a *target*, not an implementation, and
 `pjrt_register_custom_call()` already takes one handler per platform, so the
-same `nv_hypot(x, y)` runs the CUDA handler as soon as its operands live on
-a CUDA device:
+same `nv_ppois_upper(k, lambda)` runs the CUDA handler as soon as its
+operands live on a CUDA device:
 
 ```{r, eval = FALSE}
-x <- nv_array(c(3, 1e-200), dtype = "f64", device = "cuda")
-y <- nv_array(c(4, 1e-200), dtype = "f64", device = "cuda")
-nv_hypot(x, y)
+k <- nv_array(c(0, 3, 30, 60), dtype = "f64", device = "cuda")
+lambda <- nv_array(c(0.5, 10, 10, 10), dtype = "f64", device = "cuda")
+nv_ppois_upper(k, lambda)
 ```
 
+The kernel suits a GPU well: one thread per element, each running its own
+loop.
+The threads of a warp -- 32 on NVIDIA hardware -- still wait for the slowest
+among them, but that is the slowest of 32 elements rather than of the whole
+array.
 What changes is the handler, and above all how it is built: R's build system
 knows how to compile `.cpp`, not `.cu`.
+
+### Share the per-element function
+
+`ppois_upper()` is the same for both platforms, so move it into a header
+that the CPU handler and the CUDA kernel both include.
+Under `nvcc`, it has to be marked `__host__ __device__` to be callable from
+the kernel; everything it calls -- `std::exp()`, `std::log()`,
+`std::lgamma()`, `std::isnan()`, and `FLT_EPSILON` rather than
+`std::numeric_limits` -- is available in device code too:
+
+```c++
+// src/ppois_upper.h -- included by the CPU handler and the CUDA kernel
+#pragma once
+#include <cfloat>
+#include <cmath>
+
+#ifdef __CUDACC__
+#define MYPKG_HOST_DEVICE __host__ __device__
+#else
+#define MYPKG_HOST_DEVICE
+#endif
+
+template <typename T>
+MYPKG_HOST_DEVICE T ppois_upper(T k, T lambda) {
+  // ... the body from Step 1, unchanged
+}
+```
 
 ### Keep the kernel and the handler in separate files
 
@@ -384,74 +500,82 @@ The kernel itself is a template, but `extern "C"` cannot be, so the `.cu`
 exposes one launcher per supported dtype:
 
 ```c++
-// src/hypot_kernel.cu -- compiled by nvcc
+// src/ppois_upper_kernel.cu -- compiled by nvcc
 #include <cuda_runtime.h>
+#include "ppois_upper.h"
 
 template <typename T>
-__global__ void hypot_kernel(const T *x, const T *y, T *out, size_t n) {
-  size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < n) out[i] = hypot(x[i], y[i]);
+__global__ void ppois_upper_kernel(const T *k, const T *lambda, T *out,
+                                   size_t n) {
+  size_t i = blockIdx.x * static_cast<size_t>(blockDim.x) + threadIdx.x;
+  if (i < n) out[i] = ppois_upper(k[i], lambda[i]);
 }
 
 template <typename T>
-static void launch(void *stream, const T *x, const T *y, T *out, size_t n) {
+static void launch(void *stream, const T *k, const T *lambda, T *out,
+                   size_t n) {
   const int threads = 256;
   const int blocks = static_cast<int>((n + threads - 1) / threads);
-  hypot_kernel<T><<<blocks, threads, 0, static_cast<cudaStream_t>(stream)>>>(
-      x, y, out, n);
+  ppois_upper_kernel<T><<<blocks, threads, 0, static_cast<cudaStream_t>(stream)>>>(
+      k, lambda, out, n);
 }
 
 // The only symbols the rest of the package sees.
-extern "C" void anvl_launch_hypot_f32(void *stream, const float *x,
-                                      const float *y, float *out, size_t n) {
-  launch<float>(stream, x, y, out, n);
+extern "C" void mypkg_launch_ppois_upper_f32(void *stream, const float *k,
+                                             const float *lambda, float *out,
+                                             size_t n) {
+  launch<float>(stream, k, lambda, out, n);
 }
 
-extern "C" void anvl_launch_hypot_f64(void *stream, const double *x,
-                                      const double *y, double *out, size_t n) {
-  launch<double>(stream, x, y, out, n);
+extern "C" void mypkg_launch_ppois_upper_f64(void *stream, const double *k,
+                                             const double *lambda,
+                                             double *out, size_t n) {
+  launch<double>(stream, k, lambda, out, n);
 }
 ```
 
 ```c++
-// src/hypot_cuda.cpp -- compiled by R's C++ toolchain, no CUDA headers
+// src/ppois_upper_cuda.cpp -- compiled by R's C++ toolchain, no CUDA headers
 #include "xla/ffi/api/ffi.h"
 
 using namespace xla::ffi;
 
-extern "C" void anvl_launch_hypot_f32(void *stream, const float *x,
-                                      const float *y, float *out, size_t n);
-extern "C" void anvl_launch_hypot_f64(void *stream, const double *x,
-                                      const double *y, double *out, size_t n);
+extern "C" void mypkg_launch_ppois_upper_f32(void *stream, const float *k,
+                                             const float *lambda, float *out,
+                                             size_t n);
+extern "C" void mypkg_launch_ppois_upper_f64(void *stream, const double *k,
+                                             const double *lambda,
+                                             double *out, size_t n);
 
-static Error do_hypot_cuda(void *stream, AnyBuffer x, AnyBuffer y,
-                           Result<AnyBuffer> out) {
+static Error do_ppois_upper_cuda(void *stream, AnyBuffer k, AnyBuffer lambda,
+                                 Result<AnyBuffer> out) {
   size_t n = out->element_count();
-  if (x.element_count() != n || y.element_count() != n) {
-    return Error::InvalidArgument("hypot: operands must have the same size");
+  if (k.element_count() != n || lambda.element_count() != n) {
+    return Error::InvalidArgument("ppois_upper: operands must have the same size");
   }
-  DataType dt = x.element_type();
-  if (y.element_type() != dt || out->element_type() != dt) {
-    return Error::InvalidArgument("hypot: operands and result must have the "
-                                  "same dtype");
+  DataType dt = k.element_type();
+  if (lambda.element_type() != dt || out->element_type() != dt) {
+    return Error::InvalidArgument("ppois_upper: operands and result must have "
+                                  "the same dtype");
   }
   // these are *device* pointers; only the kernel may dereference them
   switch (dt) {
     case DataType::F32:
-      anvl_launch_hypot_f32(stream, x.typed_data<float>(),
-                            y.typed_data<float>(), out->typed_data<float>(), n);
+      mypkg_launch_ppois_upper_f32(stream, k.typed_data<float>(),
+                                   lambda.typed_data<float>(),
+                                   out->typed_data<float>(), n);
       return Error::Success();
     case DataType::F64:
-      anvl_launch_hypot_f64(stream, x.typed_data<double>(),
-                            y.typed_data<double>(), out->typed_data<double>(),
-                            n);
+      mypkg_launch_ppois_upper_f64(stream, k.typed_data<double>(),
+                                   lambda.typed_data<double>(),
+                                   out->typed_data<double>(), n);
       return Error::Success();
     default:
-      return Error::InvalidArgument("hypot: only f32 and f64 are supported");
+      return Error::InvalidArgument("ppois_upper: only f32 and f64 are supported");
   }
 }
 
-XLA_FFI_DEFINE_HANDLER_SYMBOL(HypotHandlerCuda, do_hypot_cuda,
+XLA_FFI_DEFINE_HANDLER_SYMBOL(PpoisUpperHandlerCuda, do_ppois_upper_cuda,
                               Ffi::Bind()
                                   .Ctx<PlatformStream<void *>>()
                                   .Arg<AnyBuffer>()
@@ -498,7 +622,8 @@ CUDA_LIB = $(shell "$(R_HOME)/bin/Rscript" -e 'cat(pjrt.cuda::lib_path())')
 
 NVCC = $(CUDA_BIN)/nvcc
 
-OBJECTS = hypot.o hypot_cuda.o hypot_kernel.o
+CXX_STD = CXX20
+OBJECTS = ppois_upper.o ppois_upper_cuda.o ppois_upper_kernel.o
 PKG_LIBS = -L$(CUDA_LIB) -l:libcudart.so.13 -Wl,-rpath,$(CUDA_LIB)
 
 %.o: %.cu
@@ -525,11 +650,11 @@ symbol <- function(name, pkgname) {
 
 .onLoad <- function(libname, pkgname) {
   handlers <- list(
-    cpu = symbol("HypotHandler", pkgname),
-    cuda = symbol("HypotHandlerCuda", pkgname)
+    cpu = symbol("PpoisUpperHandler", pkgname),
+    cuda = symbol("PpoisUpperHandlerCuda", pkgname)
   )
   pjrt::pjrt_register_custom_call(
-    "anvl_hypot",
+    "mypkg_ppois_upper",
     Filter(Negate(is.null), handlers),
     .package = pkgname
   )
@@ -537,4 +662,5 @@ symbol <- function(name, pkgname) {
 ```
 
 Registering only `cpu` is not an error; a program that needs the missing
-platform is what fails, with *No FFI handler registered for `anvl_hypot`*.
+platform is what fails, with *No FFI handler registered for
+`mypkg_ppois_upper`*.
