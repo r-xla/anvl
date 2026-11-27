@@ -9,7 +9,10 @@ describe("nv_subset and nv_subset_assign", {
       arg <- if (is_subset_full(spec[[i]])) {
         seq(shape[i])
       } else if (is_subset_range(spec[[i]])) {
-        (spec[[i]]$start):(spec[[i]]$start + spec[[i]]$size - 1L)
+        # A decreasing range is stored ascending plus a `reversed` flag, so the
+        # base R argument has to be turned back around to match.
+        rng <- (spec[[i]]$start):(spec[[i]]$start + spec[[i]]$size - 1L)
+        if (spec[[i]]$reversed) rev(rng) else rng
       } else if (is_subset_index(spec[[i]])) {
         drop <- TRUE
         spec[[i]]$index
@@ -178,6 +181,18 @@ describe("nv_subset and nv_subset_assign", {
     check(c(6L), 1:6)
   })
 
+  it("1D: range that counts down", {
+    check(c(10L), 8:3)
+  })
+
+  it("2D: ranges that count down in both axes", {
+    check(c(6L, 8L), 4:2, 6:3)
+  })
+
+  it("3D: range that counts down next to a gather and a scalar", {
+    check(c(4L, 5L, 6L), array(c(1L, 3L)), 2L, 5:2)
+  })
+
   it("1D: gather with non-ascending indices", {
     check(c(10L), array(c(7L, 3L, 1L)))
   })
@@ -218,8 +233,8 @@ describe("nv_subset and nv_subset_assign", {
   it("scatter with all-colliding destination indices yields a valid write", {
     x <- nv_array(1:100)
     result <- as_array(nv_subset_assign(x, array(rep(1L, 100)), value = nv_array(101:200)))
-    expect_true(as.vector(result)[1L] %in% 101:200)
-    expect_equal(as.vector(result)[-1L], 2:100)
+    expect_true(as.integer(result)[1L] %in% 101:200)
+    expect_equal(as.integer(result)[-1L], 2:100)
   })
 
   it("subset errors on R vector of length > 1", {
@@ -313,6 +328,120 @@ describe("nv_subset and nv_subset_assign", {
     expect_error(x[array(c(0, 5))], "out of bounds")
   })
 
+  it("rejects an array() index that contains NA", {
+    x <- nv_matrix(1:6, nrow = 2L)
+    expect_error(x[array(c(NA, 1L)), ], "the index array contains NA")
+    expect_error(x[array(c(NA, 1)), ], "Each subset must be")
+    expect_error(nv_subset_assign(x, , array(c(2L, NA)), value = 0L), "For axis 2")
+  })
+
+  it("names the axis a rejected subset came from", {
+    x <- nv_array(array(1:24, dim = c(2, 3, 4)))
+    expect_error(x[1, 99, 1], "out of bounds for axis 2")
+    expect_error(x[1, 1:99, 1], "out of bounds for axis 2")
+    expect_error(x[1, array(c(9L)), 1], "out of bounds for axis 2")
+    expect_error(x[1, 1, 99], "out of bounds for axis 3")
+    expect_error(x[1, 2.5, 1], "For axis 2")
+    expect_error(x[1, c(1, 2), 1], "for axis 2")
+    expect_error(x[1, nv_array(c(1.5, 2.5)), 1], "for axis 2")
+    expect_error(x[1, array(1:4, dim = c(2, 2)), 1], "for axis 2 has 2 axes")
+    # The same is true of the assignment path.
+    expect_error(
+      {
+        x[1, 99, 1] <- 0L
+      },
+      "out of bounds for axis 2"
+    )
+  })
+
+  it("lists every out-of-bounds index, once", {
+    x <- nv_array(1:3)
+    expect_error(x[array(c(0L, 9L, 9L))], "indices 0 and 9 are out of bounds")
+    expect_error(x[array(c(9L))], "index 9 is out of bounds")
+  })
+
+  it("selects in reverse for a range that counts down", {
+    # Used to reach prim_gather() and fail there on a negative slice size.
+    r <- 1:10
+    x <- nv_array(r)
+    # A range keeps the axis, so the result is a 1-D array where base R has a
+    # dimensionless vector. Compare the values via as.integer(): at int = i64
+    # the array comes back as a bit64::integer64, whose storage is a double, so
+    # as.vector() would strip the class and expose the bit pattern.
+    vals <- function(v) as.integer(as_array(v))
+    expect_equal(vals(x[3:1]), r[3:1])
+    expect_equal(vals(x[10:1]), r[10:1])
+    expect_equal(vals(x[2:2]), r[2:2])
+
+    m <- array(1:12, dim = c(3, 4))
+    y <- nv_array(m)
+    expect_equal(vals(y[3:1, 2:1]), as.integer(m[3:1, 2:1]))
+    expect_equal(shape(y[3:1, 2:1]), c(3L, 2L))
+
+    # Assignment follows the same order as base R.
+    rr <- 1:5
+    rr[4:2] <- c(100L, 200L, 300L)
+    xx <- nv_array(1:5)
+    xx[4:2] <- nv_array(c(100L, 200L, 300L))
+    expect_equal(vals(xx), rr)
+
+    # Bounds are checked whichever way the range runs.
+    expect_error(x[11:1], "out of bounds for axis 1")
+    expect_error(x[3:0], "out of bounds for axis 1")
+  })
+
+  it("reverses the right output axis when other axes are dropped or gathered", {
+    # A decreasing range lowers to the ascending slice plus a reverse, so the
+    # axis to reverse has to be found in the *output*, after scalar indices
+    # have dropped theirs and gather axes have taken their places.
+    vals <- function(v) as.integer(as_array(v))
+    m <- array(1:12, dim = c(3, 4))
+    y <- nv_array(m)
+
+    expect_equal(vals(y[2, 4:1]), as.integer(m[2, 4:1]))
+    expect_equal(vals(y[3:1, 2]), as.integer(m[3:1, 2]))
+    expect_equal(vals(y[3:1, array(c(1L, 3L))]), as.integer(m[3:1, c(1, 3)]))
+    expect_equal(vals(y[array(c(1L, 3L)), 4:1]), as.integer(m[c(1, 3), 4:1]))
+
+    # Assignment has to reverse the value along the same output axis.
+    expected <- m
+    expected[3:1, 2] <- c(10L, 20L, 30L)
+    yy <- nv_array(m)
+    yy[3:1, 2] <- nv_array(c(10L, 20L, 30L))
+    expect_equal(vals(yy), as.integer(expected))
+  })
+
+  it("differentiates through a range that counts down", {
+    m <- array(as.double(1:12), dim = c(3, 4))
+    y <- nv_array(m)
+    f <- function(y) nv_sum(y[3:1, ] * nv_array(m))
+    expect_equal(as_array(jit(gradient(f))(y)[[1L]]), m[3:1, ])
+  })
+
+  it("reports too many subsets the same way from every path", {
+    x <- nv_array(array(1:24, dim = c(2, 3, 4)))
+    msg <- "Got 4 for an array of shape \\(2x3x4\\), which has 3 axes"
+    expect_error(x[1, 1, 1, 1], msg)
+    expect_error(nv_subset(x, 1, 1, 1, 1), msg)
+    expect_error(
+      {
+        x[1, 1, 1, 1] <- 0L
+      },
+      msg
+    )
+    # A rank-1 array is singular.
+    expect_error(nv_array(1:10)[1, 1], "which has 1 axis")
+  })
+
+  it("errors on a dynamic range index", {
+    # Used to build a SubsetRange from a field IotaArray does not have.
+    x <- nv_array(1:10)
+    expect_error(
+      x[IotaArray(shape = 3L, dtype = "i32", axis = 1L)],
+      "dynamic range is not supported"
+    )
+  })
+
   it("works with all-static indices via [", {
     r_arr <- array(1:24, dim = c(2, 3, 4))
     x <- nv_array(r_arr)
@@ -357,21 +486,21 @@ describe("subset_specs_start_indices", {
   it("returns all 1s for SubsetFull specs", {
     subsets <- list(SubsetFull(5L), SubsetFull(3L))
     result <- subset_specs_start_indices(subsets)
-    expect_equal(dtype(result), as_dtype("i32"))
+    expect_dtype(result, "i32")
     expect_equal(as.integer(result), c(1L, 1L))
   })
 
   it("returns start values for SubsetRange specs", {
     subsets <- list(SubsetRange(3L, 5L), SubsetRange(2L, 4L))
     result <- subset_specs_start_indices(subsets)
-    expect_equal(dtype(result), as_dtype("i32"))
+    expect_dtype(result, "i32")
     expect_equal(as.integer(result), c(3L, 2L))
   })
 
   it("returns the index for scalar SubsetIndices", {
     subsets <- list(SubsetIndex(nv_scalar(4L, dtype = "i64")))
     result <- subset_specs_start_indices(subsets)
-    expect_equal(dtype(result), as_dtype("i64"))
+    expect_dtype(result, "i64")
     expect_equal(as.integer(result), 4L)
   })
 
@@ -382,14 +511,14 @@ describe("subset_specs_start_indices", {
       SubsetIndex(nv_scalar(3L, dtype = "i64"))
     )
     result <- subset_specs_start_indices(subsets)
-    expect_equal(dtype(result), as_dtype("i64"))
+    expect_dtype(result, "i64")
     expect_equal(as.integer(result), c(2L, 1L, 3L))
   })
 
   it("uses i32 for all-static subsets", {
     subsets <- list(SubsetFull(5L), SubsetRange(3L, 5L))
     result <- subset_specs_start_indices(subsets)
-    expect_equal(dtype(result), as_dtype("i32"))
+    expect_dtype(result, "i32")
     expect_equal(as.integer(result), c(1L, 3L))
   })
 
@@ -399,13 +528,13 @@ describe("subset_specs_start_indices", {
       SubsetRange(3L, 5L)
     )
     result <- subset_specs_start_indices(subsets)
-    expect_equal(dtype(result), as_dtype("i32"))
+    expect_dtype(result, "i32")
   })
 
   it("works with a single axis", {
     subsets <- list(SubsetRange(2L, 7L))
     result <- subset_specs_start_indices(subsets)
-    expect_equal(dtype(result), as_dtype("i32"))
+    expect_dtype(result, "i32")
     expect_equal(as.integer(result), 2L)
   })
 
@@ -419,5 +548,405 @@ describe("subset_specs_start_indices", {
       x[] <- nv_array(2:11)
     }
     expect_equal(x, nv_array(2:11))
+  })
+})
+
+describe("nv_subset", {
+  it("accepts an R array as x", {
+    r_arr <- matrix(1:6, nrow = 2L)
+    expect_equal(as.integer(nv_subset(r_arr, 2)), r_arr[2L, ])
+    expect_equal(as.integer(nv_subset(r_arr, , array(c(1L, 3L)))), as.vector(r_arr[, c(1L, 3L)]))
+  })
+
+  it("returns a zero-sized axis for an empty index array", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    x <- nv_array(r_arr)
+    expect_equal(shape(x[array(integer(0)), ]), c(0L, 4L))
+    expect_equal(as_array(x[array(integer(0)), ]), r_arr[integer(0), , drop = FALSE])
+  })
+
+  it("selects the TRUE positions of a mask on a 1-D array", {
+    r_arr <- array(1:10)
+    x <- nv_array(r_arr)
+    m <- arr(TRUE, FALSE, TRUE, FALSE, TRUE, FALSE, TRUE, FALSE, TRUE, FALSE)
+    expect_equal(as_array(x[m]), r_arr[as.vector(m)])
+  })
+
+  it("applies a mask to the first axis", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    x <- nv_array(r_arr)
+    m <- arr(TRUE, FALSE, TRUE)
+    expect_equal(as_array(x[m, ]), r_arr[as.vector(m), , drop = FALSE])
+  })
+
+  it("applies a mask to the second axis", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    x <- nv_array(r_arr)
+    m <- arr(FALSE, TRUE, TRUE, FALSE)
+    expect_equal(as_array(x[, m]), r_arr[, as.vector(m), drop = FALSE])
+  })
+
+  it("applies masks to both axes of a matrix", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    x <- nv_array(r_arr)
+    m1 <- arr(TRUE, FALSE, TRUE)
+    m2 <- arr(FALSE, TRUE, TRUE, FALSE)
+    expect_equal(as_array(x[m1, m2]), r_arr[as.vector(m1), as.vector(m2), drop = FALSE])
+  })
+
+  it("applies masks to all three axes of a 3-D array", {
+    r_arr <- array(1:24, dim = c(2L, 3L, 4L))
+    x <- nv_array(r_arr)
+    m1 <- arr(TRUE, FALSE)
+    m2 <- arr(FALSE, TRUE, TRUE)
+    m3 <- arr(TRUE, FALSE, FALSE, TRUE)
+    expect_equal(
+      as_array(x[m1, m2, m3]),
+      r_arr[as.vector(m1), as.vector(m2), as.vector(m3), drop = FALSE]
+    )
+  })
+
+  it("combines a mask with a range", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    x <- nv_array(r_arr)
+    m <- arr(TRUE, FALSE, TRUE)
+    expect_equal(as_array(x[m, 2:3]), r_arr[as.vector(m), 2:3, drop = FALSE])
+  })
+
+  it("combines a mask with a scalar index, which drops its axis", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    x <- nv_array(r_arr)
+    m <- arr(TRUE, FALSE, TRUE)
+    expect_equal(as_array(x[m, 2L]), array(r_arr[as.vector(m), 2L]))
+  })
+
+  it("keeps the axis size for an all-TRUE mask", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    x <- nv_array(r_arr)
+    expect_equal(as_array(x[arr(TRUE, TRUE, TRUE), ]), r_arr)
+  })
+
+  it("returns a zero-sized axis for an all-FALSE mask", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    x <- nv_array(r_arr)
+    expect_equal(shape(x[arr(FALSE, FALSE, FALSE), ]), c(0L, 4L))
+  })
+
+  it("accepts an R logical mask under jit", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    m <- arr(TRUE, FALSE, TRUE)
+    f <- jit(function(x) x[m, ])
+    expect_equal(as_array(f(nv_array(r_arr))), r_arr[as.vector(m), , drop = FALSE])
+  })
+
+  it("accepts a bool array as a mask in eager mode", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    x <- nv_array(r_arr)
+    m <- nv_array(arr(TRUE, FALSE, TRUE))
+    expect_equal(as_array(x[m, ]), r_arr[c(TRUE, FALSE, TRUE), , drop = FALSE])
+  })
+
+  it("accepts bool arrays as masks on both axes", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    x <- nv_array(r_arr)
+    row_mask <- nv_sum(x, axes = 2L) > 20L
+    col_mask <- nv_sum(x, axes = 1L) > 10L
+    expect_equal(
+      as_array(x[row_mask, col_mask]),
+      r_arr[rowSums(r_arr) > 20L, colSums(r_arr) > 10L, drop = FALSE]
+    )
+  })
+
+  it("errors on a bool array mask that is an input under jit", {
+    f <- jit(function(x, m) x[m, ])
+    expect_error(
+      f(nv_array(array(1:12, dim = c(3L, 4L))), nv_array(arr(TRUE, FALSE, TRUE))),
+      "depend on the inputs"
+    )
+  })
+
+  it("errors on a bool array mask computed from the inputs under jit", {
+    f <- jit(function(x) x[x > 6L])
+    expect_error(f(nv_array(array(1:12, dim = c(3L, 4L)))), "depend on the inputs")
+  })
+
+  it("errors on a bool array mask computed from a closed-over mask under jit", {
+    # `!mask` is computed, so its values are not known when the program is
+    # built, even though `mask` is.
+    mask <- nv_array(arr(TRUE, FALSE, TRUE))
+    f <- jit(function(x) x[!mask])
+    expect_error(f(nv_array(c(1, 2, 3))), "depend on the inputs")
+  })
+
+  it("accepts a bool array mask created inside jit", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    r_mask <- array(rep(c(TRUE, FALSE), 6L), dim = c(3L, 4L))
+    x <- nv_array(r_arr)
+    expect_equal(as_array(jit(function(x) x[nv_array(r_mask)])(x)), array(r_arr[r_mask]))
+    expect_equal(
+      as_array(jit(function(x) x[nv_array(arr(TRUE, FALSE, TRUE)), ])(x)),
+      r_arr[c(TRUE, FALSE, TRUE), , drop = FALSE]
+    )
+  })
+
+  it("accepts a closed-over bool array mask under jit", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    r_mask <- array(rep(c(TRUE, FALSE), 6L), dim = c(3L, 4L))
+    x <- nv_array(r_arr)
+    mask <- nv_array(r_mask)
+    row_mask <- nv_array(arr(TRUE, FALSE, TRUE))
+    expect_equal(as_array(jit(function(x) x[mask])(x)), array(r_arr[r_mask]))
+    expect_equal(
+      as_array(jit(function(x) x[row_mask, ])(x)),
+      r_arr[c(TRUE, FALSE, TRUE), , drop = FALSE]
+    )
+    # nested: the mask is a constant of the outer trace
+    expect_equal(as_array(jit(function(x) jit(function(y) y[mask])(x))(x)), array(r_arr[r_mask]))
+
+    expected <- r_arr
+    expected[r_mask] <- 0L
+    expect_equal(
+      as_array(jit(function(x) {
+        x[mask] <- 0L
+        x
+      })(x)),
+      expected
+    )
+  })
+
+  it("errors on a logical vector", {
+    x <- nv_array(1:3)
+    expect_error(x[c(TRUE, FALSE, TRUE)], "Logical vectors are not allowed")
+    expect_error(x[TRUE], "Logical vectors are not allowed")
+  })
+
+  it("errors on a scalar bool array, whatever the rank of x", {
+    expect_error(nv_array(1:3)[nv_scalar(TRUE)], "must have exactly one axis")
+    expect_error(
+      nv_array(array(1:12, dim = c(3L, 4L)))[nv_scalar(TRUE)],
+      "must have exactly one axis"
+    )
+  })
+
+  it("errors on a mask containing NA", {
+    x <- nv_array(1:3)
+    expect_error(x[arr(TRUE, NA, TRUE)], "must not contain missing values")
+  })
+
+  it("errors on a mask whose length does not match the axis", {
+    x <- nv_array(1:3)
+    expect_error(x[arr(TRUE, FALSE)], "does not match an axis of size 3")
+  })
+
+  it("selects with a whole-array mask on a 1-D array", {
+    r_arr <- array(1:10)
+    x <- nv_array(r_arr)
+    expect_equal(as_array(x[x > 6L]), array(r_arr[r_arr > 6L]))
+  })
+
+  it("flattens a whole-array mask selection in column-major order", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    x <- nv_array(r_arr)
+    expect_equal(as_array(x[x > 6L]), array(r_arr[r_arr > 6L]))
+  })
+
+  it("accepts an R logical array of x's shape as a whole-array mask", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    r_mask <- array(rep(c(TRUE, FALSE), 6L), dim = c(3L, 4L))
+    x <- nv_array(r_arr)
+    expect_equal(as_array(x[r_mask]), array(r_arr[r_mask]))
+  })
+
+  it("flattens a whole-array mask selection on a 3-D array", {
+    r_arr <- array(1:24, dim = c(2L, 3L, 4L))
+    x <- nv_array(r_arr)
+    expect_equal(as_array(x[x %% 5L == 0L]), array(r_arr[r_arr %% 5L == 0L]))
+  })
+
+  it("returns a zero-sized array for an all-FALSE whole-array mask", {
+    x <- nv_array(array(1:12, dim = c(3L, 4L)))
+    expect_equal(shape(x[x > 100L]), 0L)
+  })
+
+  it("selects every element for an all-TRUE whole-array mask", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    x <- nv_array(r_arr)
+    expect_equal(as_array(x[x > 0L]), array(as.vector(r_arr)))
+  })
+
+  it("errors when a whole-array mask is combined with another subscript", {
+    x <- nv_array(array(1:12, dim = c(3L, 4L)))
+    expect_error(x[x > 6L, 1L], "must have exactly one axis")
+  })
+})
+
+describe("nv_subset_assign", {
+  it("is a no-op for an empty subset", {
+    x <- nv_array(1:10)
+    x[array(integer(0))] <- 0L
+    expect_equal(as_array(x), array(1:10))
+  })
+
+  it("replaces the rows a mask selects", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    m <- arr(TRUE, FALSE, TRUE)
+    r_expected <- r_arr
+    r_expected[as.vector(m), ] <- array(101:108, dim = c(2L, 4L))
+
+    x <- nv_array(r_arr)
+    x[m, ] <- nv_array(101:108, shape = c(2L, 4L))
+    expect_equal(as_array(x), r_expected)
+  })
+
+  it("replaces the block masks on both axes select", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    m1 <- arr(TRUE, FALSE, TRUE)
+    m2 <- arr(FALSE, TRUE, TRUE, FALSE)
+    r_expected <- r_arr
+    r_expected[as.vector(m1), as.vector(m2)] <- array(101:104, dim = c(2L, 2L))
+
+    x <- nv_array(r_arr)
+    x[m1, m2] <- nv_array(101:104, shape = c(2L, 2L))
+    expect_equal(as_array(x), r_expected)
+  })
+
+  it("broadcasts a scalar over the rows a mask selects", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    m <- arr(TRUE, FALSE, TRUE)
+    r_expected <- r_arr
+    r_expected[as.vector(m), ] <- 0L
+
+    x <- nv_array(r_arr)
+    x[m, ] <- 0L
+    expect_equal(as_array(x), r_expected)
+  })
+
+  it("replaces the elements a whole-array mask selects", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    r_expected <- r_arr
+    r_expected[r_arr > 6L] <- 101:106
+
+    x <- nv_array(r_arr)
+    x[x > 6L] <- nv_array(101:106)
+    expect_equal(as_array(x), r_expected)
+  })
+
+  it("broadcasts a scalar over the elements a whole-array mask selects", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    r_expected <- r_arr
+    r_expected[r_arr > 6L] <- 0L
+
+    x <- nv_array(r_arr)
+    x[x > 6L] <- 0L
+    expect_equal(as_array(x), r_expected)
+  })
+
+  it("errors when the update length does not match a whole-array mask", {
+    x <- nv_array(array(1:12, dim = c(3L, 4L)))
+    expect_error(
+      {
+        x[x > 6L] <- nv_array(1:2)
+      },
+      "Update shape does not match subset shape"
+    )
+  })
+})
+
+describe("nv_subset_assign(update_fn = )", {
+  it("combines the subset with `value`, every value of a repeated index", {
+    x <- nv_array(c(1, 2, 3, 4), dtype = "f64")
+    value <- nv_array(c(10, 20, 30), dtype = "f64")
+    combine <- function(update_fn) {
+      as.vector(as_array(nv_subset_assign(x, array(c(1L, 1L, 3L)), value = value, update_fn = update_fn)))
+    }
+    expect_equal(combine("add"), c(31, 2, 33, 4))
+    expect_equal(combine("sub"), c(-29, 2, -27, 4))
+    expect_equal(combine("mul"), c(200, 2, 90, 4))
+    expect_equal(combine("max"), c(20, 2, 30, 4))
+    expect_equal(combine("min"), c(1, 2, 3, 4))
+    expect_equal(combine(function(old, new) old + 2 * new), c(61, 2, 63, 4))
+  })
+
+  it("broadcasts a scalar and works with a whole-array mask", {
+    x <- nv_matrix(1:6, nrow = 2)
+    expect_equal(
+      as_array(nv_subset_assign(x, 2, , value = 10L, update_fn = "add")),
+      matrix(c(1L, 12L, 3L, 14L, 5L, 16L), nrow = 2)
+    )
+    x[x > 3L, update_fn = "mul"] <- 2L
+    expect_equal(as_array(x), matrix(c(1L, 2L, 3L, 8L, 10L, 12L), nrow = 2))
+  })
+
+  it("is passed among the subscripts of `[<-`, not counted as one", {
+    x <- nv_array(1:3)
+    x[2, update_fn = "add"] <- 10L
+    expect_equal(as_array(x), array(c(1L, 12L, 3L)))
+    expect_error(x[1, 2, update_fn = "add"] <- 0L, "subset")
+  })
+
+  it("differentiates a named update_fn", {
+    w <- c(1, 2, 3, 4)
+    f <- function(x, value) {
+      y <- nv_subset_assign(x, array(c(1L, 1L, 3L)), value = value, update_fn = "add")
+      sum(y * nv_array(w, dtype = "f64"))
+    }
+    g <- jit(gradient(f))(nv_array(c(1, 2, 3, 4), dtype = "f64"), nv_array(c(10, 20, 30), dtype = "f64"))
+    expect_equal(as.vector(as_array(g$x)), w)
+    expect_equal(as.vector(as_array(g$value)), w[c(1, 1, 3)])
+  })
+
+  it("rejects an unknown update_fn", {
+    x <- nv_array(1:3)
+    expect_error(nv_subset_assign(x, 1, value = 0L, update_fn = "plus"), "must be a function or one of")
+  })
+})
+
+describe("nv_subset_assign(inplace = TRUE)", {
+  it("gives the same result as a copying assignment", {
+    x <- nv_matrix(1:6, nrow = 2)
+    expected <- nv_subset_assign(x, 1, 2:3, value = 0L)
+    expect_equal(nv_subset_assign(x, 1, 2:3, value = 0L, inplace = TRUE), expected)
+  })
+
+  it("consumes `x` and every variable referring to it", {
+    x <- nv_array(1:5)
+    y <- x
+    out <- nv_subset_assign(x, 2, value = 99L, inplace = TRUE)
+    expect_equal(as_array(out), array(c(1L, 99L, 3L, 4L, 5L)))
+    expect_error(as_array(x), "donated")
+    expect_error(as_array(y), "donated")
+  })
+
+  it("leaves `x` intact by default", {
+    x <- nv_array(1:3)
+    nv_subset_assign(x, 1, value = 0L)
+    expect_equal(as_array(x), array(1:3))
+  })
+
+  it("is passed among the subscripts of `[<-`", {
+    x <- nv_array(1:5)
+    y <- x
+    x[2:3, inplace = TRUE] <- 0L
+    expect_equal(as_array(x), array(c(1L, 0L, 0L, 4L, 5L)))
+    expect_error(as_array(y), "donated")
+  })
+
+  it("does not count `inplace` as a subscript of `[<-`", {
+    x <- nv_array(1:3)
+    expect_error(x[1, 2, inplace = TRUE] <- 0L, "subset")
+  })
+
+  it("errors inside jit()", {
+    f <- jit(function(a) {
+      a[1, inplace = TRUE] <- 0L
+      a
+    })
+    a <- nv_array(1:3)
+    expect_error(f(a), "cannot be used inside")
+    expect_equal(as_array(a), array(1:3))
+  })
+
+  it("requires a flag", {
+    expect_error(nv_subset_assign(nv_array(1:3), 1, value = 0L, inplace = NA))
   })
 })

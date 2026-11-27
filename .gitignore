@@ -21,9 +21,9 @@
 # RStudio files
 .Rproj.user/
 
-# produced vignettes
-vignettes/*.html
-vignettes/*.pdf
+# produced articles
+vignettes/articles/*.html
+vignettes/articles/*.pdf
 
 # OAuth2 token, see https://github.com/hadley/httr/releases/tag/v0.3
 .httr-oauth
@@ -59,3 +59,9 @@ covr-*.rds
 .claude/settings.local.json
 .claude/worktrees/
 .worktrees/
+tests/testthat/_snaps/*.new.md
+
+# LaTeX byproducts of the article figures
+vignettes/articles/figures/*.aux
+vignettes/articles/figures/*.log
+vignettes/articles/figures/*.pdf

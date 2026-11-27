@@ -4,7 +4,7 @@ format: format-cpp format-r
 
 format-cpp:
 	@echo "Formatting C/C++ sources with clang-format"
-	@find src -maxdepth 1 \( -name '*.cpp' -o -name '*.h' \) ! -name 'RcppExports.cpp' -print0 \
+	@[ ! -d src ] || find src -maxdepth 1 \( -name '*.cpp' -o -name '*.h' \) ! -name 'RcppExports.cpp' -print0 \
 	  | xargs -0 sh -c 'set -- "$$@"; [ "$$#" -gt 0 ] && clang-format -i "$$@"' _
 
 format-r:

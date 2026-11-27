@@ -4,12 +4,9 @@
 \alias{HloEnv}
 \title{HloEnv}
 \usage{
-HloEnv(parent = NULL, gval_to_fval = NULL)
+HloEnv(gval_to_fval = NULL)
 }
 \arguments{
-\item{parent}{(\code{HloEnv} | \code{NULL})\cr
-Parent environment for lookups.}
-
 \item{gval_to_fval}{(\code{hashtab})\cr
 Mapping from graph values to func values.}
 }
@@ -18,6 +15,8 @@ Mapping from graph values to func values.}
 }
 \description{
 Environment for storing graph value to func value mappings.
-This is a mutable class.
+This is a mutable class. Every graph is lowered against an environment of
+its own: a sub-graph reads nothing of the graph around it except through
+its inputs.
 }
 \keyword{internal}

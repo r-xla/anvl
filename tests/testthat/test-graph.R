@@ -1,3 +1,33 @@
+describe("graph_desc_add's device", {
+  it("declares the device into the descriptor being traced", {
+    desc <- local_descriptor()
+    prim_fill(1, shape = 2L, dtype = "f32", device = "cpu:1")
+    expect_equal(desc$devices, list(nv_device("cpu:1")))
+  })
+
+  it("declares nothing when there is no device", {
+    desc <- local_descriptor()
+    prim_fill(1, shape = 2L, dtype = "f32")
+    expect_length(desc$devices, 0L)
+  })
+
+  it("rejects a device of another backend", {
+    skip_if_no_quickr()
+    dev_q <- with_backend("quickr", nv_device("cpu"))
+    local_descriptor()
+    expect_error(prim_fill(1, shape = 2L, dtype = "f32", device = dev_q), "active backend")
+  })
+})
+
+describe("get_box_or_register_const's device", {
+  it("declares the device of an array another graph closed over", {
+    gval <- GraphValue(ConcreteArray(nv_array(c(1, 2), dtype = "f32", device = "cpu:1")))
+    desc <- local_descriptor()
+    get_box_or_register_const(desc, gval)
+    expect_equal(desc$devices, list(nv_device("cpu:1")))
+  })
+})
+
 test_that("trace_fn: simple test", {
   f <- function(x, y) {
     prim_add(x, y)
@@ -5,9 +35,9 @@ test_that("trace_fn: simple test", {
   graph <- trace_fn(f, list(x = nv_scalar(1), y = nv_scalar(2)))
   expect_true(is_graph(graph))
   expect_list(graph$inputs, len = 2L, types = "GraphValue")
-  expect_list(graph$calls, len = 1L, types = "PrimitiveCall")
+  expect_list(graph$statements, len = 1L, types = "GraphStatement")
   expect_list(graph$outputs, len = 1L, types = "GraphValue")
-  expect_true(identical(graph$outputs, graph$calls[[1]]$outputs))
+  expect_true(identical(graph$outputs, graph$statements[[1]]$outputs))
 })
 
 test_that("trace_fn: in- and outputs are reference identical to the outputs of the calls that produced them", {
@@ -15,8 +45,8 @@ test_that("trace_fn: in- and outputs are reference identical to the outputs of t
     prim_add(x, y)
   }
   graph <- trace_fn(f, list(x = nv_scalar(1), y = nv_scalar(2)))
-  expect_true(identical(graph$outputs, graph$calls[[1]]$outputs))
-  expect_true(identical(graph$inputs, graph$calls[[1]]$inputs))
+  expect_true(identical(graph$outputs, graph$statements[[1]]$outputs))
+  expect_true(identical(graph$inputs, graph$statements[[1]]$inputs))
 })
 
 test_that("trace_fn: nested inputs and outputs", {
@@ -26,7 +56,7 @@ test_that("trace_fn: nested inputs and outputs", {
 
   graph <- trace_fn(f, list(lst = list(nv_scalar(1), nv_scalar(2))))
   expect_list(graph$inputs, len = 2L, types = "GraphValue")
-  expect_list(graph$calls, len = 1L, types = "PrimitiveCall")
+  expect_list(graph$statements, len = 1L, types = "GraphStatement")
   expect_list(graph$outputs, len = 1L, types = "GraphValue")
   expect_equal(
     unflatten(graph$in_tree, list(1, 2)),
@@ -45,14 +75,14 @@ test_that("trace_fn: closed-over constants", {
   }
   graph <- trace_fn(f, list(y = nv_scalar(2)))
   expect_list(graph$inputs, len = 1L, types = "GraphValue")
-  expect_list(graph$calls, len = 1L, types = "PrimitiveCall")
+  expect_list(graph$statements, len = 1L, types = "GraphStatement")
   expect_list(graph$outputs, len = 1L, types = "GraphValue")
 
   # What do we expect here?
   # We want the resulting graph to have a constant and two inputs
 
-  expect_true(is_graph_value(graph$calls[[1]]$inputs[[1]]))
-  expect_true(is_graph_value(graph$calls[[1]]$inputs[[2]]))
+  expect_true(is_graph_value(graph$statements[[1]]$inputs[[1]]))
+  expect_true(is_graph_value(graph$statements[[1]]$inputs[[2]]))
   expect_true(identical(x, graph$constants[[1]]$aval$data))
   expect_equal(length(graph$constants), 1L)
 })
@@ -67,6 +97,18 @@ test_that("trace_fn can deduplicate constants", {
   expect_identical(graph$constants[[1]]$aval$data, x)
 })
 
+test_that("an array both a graph and its sub-graphs close over is one constant", {
+  x <- nv_array(c(1, 2))
+  f <- function(p, y) {
+    z <- y + x
+    nv_if(p, function() nv_sum(z * x), function() nv_sum(x))
+  }
+  graph <- trace_fn(f, list(p = nv_scalar(TRUE), y = nv_array(c(3, 4))))
+  expect_length(graph$constants, 1L)
+  expect_equal(as.numeric(jit(f)(nv_scalar(TRUE), nv_array(c(3, 4)))), 16)
+  expect_equal(as.numeric(jit(gradient(f, wrt = "y"))(nv_scalar(TRUE), nv_array(c(3, 4)))[[1L]]), c(1, 2))
+})
+
 test_that("trace_fn works without arguments", {
   # For this it is necessary to also box outputs in trace_fn()
   x <- nv_scalar(1)
@@ -78,32 +120,32 @@ test_that("trace_fn works without arguments", {
   expect_equal(length(graph$outputs), 1L)
   expect_identical(graph$outputs[[1]]$aval$data, x)
   expect_equal(length(graph$outputs), 1L)
-  expect_equal(length(graph$calls), 0L)
+  expect_equal(length(graph$statements), 0L)
 })
 
 
 test_that("local_descriptor creates a graph", {
-  globals[["CURRENT_DESCRIPTOR"]] <- NULL
+  globals[["current_descriptor"]] <- NULL
   g <- local_descriptor()
-  expect_false(is.null(globals[["CURRENT_DESCRIPTOR"]]))
-  expect_true(is_graph_descriptor(globals[["CURRENT_DESCRIPTOR"]]))
+  expect_false(is.null(globals[["current_descriptor"]]))
+  expect_true(is_graph_descriptor(globals[["current_descriptor"]]))
 })
 
 test_that("local_descriptor restores previous graph", {
-  globals[["CURRENT_DESCRIPTOR"]] <- NULL
+  globals[["current_descriptor"]] <- NULL
   g1 <- local_descriptor()
   inner_test <- function() {
     g2 <- local_descriptor()
     (function() local_descriptor())()
-    expect_equal(.current_descriptor(), g2)
+    expect_equal(current_descriptor(), g2)
   }
   inner_test()
-  expect_equal(g1, .current_descriptor())
+  expect_equal(g1, current_descriptor())
 })
 
-test_that(".current_descriptor errors when no graph exists", {
-  globals[["CURRENT_DESCRIPTOR"]] <- NULL
-  expect_error(.current_descriptor(), "No graph is currently being built")
+test_that("current_descriptor errors when no graph exists", {
+  globals[["current_descriptor"]] <- NULL
+  expect_error(current_descriptor(), "No graph is currently being built")
 })
 
 test_that("constants: same array is constant and input at the same time", {
@@ -144,9 +186,10 @@ test_that("can pass constant to nested trace_fn call if it is defined in the par
 })
 
 test_that("GraphLiteral", {
-  gl <- GraphLiteral(LiteralArray(1L, integer(), ambiguous = TRUE))
-  expect_equal(dtype(gl), as_dtype("i32"))
-  expect_equal(shape(gl), integer())
+  local_registered_default_dtypes()
+  gl <- GraphLiteral(LiteralArray(1L, integer()))
+  expect_dtype(gl, default_int())
+  expect_shape(gl, integer())
   expect_snapshot(gl)
 })
 
@@ -160,9 +203,9 @@ test_that("trace_fn works with nv_aval inputs", {
   expect_equal(graph$inputs[[1L]]$aval, in_type)
   expect_equal(graph$inputs[[2L]]$aval, in_type)
   expect_equal(length(graph$inputs), 2L)
-  expect_equal(length(graph$calls), 1L)
+  expect_equal(length(graph$statements), 1L)
   expect_equal(length(graph$outputs), 1L)
-  expect_equal(graph$calls[[1L]]$primitive, attr(prim_add, "primitive"))
+  expect_equal(graph$statements[[1L]]$primitive, attr(prim_add, "definition"))
 })
 
 test_that("local_descriptor errors when run in the global environment", {
@@ -184,70 +227,41 @@ test_that("can pass abstract arrays to trace_fn", {
 })
 
 test_that("error handling", {
-  expect_snapshot(error = TRUE, jit(prim_ceil)(nv_array(1:4)))
+  local_registered_default_dtypes()
+  expect_snapshot(error = TRUE, jit(prim_ceiling)(nv_array(1:4)))
   expect_snapshot(
     error = TRUE,
-    jit(prim_transpose, static = "permutation")(nv_array(1:4, shape = c(2, 2)), permutation = c(2, 2))
+    jit(prim_transpose, static = "perm")(nv_array(1:4, shape = c(2, 2)), perm = c(2, 2))
   )
 })
 
-test_that("error handling: stablehlo errors use anvl's terminology", {
-  # `cli_abort()` errors from stablehlo store an already formatted message in
-  # the condition's fields
-  expect_snapshot(error = TRUE, jit(prim_add)(nv_array(1:4), nv_array(c(1, 2, 3, 4))))
-  err <- tryCatch(jit(prim_add)(nv_array(1:4), nv_array(c(1, 2, 3, 4))), error = identity)
+test_that("error handling: type inference reports in anvl's terminology", {
+  local_registered_default_dtypes()
+  # Shapes rather than data types, since operands whose data types disagree are
+  # refused by `promotion_rdata_common()` before inference ever sees them.
+  expect_snapshot(error = TRUE, jit(prim_add)(nv_array(1:4), nv_array(1:6)))
+  err <- tryCatch(jit(prim_add)(nv_array(1:4), nv_array(1:6)), error = identity)
   expect_false(grepl("tensor", conditionMessage(err), fixed = TRUE))
 
-  # stablehlo's `operand` is anvl's `x`
-  err <- tryCatch(jit(prim_ceil)(nv_array(1:4)), error = identity)
-  expect_match(conditionMessage(err), "`x` must have dtype float", fixed = TRUE)
+  # The primary operand is `x`, never `operand`.
+  err <- tryCatch(jit(prim_ceiling)(nv_array(1:4)), error = identity)
+  expect_match(conditionMessage(err), "`x` must have a float data type", fixed = TRUE)
 
-  # `ErrorStablehlo` conditions build their message lazily in a
-  # `conditionMessage()` method; they keep their class and their 1-based indices.
-  # A too-short `permutation` passes anvl's own checks (every entry is a valid,
-  # non-duplicated dimension) and is only rejected by stablehlo.
+  # Axis numbers are 1-based, with no conversion step on the way out. A
+  # too-short `perm` passes anvl's own checks (every entry is a valid,
+  # non-duplicated axis) and is only rejected by inference.
   err <- tryCatch(
-    jit(prim_transpose, static = "permutation")(nv_array(1:4, shape = c(2, 2)), permutation = 1L),
+    jit(prim_transpose, static = "perm")(nv_array(1:4, shape = c(2, 2)), perm = 1L),
     error = identity
   )
-  expect_s3_class(err, "ErrorPermuteIndex")
   expect_match(conditionMessage(err), "must be a permutation of c(1, 2)", fixed = TRUE)
 })
 
-test_that("user_terminology() rewrites words but not identifiers", {
-  expect_equal(
-    user_terminology("hlo_tensor() returns a TensorType; rank(operand) and operand_batching_dims are tensors"),
-    "hlo_tensor() returns a TensorType; rank(x) and operand_batching_dims are arrays"
-  )
-})
-
 test_that("can print GraphLiteral if it holds scalar array", {
-  expect_snapshot(GraphLiteral(LiteralArray(nv_scalar(1L), dtype = "i32", shape = integer(), ambiguous = TRUE)))
+  expect_snapshot(GraphLiteral(LiteralArray(nv_scalar(1L), dtype = "i32", shape = integer())))
 })
 
-test_that("trace_fn(mode = 'toplevel') errors when called inside an existing descriptor", {
-  parent <- local_descriptor()
-  expect_error(
-    trace_fn(function(x) x, list(x = nv_scalar(1)), mode = "toplevel"),
-    "must not have a parent descriptor"
-  )
-})
-
-test_that("trace_fn(mode = 'subgraph') errors without a parent descriptor", {
-  expect_error(
-    trace_fn(function(x) x, list(x = nv_scalar(1)), mode = "subgraph"),
-    "requires a parent descriptor"
-  )
-})
-
-test_that("trace_fn(mode = 'inline') errors without a parent descriptor", {
-  expect_error(
-    trace_fn(function(x) x, list(x = nv_scalar(1)), mode = "inline"),
-    "requires a parent descriptor"
-  )
-})
-
-test_that("trace_fn(mode = 'toplevel') passes non-arrayish R values through as static args", {
+test_that("trace_fn() passes non-arrayish R values through as static args", {
   f <- function(x, flag) x
   graph <- trace_fn(f, list(x = nv_scalar(1), flag = TRUE))
   expect_equal(length(graph$inputs), 1L)
@@ -255,30 +269,120 @@ test_that("trace_fn(mode = 'toplevel') passes non-arrayish R values through as s
   expect_equal(graph$static_args_flat, list(TRUE))
 })
 
-test_that("trace_fn(mode = 'subgraph') promotes R lits/arrays to AnvlArray inputs", {
+test_that("trace_fn() inside another trace gives a box of it a fresh input", {
   parent <- local_descriptor()
-  desc <- local_descriptor()
-  graph <- trace_fn(
-    function(x, y) list(x, y),
-    list(x = 1, y = array(c(2, 3))),
-    desc = desc,
-    mode = "subgraph"
-  )
-  expect_equal(length(graph$inputs), 2L)
-  expect_equal(shape(graph$inputs[[1L]]), integer())
-  expect_equal(shape(graph$inputs[[2L]]), 2L)
+  box <- maybe_box_arrayish(nv_array(c(2, 3), dtype = "f32"), parent)
+  graph <- trace_fn(function(x, n, flag) x, list(x = box, n = 1, flag = "a"))
+  expect_length(graph$inputs, 1L)
+  expect_false(identical(graph$inputs[[1L]], box$gnode))
+  expect_shape(graph$inputs[[1L]], 2L)
+  expect_equal(graph$static_args_flat, list(1, "a"))
 })
 
-test_that("trace_fn(mode = 'subgraph') errors on non-arrayish args", {
-  parent <- local_descriptor()
-  desc <- local_descriptor()
-  expect_error(
-    trace_fn(
-      function(x) x,
-      list(x = "string"),
-      desc = desc,
-      mode = "subgraph"
-    ),
-    "all args must be arrayish"
+# An R value written in the body of a traced function, and one passed as an
+# argument, are built into the graph at the data type their use site needs.
+# These snapshots pin *how* they are built -- an inlined literal for a scalar, a
+# constant for an R array, a convert only out of the value's own category --
+# which value-level tests cannot see.
+describe("how an R value is built into a graph", {
+  it("builds an R scalar as an inlined literal and an R array as a constant", {
+    m <- matrix(c(1, 2, 3, 4), 2, 2)
+    f <- function(x) nv_add(nv_mul(x, 2), nv_add(x, m))
+    graph <- trace_fn(f, list(x = nv_aval("f32", c(2L, 2L))))
+    expect_snapshot(graph)
+  })
+
+  it("builds a closed-over R array used twice as one constant", {
+    m <- matrix(c(1, 2, 3, 4), 2, 2)
+    f <- function(x) nv_add(nv_add(x, m), m)
+    graph <- trace_fn(f, list(x = nv_aval("f32", c(2L, 2L))))
+    expect_length(graph$constants, 1L)
+    expect_snapshot(graph)
+  })
+
+  it("converts inside the program when the value crosses its category", {
+    # This only happens when the default float is narrower than an R double.
+    local_registered_default_dtypes()
+    # An R double built at an integer data type is built at f64 -- where it is
+    # exact -- and converted by the program, so narrowing follows XLA.
+    f <- function(x) nv_add(x, nv_convert(1.5, "i32"))
+    graph <- trace_fn(f, list(x = nv_aval("i32", integer())))
+    expect_snapshot(graph)
+  })
+
+  it("uploads an R argument used at two data types once and converts", {
+    f <- function(x, y) nv_add(nv_convert(nv_mul(x, y), "f64"), nv_convert(y, "f64"))
+    graph <- trace_fn(f, list(x = nv_aval("f32", integer()), y = nv_aval("double", integer())))
+    expect_snapshot(graph)
+  })
+
+  it("inlines a gradient into the enclosing graph", {
+    # The argument has to have a data type: `gradient()` refuses to
+    # differentiate with respect to a value that has not decided on one.
+    f <- function(t) gradient(function(z) z * z)(t)
+    graph <- trace_fn(f, list(t = nv_aval("f64", integer())))
+    expect_snapshot(graph)
+  })
+
+  it("builds an R literal inside the sub-graph body that uses it", {
+    f <- jit(function(x) nv_if(nv_scalar(TRUE), function() nv_add(x, 0.5), function() nv_mul(x, 2)))
+    expect_equal(as_array(f(nv_scalar(1, dtype = "f64"))), 1.5)
+    g <- jit(function(x) nv_if(nv_scalar(FALSE), function() nv_add(x, 0.5), function() nv_mul(x, 2)))
+    expect_equal(as_array(g(nv_scalar(1, dtype = "f64"))), 2)
+  })
+
+  it("keeps the loop's data type for an R value in a while body", {
+    f <- jit(function(x) {
+      nv_while(list(i = nv_scalar(0, dtype = "f64"), acc = x), function(i, acc) i < 3, function(i, acc) {
+        list(i = i + 1, acc = acc * 2)
+      })
+    })
+    out <- f(nv_scalar(1, dtype = "f64"))
+    expect_equal(as_array(out$acc), 8)
+  })
+})
+
+describe("coercing a traced array to R", {
+  trace_call <- function(f) {
+    jit(function(x) {
+      f(x)
+      x
+    })(nv_array(1:3))
+  }
+
+  coercions <- list(
+    as_array = as_array,
+    as_raw = as_raw,
+    as.array = as.array,
+    as.matrix = as.matrix,
+    as.vector = as.vector,
+    as.list = as.list,
+    as.double = as.double,
+    as.numeric = as.numeric,
+    as.integer = as.integer,
+    as.logical = as.logical,
+    as.character = as.character,
+    as.integer64 = bit64::as.integer64
   )
+
+  for (nm in names(coercions)) {
+    local({
+      fn <- coercions[[nm]]
+      name <- nm
+      it(paste0(name, "() errors"), {
+        expect_error(trace_call(fn), "has no values")
+      })
+    })
+  }
+
+  it("a closed-over concrete array still converts", {
+    # the closed-over array is anyway a constant.
+    k <- nv_array(1:3)
+    out <- NULL
+    jit(function(x) {
+      out <<- as_array(k)
+      x
+    })(nv_array(1:3))
+    expect_equal(out, array(1:3))
+  })
 })

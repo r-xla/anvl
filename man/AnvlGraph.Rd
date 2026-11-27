@@ -2,29 +2,31 @@
 % Please edit documentation in R/graph.R
 \name{AnvlGraph}
 \alias{AnvlGraph}
-\title{Graph of Primitive Calls}
+\title{Graph of Statements}
 \usage{
 AnvlGraph(
-  calls = list(),
+  statements = list(),
   in_tree = NULL,
   out_tree = NULL,
   inputs = list(),
   outputs = list(),
   constants = list(),
   is_static_flat = NULL,
-  static_args_flat = NULL
+  static_args_flat = NULL,
+  rdata_types = NULL,
+  side_effects = list()
 )
 }
 \arguments{
-\item{calls}{(\code{list(PrimitiveCall)})\cr
-The primitive calls that make up the graph.}
+\item{statements}{(\code{list(GraphStatement)})\cr
+The statements that make up the graph.}
 
-\item{in_tree}{(\code{NULL | Node})\cr
+\item{in_tree}{(\code{NULL} | \code{\link[pjrt:build_tree]{RTree}})\cr
 The tree of inputs. May contain leaves for both array inputs and static
 (non-array) arguments. Only the array leaves correspond to entries in
 \code{inputs}; use \code{is_static_flat} to distinguish them.}
 
-\item{out_tree}{(\code{NULL | Node})\cr
+\item{out_tree}{(\code{NULL} | \code{\link[pjrt:build_tree]{RTree}})\cr
 The tree of outputs.}
 
 \item{inputs}{(\code{list(GraphValue)})\cr
@@ -42,11 +44,57 @@ Boolean mask indicating which flat positions in \code{in_tree} are static (non-a
 
 \item{static_args_flat}{(\code{NULL | list()})\cr
 Flattened traced values for the static arguments indicated by \code{is_static_flat}.}
+
+\item{rdata_types}{(\code{NULL | character()})\cr
+One entry per input: the R storage type of an input the caller supplies as
+bare R data (\code{"double"}, \code{"integer"}, \code{"logical"}), and \code{NA} for one that
+arrives as an array and already has a data type. \code{NULL} when no input comes
+from R data, which is the common case. Together with the inputs' own avals
+this says everything about how a call's arguments are uploaded: the aval
+gives the data type and shape, this gives the R type it is uploaded from.}
+
+\item{side_effects}{(\code{list()})\cr
+The graph's views of the side effects it uses, in the order of their first
+use, e.g. of a random state it draws from: the value its uses start from
+(\verb{$value}), their number (\verb{$n}), and the \code{\link{GraphValue}}s the graph takes
+for it beyond its inputs (\verb{$inputs}).
+A sub-graph's views are folded into its inputs and outputs by the
+construct that traced it.}
 }
 \value{
 (\code{AnvlGraph})
 }
 \description{
-Computational graph consisting exclusively of primitive calls.
+Computational graph consisting exclusively of statements that apply primitives.
 This is a mutable class.
+
+An \code{AnvlGraph} is usually created by tracing a function with
+\code{\link[=trace_fn]{trace_fn()}}, which records each primitive call as a \code{\link{GraphStatement}}
+into a \code{\link{GraphDescriptor}} and converts it into an \code{AnvlGraph} at the end. The
+graph is then lowered, e.g. with \code{\link[=stablehlo]{stablehlo()}}, and compiled.
 }
+\examples{
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the inputs are \%x1 and \%x2; each line is one statement, and `sum`
+# shows its parameters in brackets
+graph <- trace_fn(function(x, y) {
+  nv_sum(x * y)
+}, list(x = nv_aval("f32", c(2, 3)), y = nv_aval("f32", c(2, 3))))
+graph
+graph$inputs
+graph$outputs
+
+# an array the function closes over becomes the constant \%c1, and the R
+# value `2` the literal `2:f32`
+w <- nv_array(c(1, 2), dtype = "f32")
+graph <- trace_fn(function(x) x + w * 2, list(x = nv_aval("f32", 2)))
+graph
+graph$constants
+
+# several outputs are returned together; `out_tree` records their structure
+graph <- trace_fn(function(x) list(a = x, b = nv_exp(x)), list(x = nv_aval("f32", shp())))
+graph
+graph$out_tree
+\dontshow{\}) # examplesIf}
+}
+\keyword{internal}

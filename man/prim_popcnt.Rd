@@ -8,12 +8,12 @@ prim_popcnt(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of data type integer or unsigned integer.}
+One input. Can be any integer data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
-It is ambiguous if the input is ambiguous.
+(\code{\link{arrayish}})\cr
+Has the input's shape and data type.
 }
 \description{
 Element-wise population count (number of set bits).
@@ -22,17 +22,20 @@ Element-wise population count (number of set bits).
 
 \itemize{
 \item \code{stablehlo}
-\item \code{reverse}
+\item \code{pullback}
+\item \code{vectorize}
 }
 }
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_popcnt]{hlo_popcnt()}}.
+Lowers to \code{\link[stablehlo:hlo_popcnt]{hlo_popcnt()}}, specified under
+\href{https://openxla.org/stablehlo/spec#popcnt}{popcnt}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the set bits are counted, at the input's own integer data type
 x <- nv_array(c(7L, 3L, 15L))
 prim_popcnt(x)
 \dontshow{\}) # examplesIf}

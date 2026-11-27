@@ -2,20 +2,21 @@
 % Please edit documentation in R/backend-quickr.R
 \name{AnvlBackendQuickr}
 \alias{AnvlBackendQuickr}
-\title{Quickr backend}
+\title{Quickr Backend}
 \usage{
 AnvlBackendQuickr()
 }
 \value{
-An \code{\link{AnvlBackend}} object with subclass \code{"AnvlBackendQuickr"}.
+(\code{\link{AnvlBackend}})\cr
+With subclass \code{"AnvlBackendQuickr"}.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+
 Constructs the quickr backend, which stores array data as plain R arrays and
 compiles jitted functions to R code via the \CRANpkg{quickr} package.
 }
 \details{
-To use it, the \code{"quickr"} package needs to be installed.
-
 Registered automatically under the name \code{"quickr"} when the package is
 loaded; call \code{\link[=local_backend]{local_backend("quickr")}} or
 \code{\link[=with_backend]{with_backend("quickr", ...)}} to use it. Requires the
@@ -26,10 +27,11 @@ quickr package to be installed.
 An \code{\link{AnvlArray}} with \code{backend = "quickr"} is, under the hood, a plain R
 vector or array (\code{numeric}, \code{integer}, or \code{logical}) stored in the \verb{$data}
 field. \code{\link[=as_array]{as_array()}} returns the underlying vector/array directly without
-copying, and \code{\link[=nv_array]{nv_array()}} simply wraps an R vector/array. Data always lives
+copying, and \code{\link[=nv_array]{nv_array()}} simply wraps an R vector/array, or decodes a raw
+payload into one. Data always lives
 in R's memory and computation always runs on the CPU, so the only device is
 \code{\link[=quickr_device]{quickr_device("cpu")}}; every array still carries it in
-\verb{$device}, as arrays of every backend do.
+\verb{$device}.
 }
 
 \section{Status}{
@@ -40,20 +42,16 @@ This backend is \strong{experimental} and has a number of limitations:
 suited to long-running or repeatedly-called functions where the one-time
 compilation cost is amortized.
 \item Only a subset of the primitives that the PJRT backend supports are currently
-lowered to quickr code. See \code{vignette("primitives")} for an overview.
-\item Only the data types \code{f64}, \code{i32}, and \code{bool} are supported.
+lowered to quickr code. See
+the \href{https://r-xla.github.io/anvl/articles/primitives.html}{Primitives Reference} article for an overview.
 \item Only CPU execution is supported.
+\item Only three data types are supported; see the section below.
 }
 }
 
-\section{Quickr JIT arguments}{
+\section{Supported data types}{
 
-\itemize{
-\item \code{unwrap} (\code{logical(1)}, default \code{FALSE}): if \code{TRUE}, the compiled function
-returns plain R arrays instead of \code{\link{AnvlArray}}s. Useful when the jitted
-function's output is consumed by non-anvl R code and the extra wrapping
-would only get stripped again.
-}
+\code{f64}, \code{i32} and \code{bool} -- the three R storage types.
 }
 
 \seealso{

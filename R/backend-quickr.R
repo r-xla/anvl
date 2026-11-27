@@ -1,19 +1,19 @@
 #' @include backend.R
 NULL
 
-#' @title Quickr device
+#' @title Quickr Device
 #' @description
 #' Device descriptor for the quickr backend. The only supported `type` is
 #' `"cpu"`.
 #'
 #' @param x (`character(1)`)\cr
 #'   Device type. Currently only supports `"cpu"`.
-#' @return A `QuickrDevice` object.
+#' @return (`QuickrDevice`)
 #' @seealso [`nv_device()`], [`AnvlBackendQuickr()`].
 #' @export
 quickr_device <- function(x = "cpu") {
   assert_choice(x, c("cpu"))
-  structure(list(device = x), class = "QuickrDevice")
+  structure(list(device = x), class = c("QuickrDevice", "AnvlDevice"))
 }
 
 #' @export
@@ -43,15 +43,21 @@ jit_quickr_compile_cb <- function(f, static, unwrap) {
       f,
       args_flat = avals_from_dispatch(info),
       in_tree = info$in_tree,
-      arg_devices = dispatch_arg_devices(info),
+      static_flat = info$is_static,
       unwrap = unwrap,
-      flat = TRUE
+      flat = TRUE,
+      default_dtypes = default_dtypes_from_key(info$context)
     )
     list(r_fun = compiled$fun)
   }
 }
 
-jit_quickr_impl <- function(f, static, cache_size, unwrap) {
+jit_quickr_impl <- function(f, static, cache_size, unwrap, device) {
+  if (!is.null(device)) {
+    # quickr has one device, so there is nothing to place; this only rejects a
+    # device of another backend.
+    backend_device(device, "quickr")
+  }
   # use pjrt's "closure" engine for quickr.
   dispatcher <- pjrt::dispatcher(
     cache_size,
@@ -63,7 +69,7 @@ jit_quickr_impl <- function(f, static, cache_size, unwrap) {
     # the AnvlBackend contract, not store dtype/shape/device as fields.
     extractor = function(leaf) {
       list(
-        aval = list(dtype = dtype(leaf), shape = shape(leaf), ambiguous = ambiguous(leaf)),
+        aval = list(dtype = dtype(leaf), shape = shape(leaf)),
         device = device(leaf),
         backend = backend(leaf)
       )
@@ -71,7 +77,8 @@ jit_quickr_impl <- function(f, static, cache_size, unwrap) {
     # Consulted only when a call has no array input to name a device. quickr has
     # one device today, but the dispatcher keys on whatever this returns, so a
     # second one would split the cache without further work here.
-    default_device = function() default_device("quickr")
+    default_device = function() default_device("quickr"),
+    context = default_dtypes_context("quickr")
   )
   dispatch <- pjrt::dispatch
 
@@ -97,20 +104,34 @@ jit_quickr_impl <- function(f, static, cache_size, unwrap) {
   fn
 }
 
-compile_quickr <- function(f, args_flat, in_tree, arg_devices = list(), unwrap = FALSE, flat = FALSE) {
-  desc <- local_descriptor()
-  graph <- trace_fn(f, desc = desc, args_flat = args_flat, in_tree = in_tree, mode = "toplevel")
-  check_single_backend(graph, arg_devices = arg_devices, expected = "quickr")
+compile_quickr <- function(
+  f,
+  args_flat,
+  in_tree,
+  static_flat = NULL,
+  unwrap = FALSE,
+  flat = FALSE,
+  default_dtypes = NULL
+) {
+  desc <- local_descriptor(default_dtypes = default_dtypes, backend = "quickr", side_effects_mode = "program")
+  graph <- trace_fn(f, desc = desc, args_flat = args_flat, in_tree = in_tree, static_flat = static_flat)
+  # quickr runs no side effects, such as random draws
+  if (length(graph$side_effects)) {
+    cli_abort("The quickr backend does not support side effects such as random draws.")
+  }
+  check_single_backend(graph, expected = "quickr")
   list(fun = graph_to_quickr_function(graph, unwrap = unwrap, flat = flat))
 }
 
-#' Quickr backend
+#' Quickr Backend
+#'
+#' @description
+#' `r lifecycle::badge("experimental")`
 #'
 #' Constructs the quickr backend, which stores array data as plain R arrays and
 #' compiles jitted functions to R code via the \CRANpkg{quickr} package.
 #'
-#' To use it, the `"quickr"` package needs to be installed.
-#'
+#' @details
 #' Registered automatically under the name `"quickr"` when the package is
 #' loaded; call [`local_backend("quickr")`][local_backend()] or
 #' [`with_backend("quickr", ...)`][with_backend()] to use it. Requires the
@@ -120,10 +141,11 @@ compile_quickr <- function(f, args_flat, in_tree, arg_devices = list(), unwrap =
 #' An [`AnvlArray`] with `backend = "quickr"` is, under the hood, a plain R
 #' vector or array (`numeric`, `integer`, or `logical`) stored in the `$data`
 #' field. [`as_array()`] returns the underlying vector/array directly without
-#' copying, and [`nv_array()`] simply wraps an R vector/array. Data always lives
+#' copying, and [`nv_array()`] simply wraps an R vector/array, or decodes a raw
+#' payload into one. Data always lives
 #' in R's memory and computation always runs on the CPU, so the only device is
 #' [`quickr_device("cpu")`][quickr_device()]; every array still carries it in
-#' `$device`, as arrays of every backend do.
+#' `$device`.
 #'
 #' @section Status:
 #' This backend is **experimental** and has a number of limitations:
@@ -132,54 +154,34 @@ compile_quickr <- function(f, args_flat, in_tree, arg_devices = list(), unwrap =
 #'   suited to long-running or repeatedly-called functions where the one-time
 #'   compilation cost is amortized.
 #' * Only a subset of the primitives that the PJRT backend supports are currently
-#'   lowered to quickr code. See `vignette("primitives")` for an overview.
-#' * Only the data types `f64`, `i32`, and `bool` are supported.
+#'   lowered to quickr code. See
+#'   `r roxy_article("primitives")` for an overview.
 #' * Only CPU execution is supported.
+#' * Only three data types are supported; see the section below.
 #'
-#' @section Quickr JIT arguments:
+#' @section Supported data types:
+#' `f64`, `i32` and `bool` -- the three R storage types.
 #'
-#' * `unwrap` (`logical(1)`, default `FALSE`): if `TRUE`, the compiled function
-#'   returns plain R arrays instead of [`AnvlArray`]s. Useful when the jitted
-#'   function's output is consumed by non-anvl R code and the extra wrapping
-#'   would only get stripped again.
-#'
-#' @return An [`AnvlBackend`] object with subclass `"AnvlBackendQuickr"`.
+#' @return ([`AnvlBackend`])\cr
+#'   With subclass `"AnvlBackendQuickr"`.
 #' @seealso [`AnvlBackend()`], [`AnvlBackendPjrt()`], [`local_backend()`], [`jit()`].
 #' @export
 AnvlBackendQuickr <- function() {
   backend <- AnvlBackend(
-    new_data = function(data, dtype, shape, device, ambiguous) {
+    new_data = function(data, dtype, shape, device, row_major = FALSE) {
       if (!is.null(device)) {
-        if (is.character(device) && (device != "quickr")) {
-          cli_abort("Unsupported device {.val {device}} for 'quickr' backend")
-        } else if (!inherits(device, "QuickrDevice")) {
-          cli_abort("Invalid device of class {.cls {class(device)}} for 'quickr' backend")
-        }
-      }
-      if (is.null(dtype)) {
-        dtype <- if (is.double(data)) as_dtype("f64") else default_dtype(data)
+        backend_device(device, "quickr")
       }
       if (!is_dtype(dtype)) {
         dtype <- as_dtype(dtype)
       }
-      if (is.null(shape)) {
-        shape <- if (!is.null(dim(data))) {
-          as.integer(dim(data))
-        } else if (length(data) == 1L) {
-          1L
-        } else {
-          as.integer(length(data))
-        }
+      # Errors for a data type quickr cannot represent, so an array is never
+      # labelled with one it does not actually hold.
+      info <- quickr_dtype_info(dtype)
+      if (is.raw(data)) {
+        data <- quickr_values_of_raw(data, info, shape, row_major)
       }
-      dtype_chr <- as.character(dtype)
-      data <- switch(
-        substr(dtype_chr, 1, 1),
-        "f" = as.double(data),
-        "i" = ,
-        "u" = as.integer(data),
-        "b" = as.logical(data),
-        as.double(data)
-      )
+      data <- info$scalar_cast(data)
       if (length(shape) >= 1L) {
         dim(data) <- shape
       }
@@ -188,7 +190,6 @@ AnvlBackendQuickr <- function() {
           data = data,
           dtype = dtype,
           shape = shape,
-          ambiguous = ambiguous,
           # quickr is CPU-only, so every accepted `device` is this one. It is
           # stored rather than recomputed on demand: `$device` is part of what
           # identifies an array, and pjrt's dispatcher reads it off the leaf.
@@ -198,23 +199,18 @@ AnvlBackendQuickr <- function() {
         class = "AnvlArray"
       )
     },
-    new_empty = function(dtype, shape, device, ambiguous) {
+    new_empty = function(dtype, shape, device) {
       if (!is.null(device)) {
-        if (is.character(device) && (device != "quickr")) {
-          cli_abort("Unsupported device {.val {device}} for 'quickr' backend")
-        } else if (!inherits(device, "QuickrDevice")) {
-          cli_abort("Invalid device of class {.cls {class(device)}} for 'quickr' backend")
-        }
+        backend_device(device, "quickr")
       }
       if (!is_dtype(dtype)) {
         dtype <- as_dtype(dtype)
       }
       storage_mode <- switch(
-        substr(as.character(dtype), 1L, 1L),
-        "f" = "double",
-        "i" = ,
-        "u" = "integer",
-        "b" = "logical",
+        quickr_dtype_to_r_ctor(dtype),
+        "double" = "double",
+        "integer" = "integer",
+        "logical" = "logical",
         "double"
       )
       data <- vector(storage_mode, prod(shape))
@@ -226,7 +222,6 @@ AnvlBackendQuickr <- function() {
           data = data,
           dtype = dtype,
           shape = shape,
-          ambiguous = ambiguous,
           device = quickr_device("cpu"),
           backend = "quickr"
         ),
@@ -235,24 +230,63 @@ AnvlBackendQuickr <- function() {
     },
     dtype = function(x) x$dtype,
     shape = function(x) x$shape,
-    ambiguous = function(x) x$ambiguous,
     as_array = function(x, check) x$data,
-    as_raw = function(x, row_major) as.raw(x$data),
+    as_raw = function(x, row_major) quickr_as_raw(x, row_major),
     platform = function(x) "cpu",
     device = function(x) x$device,
     new_device = function(x) quickr_device(x),
-    print_data = function(x, footer) {
-      print(x$data)
+    print_data = function(x, footer, ...) {
+      print(x$data, ...)
       cat(footer, "\n")
     },
     jit = function(f, static, cache_size, unwrap = FALSE, device = NULL) {
       assert_flag(unwrap)
-      jit_quickr_impl(f, static, cache_size, unwrap)
+      jit_quickr_impl(f, static, cache_size, unwrap, device)
     },
-    await_data = function(x) invisible(NULL)
+    await_data = function(x) invisible(NULL),
+    # quickr has no single precision: an R double is a double.
+    default_dtypes = list(float = "f64", int = "i32")
   )
   class(backend) <- c("AnvlBackendQuickr", class(backend))
   backend
 }
 
 register_backend("quickr", AnvlBackendQuickr())
+
+# The values of a raw payload of `prod(shape)` little-endian elements of the
+# data type `info` (from `quickr_dtype_info()`) describes, in column-major
+# order, or row-major with `row_major = TRUE` -- as `pjrt_buffer()` reads one.
+quickr_values_of_raw <- function(data, info, shape, row_major) {
+  n <- prod(shape)
+  if (length(data) != n * info$size) {
+    cli_abort("A raw payload of {length(data)} byte{?s} does not hold {n} element{?s} of {info$size} byte{?s}.")
+  }
+  values <- if (info$ctor == "logical") {
+    data != as.raw(0L)
+  } else {
+    readBin(data, info$ctor, n = n, size = info$size, endian = "little")
+  }
+  if (row_major && length(shape) >= 2L) {
+    values <- aperm(array(values, rev(shape)))
+  }
+  values
+}
+
+# The bytes of the quickr array `x` as pjrt lays out a buffer of its data type:
+# little-endian, in column-major order, or row-major with `row_major = TRUE`.
+quickr_as_raw <- function(x, row_major) {
+  info <- quickr_dtype_info(x$dtype)
+  data <- x$data
+  if (row_major && length(x$shape) >= 2L) {
+    data <- aperm(data)
+  }
+  if (info$ctor == "logical") {
+    # pjrt refuses to hold a missing value at `bool`, and so does a payload.
+    if (anyNA(data)) {
+      cli_abort("An array of data type {.val bool} with missing values has no raw payload.")
+    }
+    return(as.raw(data))
+  }
+  # writeBin() refuses a vector with a `dim`.
+  writeBin(as.vector(data), raw(), size = info$size, endian = "little")
+}

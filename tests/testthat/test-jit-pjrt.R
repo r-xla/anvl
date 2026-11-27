@@ -7,17 +7,21 @@ test_that("error message when using different platforms", {
   expect_error(f(x, y), "lives on a different device")
 })
 
+# A backend-specific argument is checked when the implementation for the
+# active backend is built, on the first call.
 test_that("donate: must be formal args of f", {
-  expect_error(jit(function(x) x, donate = "y"), "subset of")
+  expect_error(jit(function(x) x, donate = "y")(nv_array(1)), "subset of")
 })
 
 test_that("donate: cannot also be static", {
-  expect_error(jit(function(x, y) x, donate = "x", static = "x"), "donate.*static")
+  expect_error(jit(function(x, y) x, donate = "x", static = "x")(nv_array(1), nv_array(2)), "donate.*static")
 })
 
 test_that("donate: no aliasing with type mismatch", {
   skip_if(!is_cpu()) # might get a segfault on other platforms
-  f <- jit(function(x) x, device = "cpu", donate = "x")
+  # No `device`: naming one that the argument is not on copies it instead of
+  # donating it, and then there is nothing to be consumed.
+  f <- jit(function(x) x, donate = "x")
   x <- nv_array(1)
   out <- f(x)
   expect_error(capture.output(x), "called on deleted or donated buffer")
@@ -79,5 +83,32 @@ describe("CPU output donation", {
     # Output 0 is aliased to user input 0 (after constants), so no phantom
     # is needed.
     expect_length(out[[3L]], 0L)
+  })
+})
+
+describe("jit(xla_options = )", {
+  it("passes the options to the compiles of that function only", {
+    dir <- withr::local_tempdir()
+    f <- jit(function(x) x + 1, xla_options = list(xla_dump_to = dir))
+    expect_equal(as.numeric(as_array(f(nv_array(1)))), 2)
+    n_dumped <- length(list.files(dir))
+    expect_gt(n_dumped, 0L)
+
+    g <- jit(function(x) x * 2)
+    expect_equal(as.numeric(as_array(g(nv_array(1)))), 2)
+    expect_identical(length(list.files(dir)), n_dumped)
+  })
+
+  it("takes a map-valued option on the CPU", {
+    skip_if_not(is_cpu())
+    f <- jit(
+      function(x) nv_sum(nv_exp(x)),
+      xla_options = list(xla_backend_extra_options = "xla_cpu_use_multi_output_fusion")
+    )
+    expect_equal(as.numeric(as_array(f(nv_array(c(0, 1))))), 1 + exp(1), tolerance = 1e-6)
+  })
+
+  it("must be a list", {
+    expect_error(jit(identity, xla_options = "xla_dump_to")(nv_array(1)), "xla_options")
   })
 })

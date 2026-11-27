@@ -6,7 +6,7 @@
 \usage{
 nv_conv1d(
   x,
-  weight,
+  kernel,
   stride = 1L,
   padding = 0L,
   dilation = 1L,
@@ -15,24 +15,59 @@ nv_conv1d(
 )
 }
 \arguments{
-\item{x}{(\code{\link{arrayish}})\cr \verb{[N, C_in, W]}.}
+\item{x}{(\code{\link{arrayish}})\cr Input with the shape given under Shapes. Can be
+any data type; \code{x} and \code{kernel} are
+\link[=nv_promote_to_common]{promoted to a common data type}. An R value
+assumes the other operand's data type, and materializes at its
+\link[=default_dtypes]{default data type} when that has none either.}
 
-\item{weight}{(\code{\link{arrayish}})\cr \verb{[C_out, C_in / groups, kW]}.}
+\item{kernel}{(\code{\link{arrayish}})\cr Kernel with the shape given under Shapes.
+Promoted together with \code{x} -- see \code{x}.}
 
-\item{stride, padding, dilation}{(\code{integer()})\cr Length 1.}
+\item{stride}{(\code{integer(1)})\cr Step between neighbouring window positions.}
 
-\item{groups}{(\code{integer(1)})\cr Grouped/depthwise convolution.}
+\item{padding}{(\code{integer(1)})\cr Number of zeros added on each side of the
+spatial axis.}
+
+\item{dilation}{(\code{integer(1)})\cr Spacing between the kernel's elements.}
+
+\item{groups}{(\code{integer(1)})\cr Number of groups the channels are split into:
+the \code{g}-th block of input channels is convolved with the \code{g}-th block of
+output channels only. It must divide \code{C_in} and \code{C_out}, and
+\code{groups = C_in} is a depthwise convolution.}
 
 \item{precision}{(\code{character(1)})\cr \code{"highest"}, \code{"high"} or \code{"default"}.}
 }
 \value{
-\code{\link{arrayish}} \verb{[N, C_out, out_W]}.
+(\code{\link{arrayish}})\cr
+Has the operands' common data type and the shape given under Shapes.
 }
 \description{
-Torch-style 1D convolution in NCW layout: \code{x} is
-\verb{[batch, in_channels, width]}, \code{weight} is
-\verb{[out_channels, in_channels / groups, kW]}, output is
-\verb{[batch, out_channels, out_w]}. Symmetric zero padding.
+1D convolution like torch's \code{nnf_conv1d()}, but with the axes in reverse
+order: width, channels, batch.
+}
+\section{Shapes}{
+
+\itemize{
+\item \code{x}: \verb{(W, C_in, N)}
+\item \code{kernel}: \verb{(kW, C_in / groups, C_out)}
+\item output: \verb{(W_out, C_out, N)}, where
+\code{W_out = floor((W + 2 * padding - dilation * (kW - 1) - 1) / stride) + 1}
+}
+}
+
+\examples{
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# width 5, one channel, a batch of one, convolved with a width-3 kernel
+x <- nv_array(1:5, shape = c(5, 1, 1), dtype = "f32")
+kernel <- nv_array(c(1, 0, -1), shape = c(3, 1, 1), dtype = "f32")
+nv_conv1d(x, kernel)
+
+# `padding = 1` keeps the input width, `stride = 2` visits every other
+# window position
+nv_conv1d(x, kernel, padding = 1L)
+nv_conv1d(x, kernel, stride = 2L)
+\dontshow{\}) # examplesIf}
 }
 \seealso{
 \code{\link[=nv_conv2d]{nv_conv2d()}}, \code{\link[=nv_conv3d]{nv_conv3d()}}, \code{\link[=prim_convolution]{prim_convolution()}}.

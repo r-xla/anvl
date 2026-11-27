@@ -2,7 +2,7 @@
 % Please edit documentation in R/device.R
 \name{is_device}
 \alias{is_device}
-\title{Test whether an object is a device}
+\title{Test Whether an Object Is a Device}
 \usage{
 is_device(x)
 }
@@ -10,8 +10,10 @@ is_device(x)
 \item{x}{An object to test.}
 }
 \value{
-\code{logical(1)}
+(\code{logical(1)})\cr
+Whether \code{x} is a device of one of the backends: a \code{PJRTDevice}, or an
+object whose class inherits from \code{"AnvlDevice"} (see \code{\link[=AnvlBackend]{AnvlBackend()}}).
 }
 \description{
-Test whether an object is a device
+Test Whether an Object Is a Device
 }

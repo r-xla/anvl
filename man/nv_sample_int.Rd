@@ -4,25 +4,23 @@
 \alias{nv_sample_int}
 \title{Sample Integers}
 \usage{
-nv_sample_int(shape, initial_state, n, dtype = "i32")
+nv_sample_int(shape, n, dtype = NULL)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
-Shape.}
-
-\item{initial_state}{(\code{\link{arrayish}})\cr
-RNG state (\code{ui64[2]}).}
+Shape of the result.}
 
 \item{n}{(\code{integer(1)})\cr
 Size of the population, i.e. the integers \code{1} to \code{n} are sampled.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the sampled integers.}
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
+Numeric type of the sampled integers.
+The sampled values are converted to it, so it must hold \code{n}.
+\code{NULL} (default) uses the \link[=default_dtypes]{default integer type}.}
 }
 \value{
-(\code{list()} of \code{\link{arrayish}})\cr
-List of two elements: the updated RNG state and the sampled integers,
-of shape \code{shape}.
+(\code{\link{arrayish}})\cr
+The sampled integers, of shape \code{shape} and data type \code{dtype}.
 }
 \description{
 Samples integers from \code{1} to \code{n} with equal probability and with
@@ -30,22 +28,31 @@ replacement, analogous to R's \code{sample.int()}.
 
 To sample from a population other than \code{1:n}, use \code{\link[=nv_sample]{nv_sample()}}.
 }
+\section{Random State}{
+
+The draws come from the active random state: the global random state (see
+\code{\link[=nv_set_seed]{nv_set_seed()}}), or the random state that \code{\link[=with_nv_rng_state]{with_nv_rng_state()}} or
+\code{\link[=local_nv_rng_state]{local_nv_rng_state()}} make the default for a scope. They advance it in
+place.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-state <- nv_rng_state(42L)
-# Roll 6 dice
-result <- nv_sample_int(6, state, 6L)
-result[[2]]
+# roll six dice
+with_nv_seed(42L, nv_sample_int(6, 6L))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
 \code{\link[=nv_sample]{nv_sample()}} to sample from an arbitrary population.
 
 Other rng:
+\code{\link[=local_nv_rng_state]{local_nv_rng_state()}},
 \code{\link{nv_normal}},
 \code{\link[=nv_rbinom]{nv_rbinom()}},
 \code{\link[=nv_rng_state]{nv_rng_state()}},
-\code{\link[=nv_runif]{nv_runif()}},
-\code{\link[=nv_sample]{nv_sample()}}
+\code{\link[=nv_sample]{nv_sample()}},
+\code{\link[=nv_set_seed]{nv_set_seed()}},
+\code{\link[=nv_split_rng_states]{nv_split_rng_states()}},
+\code{\link{nv_uniform}}
 }
 \concept{rng}

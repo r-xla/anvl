@@ -13,13 +13,13 @@ Package website: [release](https://r-xla.github.io/anvl/) \|
 status](https://www.r-pkg.org/badges/version/anvl)](https://CRAN.R-project.org/package=anvl)
 [![codecov](https://codecov.io/gh/r-xla/anvl/branch/main/graph/badge.svg)](https://codecov.io/gh/r-xla/anvl)
 [![r-universe](https://r-xla.r-universe.dev/badges/anvl)](https://r-xla.r-universe.dev/anvl)
-![CUDA 12.8](https://img.shields.io/badge/CUDA-12.8-green.svg)
+![CUDA 13.3](https://img.shields.io/badge/CUDA-13.3-green.svg)
 <!-- badges: end -->
 
 Accelerated array computing and code transformations for R, allowing you
 to run numerical programs at the speed of light. The package supports
-JIT compilation for very fast execution and reverse-mode automatic
-differentiation. Programs can run on CPU and NVIDIA GPU.
+just-in-time (JIT) compilation for very fast execution and reverse-mode
+automatic differentiation. Programs can run on CPU and NVIDIA GPU.
 
 ## Installation
 
@@ -27,16 +27,11 @@ differentiation. Programs can run on CPU and NVIDIA GPU.
 install.packages("anvl", repos = c("https://r-xla.r-universe.dev", getOption("repos")))
 ```
 
-The PJRT plugins anvl runs on are downloaded separately, on demand. To
-download them right away instead of when they are first needed:
+Afterwards, install the additional dependencies:
 
 ``` r
 anvl::install_anvl()
 ```
-
-CUDA support is only available on linux x86_64 (amd64). There, this also
-installs the CUDA plugin when an NVIDIA GPU is detected; pass
-`cuda = TRUE` to install it regardless.
 
 See the [installation
 guide](https://r-xla.github.io/anvl/articles/installation.html) for more
@@ -44,7 +39,7 @@ details, including prebuilt Docker images.
 
 ## Why anvl
 
-anvl makes numerical R code run fast on CPUs and GPUs, and computes
+{anvl} makes numerical R code run fast on CPUs and GPUs, and computes
 gradients of your functions automatically. It aspires to be for R what
 JAX is for Python.
 
@@ -52,12 +47,13 @@ There are three core ideas:
 
 - **Compilation.** {anvl} converts R functions into an optimized program
   via XLA – the same compiler that powers JAX and TensorFlow. Due to the
-  compilation, resulting programs can be faster compared to implementing
-  them in [{torch}](https://torch.mlverse.org).
+  compilation step, resulting programs can be faster compared to
+  implementing them in [{torch}](https://torch.mlverse.org).
 - **Function transformation.** Programmatically derive new functions
-  from existing ones. Currently the only available transformation is
-  reverse-mode automatic differentiation via `gradient()`, which returns
-  the derivative of a function as another R function.
+  from existing ones. Reverse-mode automatic differentiation via
+  `gradient()` returns the derivative of a function as another R
+  function, and `vectorize()` maps a function written for a single
+  instance over a whole batch.
 - **Hardware portability.** The same code runs on CPU or GPU.
 
 Moreover, the package is designed to be extensible. As the package is
@@ -66,37 +62,37 @@ needing a lower-level language.
 
 ## Usage
 
-We define an R function operating on `AnvlArray`s – the primary data
-type of {anvl}. It can be executed in either *eager* mode (each
+We define an R function operating on `AnvlArray`s, which is the primary
+data type of {anvl}. It can be executed in either *eager* mode (each
 operation is performed immediately) or *jit* mode (the whole function is
 compiled into a single executable via `jit()`).
 
 ``` r
 library(anvl)
 f <- function(a, b, x) {
-  a * x + b
+  nv_mul(a, x) + b
 }
 
-a <- nv_scalar(1.0, "f32")
-b <- nv_scalar(-2.0, "f32")
-x <- nv_scalar(3.0, "f32")
+a <- nv_scalar(1)
+b <- nv_scalar(2)
+x <- nv_scalar(3)
 
 # Eager mode
 f(a, b, x)
 #> AnvlArray
-#>  1
+#>  5
 #> [ CPUf32{} ]
 
 # JIT mode
 f_jit <- jit(f)
 f_jit(a, b, x)
 #> AnvlArray
-#>  1
+#>  5
 #> [ CPUf32{} ]
 ```
 
-Through automatic differentiation, we can also obtain the gradient of
-the above function.
+Through function transformation, we can also obtain the gradient of the
+above function.
 
 ``` r
 g_jit <- jit(gradient(f, wrt = c("a", "b")))
@@ -104,35 +100,79 @@ g_jit(a, b, x)
 #> $a
 #> AnvlArray
 #>  3
-#> [ CPUf32{} ]
-#>
+#> [ CPUf32{} ] 
+#> 
 #> $b
 #> AnvlArray
 #>  1
 #> [ CPUf32{} ]
 ```
 
-For more complex examples, such as implementing a Gaussian Process, see
-the package website.
+By default, floats use `f32` precision in {anvl} because of its speed
+advantage on GPUs. Changing this default to double-precision is possible
+via the `anvl.default_dtypes` option:
+
+``` r
+with_default_dtypes(c(float = "f64"), {
+  nv_add(pi, 1)
+})
+#> AnvlArray
+#>  4.1416
+#> [ CPUf64{} ]
+```
+
+To learn more, see the [get
+started](https://r-xla.github.io/anvl/articles/anvl.html) article. If
+you want to use {anvl} in your package, see the [depending on
+anvl](https://r-xla.github.io/anvl/articles/depending-on-anvl.html)
+article.
 
 ## Platform Support
 
-| Platform              | CPU |        GPU         |
-|-----------------------|:---:|:------------------:|
-| Linux (x86_64)        |  ✓  |       ✓ CUDA       |
-| Linux (ARM)           |  ✓  |         ✗          |
-| Windows               |  ✓  | ◐ WSL2 only (CUDA) |
-| macOS (Apple Silicon) |  ✓  |         ✗          |
-| macOS (Intel)         |  ✗  |         ✗          |
+| OS      | Architecture | CPU | CUDA |
+|:--------|:-------------|:---:|:----:|
+| Linux   | x86_64       |  ✓  |  ✓   |
+| Linux   | arm64        |  ✓  |  ✓   |
+| Windows | x86_64       |  ✓  | WSL2 |
+| Windows | arm64        |  ✗  |  ✗   |
+| macOS   | x86_64       |  ✓  |  ✗   |
+| macOS   | arm64        |  ✓  |  ✗   |
 
-✓ fully supported  ·  ◐ limited support  ·  ✗ not supported
+✓ supported  ·  WSL2: via the Windows Subsystem for Linux  ·  ✗ not
+supported
+
+## anvl in the Wild
+
+Projects that build on {anvl}:
+
+<table>
+<tr>
+<td align="center" width="140">
+<a href="https://github.com/belian-earth/garry"><img src="man/figures/logo-garry.png" alt="garry logo" height="100" /></a>
+</td>
+<td>
+<a href="https://github.com/belian-earth/garry"><b>garry</b></a> is a
+lazy, spatial-aware raster engine that JIT-compiles its numeric kernels
+with {anvl}.
+</td>
+</tr>
+<tr>
+<td align="center" width="140">
+<a href="https://www.apollochoicemodelling.com"><img src="man/figures/logo-apollo.png" alt="Apollo logo" width="110" /></a>
+</td>
+<td>
+<a href="https://www.apollochoicemodelling.com"><b>Apollo</b></a> is a
+flexible package for the estimation and application of choice models.
+</td>
+</tr>
+</table>
 
 ## Acknowledgments
 
 - This work is supported by [MaRDI](https://www.mardi4nfdi.de).
-- The design of this package was inspired by and borrows from:
-  - JAX, especially the [autodidax
-    tutorial](https://docs.jax.dev/en/latest/autodidax.html).
-  - The [microjax](https://github.com/joey00072/microjax) project.
-- For JIT compilation, we leverage the [OpenXLA](https://openxla.org/)
+- The design of this package is inspired by
+  [JAX](https://github.com/jax-ml/jax).
+- For JIT compilation, we build on the [OpenXLA](https://openxla.org/)
   project.
+- Some of the compiler binaries are downloaded from
+  [zml](https://github.com/zml/pjrt-artifacts/).

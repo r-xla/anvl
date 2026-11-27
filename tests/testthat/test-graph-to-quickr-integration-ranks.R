@@ -6,7 +6,7 @@ test_that("integration: `%*%` matches PJRT for array ranks 1..5", {
   m <- 3L
   n <- 4L
   p <- 5L
-  batch_dim <- 2L
+  batch_size <- 2L
 
   matmul_any_rank <- function(A, B) {
     if (naxes(A) == 1L) {
@@ -16,33 +16,33 @@ test_that("integration: `%*%` matches PJRT for array ranks 1..5", {
       B <- nv_reshape(B, c(shape(B), 1L))
     }
 
+    # The batch axes trail, so the operand with fewer of them gets trailing
+    # axes of size 1, which then broadcast.
     pad_and_broadcast <- function(x, target_shape) {
       if (identical(shape(x), target_shape)) {
         return(x)
       }
       if (naxes(x) < length(target_shape)) {
-        x <- nv_reshape(x, c(rep.int(1L, length(target_shape) - naxes(x)), shape(x)))
+        x <- nv_reshape(x, c(shape(x), rep.int(1L, length(target_shape) - naxes(x))))
       }
       prim_broadcast_in_axes(x, shape = target_shape, broadcast_axes = seq_along(target_shape))
     }
 
     shA <- shape(A)
     shB <- shape(B)
-    rA <- length(shA)
-    rB <- length(shB)
-    target_batch <- if (rA >= rB) {
-      shA[seq_len(rA - 2L)]
+    target_batch <- if (length(shA) >= length(shB)) {
+      shA[-seq_len(2L)]
     } else {
-      shB[seq_len(rB - 2L)]
+      shB[-seq_len(2L)]
     }
 
-    A <- pad_and_broadcast(A, c(target_batch, shA[(rA - 1L):rA]))
-    B <- pad_and_broadcast(B, c(target_batch, shB[(rB - 1L):rB]))
+    A <- pad_and_broadcast(A, c(shA[seq_len(2L)], target_batch))
+    B <- pad_and_broadcast(B, c(shB[seq_len(2L)], target_batch))
 
     A %*% B
   }
 
-  template_tensor <- function(x) {
+  template_array <- function(x) {
     shp <- dim(x)
     if (is.null(shp)) {
       shp <- c(length(x))
@@ -54,13 +54,9 @@ test_that("integration: `%*%` matches PJRT for array ranks 1..5", {
     if (rank == 1L) {
       return(rnorm(n, sd = 0.2))
     }
-    leading <- rep.int(batch_dim, rank - 2L)
-    if (side == "lhs") {
-      dims <- c(leading, m, n)
-    } else {
-      dims <- c(leading, n, p)
-    }
-    array(rnorm(prod(dims), sd = 0.2), dim = dims)
+    batch <- rep.int(batch_size, rank - 2L)
+    shp <- if (side == "lhs") c(m, n, batch) else c(n, p, batch)
+    array(rnorm(prod(shp), sd = 0.2), dim = shp)
   }
 
   rank_pairs <- list(
@@ -79,7 +75,7 @@ test_that("integration: `%*%` matches PJRT for array ranks 1..5", {
     A <- make_input(a_rank, "lhs")
     B <- make_input(b_rank, "rhs")
 
-    templates <- list(A = template_tensor(A), B = template_tensor(B))
+    templates <- list(A = template_array(A), B = template_array(B))
     run <- list(
       args = list(A = A, B = B),
       info = paste0("a_rank=", a_rank, ", b_rank=", b_rank)

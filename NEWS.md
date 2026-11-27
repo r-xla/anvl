@@ -1,24 +1,289 @@
 # anvl (development version)
 
+## Breaking changes
+
+* `prim_custom_gradient()` takes a forward pass as `forward`, which returns the
+  result and `residuals` that `rule` receives, instead of a `rule_pullback()`
+  as `rule`, whose backward pass closed over what the forward pass computed.
+* Batch axes now come last to have consistent col-major semantics everywhere.
+  This includes: matrix multiplication, Cholesky decomposition, triangular solves, convolutions, scans, and top-k operations.
+* Random draws fill a shape in column-major order.
+* `NULL` (and so `c()`) is no longer a shape; constructors that infer one default
+  to `shape = "auto"`. Write the shape of a scalar as `shp()` (#552).
+* `Shape()` is no longer exported; use `shp()`.
+* The `"reverse"` rule of a primitive is renamed to `"pullback"`.
+* `nv_save()`, `nv_read()`, `nv_serialize()` and `nv_unserialize()` are
+  removed. Save arrays with `saveRDS()`, or with the {safetensors} package to
+  exchange them with other frameworks (see below).
+
 ## Features
 
-* New `nv_custom_call()` (and the `prim_custom_call()` primitive behind it) calls
-  an XLA FFI handler registered with `pjrt::pjrt_register_custom_call()`,
-  without having to define a primitive and a StableHLO lowering rule by
-  hand. Operand and result layouts default to row-major, attributes are
-  taken as a named list, and results can be aliased onto operands so an
-  in-place handler avoids a copy. Layouts may also be given per platform
-  (`list(cpu = ..., cuda = ...)`), resolved when the program is lowered, for
-  handlers whose CPU and CUDA implementations disagree.
+* New `nv_split_rng_states()` splits `n` random states off a random state.
+* New `shp()` creates a shape vector from its axis sizes: `shp(2, 3)`, or `shp()` for
+  a scalar.
+* New `skip_if_no_plugin()` skips a test when no PJRT plugin is available,
+  as on CRAN. The new "Depending on anvl" article explains its use.
+* New `prim_optimization_barrier()` and `nv_optimization_barrier()` which
+  allow to prevent optimizations from moving computations across it.
+* Added two new transformations `pullback()` and `value_and_pullback()`.
+* Elementwise primitives such as `prim_add()` now broadcast scalars.
+* Experimental: new `vectorize()` maps a function over axes of its arguments
+  (`in_axes`, `out_axes`, by default the last axis), in the spirit of
+  `base::Vectorize()`.
+* `prim_qr()`, `prim_lu()`, `prim_svd()` and `prim_eigh()`, and with them
+  `nv_qr()`, `nv_svd()` and `nv_eigh()`, take a batch of matrices, whose batch
+  axes trail them, as `prim_chol()` and `prim_triangular_solve()` already do.
+* `gradient()` differentiates a batched Cholesky decomposition or triangular
+  solve.
+* `safetensors::safe_save_file()` writes `AnvlArray`s, and
+  `safetensors::safe_load_file(framework = "anvl")` reads them.
+* The `"quickr"` backend accepts a raw payload in `nv_array()`.
+* Experimental: `AnvlBackend()`, `register_backend()` and the new
+  `register_rule_type()` let a package add a backend, with its own rules for
+  the primitives.
+* New `nv_custom_call()` / `prim_custom_call()` call an XLA FFI handler registered
+  with `pjrt::pjrt_register_custom_call()`. The new "Custom Calls" article shows
+  how to write one, for CPU and CUDA.
 
-## Documentation
+## Bug fixes
 
-* New article "Custom Calls", showing how to write an XLA FFI handler,
-  register it with {pjrt} and call it -- on CPU, and on CUDA with a
-  hand-written kernel.
+* Inside `jit()`, an R value that a function wrapped by `with_dtypes()` returns
+  takes the wrapper's default data types, not those of the enclosing trace.
+* A missing value (`NA_real_`, `NA_integer_`, `NA`) passed to a jitted function
+  or an operation as an R scalar, or written in a traced body, behaves as in
+  `nv_array()` at the data type it takes, instead of being refused with a
+  self-contradictory error. An `NA` in an R array passed to a jitted function
+  is now reported at `i32` too.
+
+* An empty `wrt` in `gradient()`, `value_and_gradient()` and `graph_gradient()`
+  differentiates with respect to no argument, rather than all of them.
+* `nv_array(byrow = TRUE)` refuses data that does not fill `shape` instead of
+  recycling it, and keeps the values of a `bit64::integer64`.
+* An array that a branch of `nv_if()`, the body of `nv_while()` or a function
+  differentiated by `gradient()` closes over now counts toward the device
+  `jit()` detects, as it already did for the jitted function itself.
+* `as_raw()` of a `"quickr"` array returns the bytes of its data type, in
+  row-major order with `row_major = TRUE`.
+* The `"quickr"` backend accepts a device given as a string, `"cpu"`.
+
+## Performance
+
+* Constructing `AnvlArray`s from R objects is now more efficient.
+* The generated XLA programs are more efficient, especially around
+  flattening operations.
+* `nv_rnorm()` is up to 6x faster on CPU for large samples, with the same
+  values: an optimisation barrier stops XLA computing the random draws again
+  for each of their consumers.
+* `nv_sample()` is up to 3x faster on CPU for large samples, with the same
+  values: an optimisation barrier keeps the random draws out of the gather
+  kernel, where they could not be vectorised.
+
+# anvl 0.6.0
+
+## Breaking changes
+
+* `transform_gradient()` is renamed to `graph_gradient()`.
+* `prim_rng_bit_generator()` is replaced by `prim_sample_bits()`.
+* The RNG state is now handled by {anvl} itself and RNG states no
+  longer have to be passed around. This comes with functions such
+  as `nv_set_seed()`. See the random numbers article for more details.
+
+## Features
+
+* `jit()` takes XLA options for the pjrt backend, `xla_options`, which apply
+  to that function's compiles only.
+* `AnvlArray`s can now be serialized.
+* New `nv_bool()`, `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`, `nv_float32()`
+  and `nv_float64()` create an array of the data type in their name.
+* New functions for the binomial distribution: `nv_{d,p,q}binom()`.
+* New functions for the exponential distribution: `nv_{d,p,q}exp()`.
+* A side effects mechanism was added to anvl, which drives the RNG
+  handling and provides a basis for more side effects in the future.
+  See the side effects section of the internals article for more details.
+* Registering custom classes that can be (un-)flattened is now supported
+  via `pjrt::register_tree_node()`.
+* Bugfix: `nv_cumsum()`, `nv_cumprod()`, `nv_cummax()`, `nv_cummin()`, `nv_extract_diag()`,
+  `nv_trace()` and `nv_quantile()` now accept an array with a size-0 axis; `nv_quantile()`
+  reducing over one is an informative error.
+* New `prim_custom_gradient()` computes a value with one function and
+  differentiates it with another. A `rule_reverse()` with a forward pass can
+  take the place of the latter, so that the backward pass reads what the
+  forward pass computed.
+* `prim_scatter()`'s `update_fn` can be given by name: `"replace"` (the new
+  default, replacing `NULL`), `"add"`, `"sub"`, `"mul"`, `"max"` or `"min"`.
+  The gradient of a scatter is implemented for each of them, not only for
+  replacement; an `update_fn` that is a function is not differentiated.
+* `nv_subset_assign()` and `[<-` take `update_fn` too, so
+  `nv_subset_assign(x, i, value = v, update_fn = "add")` adds `v` to the
+  subset, every value of an index that is repeated in `i`.
+* `gradient()` differentiates through `nv_scan()` / `prim_scan()`.
+
+## Bug fixes
+
+* `nv_rnorm()` returns `NaN` for a `NaN` `mean` or a non-finite or
+  negative `sd`, like `rnorm()`.
+* An unsigned dynamic index of 0 (in `[`, `[<-`, `prim_dynamic_slice()`,
+  `prim_dynamic_update_slice()`) no longer wraps around to the last position.
+* `prim_convolution()` and `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()` are
+  now differentiable.
+* `AnvlArray`s can now be saved with `saveRDS()` and friends; they load onto
+  the default device, not the one they were saved from. Arrays of the
+  pjrt backend no longer cache their device in a `$device` field.
+* A jitted function called without array inputs whose program is pinned to a
+  device by an array it closes over no longer recompiles when the default
+  device changes.
+* A classed R value, such as a `bit64::integer64` array, is an error
+  under `jit()` instead of being read through its storage type.
+* `nv_rnorm()` returns `NaN` for a `NaN` `mean` or a non-finite or
+  negative `sd`, like `rnorm()`.
+* `nv_rbinom()` accepts `size = 0`, like `rbinom()`, and `nv_sample()`
+  gives a clear error for an empty population.
+* `nv_seq()` counts down at an unsigned data type instead of erroring.
+* The gradient of an empty strided `prim_static_slice()` has the shape
+  of its input.
+* The gradient of `x^y` is 0 instead of `NaN` in `y` at base 0 and in
+  `x` at exponent 0.
+* The gradient of `nv_pad()` / `prim_pad()` works for negative edge
+  padding.
+* The gradient of `prim_broadcast_in_axes()` is no longer permuted for
+  broadcast axes that are not in increasing order.
+* An `NA` in an `array()` subset index now gives an informative error.
+* The common data type of arrays and R values no longer depends on the order of the
+  arguments; the R values take the data type the arrays agree on.
+* `nv_squeeze(x, axes = integer(0))` no longer drops every axis.
+* `nv_subset()` accepts an R value as `x`, like `nv_subset_assign()` does.
+* `nv_rnorm()` no longer returns `Inf` / `-Inf` when a uniform draw is exactly 0.
+* `nv_mean()`, `nv_var()` and `nv_sd()` no longer overflow on an integer input, which is now
+* The gradient of `prim_dot_general()` with respect to `lhs` is right when
+* `nv_squeeze(x, axes = integer(0))` no longer drops every axis.
+* `nv_subset()` accepts an R value as `x`, like `nv_subset_assign()` does.
+* `nv_rnorm()` no longer returns `Inf` / `-Inf` when a uniform draw is exactly 0.
+* nv_mean()`, `nv_var()` and `nv_sd()` no longer overflow on an integer input, which is now
+  summed at the default float.
+* New `nv_bool()`, `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`, `nv_float32()` and `nv_float64()`
+  create an array of the data type in their name.
+* New functions for the Poisson distribution: `nv_dpois()`, `nv_ppois()`,
+  and `nv_qpois()`.
+* New functions for the binomial distribution: `nv_dbinom()`, `nv_pbinom()` and
+  `nv_qbinom()`.
+* New functions for the exponential distribution: `nv_dexp()`, `nv_pexp()`,
+  and `nv_qexp()`.
+* `nv_chol()` / `prim_chol()` now lower to a LAPACK (CPU) / cuSOLVER (CUDA)
+  `potrf` custom call, which is about ten times faster on CPU.
+* `nv_triangular_solve()` / `prim_triangular_solve()`, and with them
+  `nv_solve()`, now lower to a BLAS `trsm` custom call on CPU, which runs
+  several times faster from about 100 rows on and compiles faster.
+* Bugfix: the gradient of `prim_dot_general()` with respect to `lhs` is right when
+  `lhs` has batching axes but no free axes.
+* `nv_broadcast_arrays()` broadcasts a size-1 axis that meets a size-0
+  axis to size 0.
+* An update that `prim_scatter()` drops as out of bounds no longer gets
+  a gradient when `unique_indices = TRUE`.
+
+## Performance
+
+* Converting `AnvlArray`s to R is now faster.
+* Cholesky decomposition is now much faster.
+* Linear algebra primitives in `f32` are now faster on windows.
+
+# anvl 0.5.1
+
+* Bugfix: Add r-xla r-universe repo to description again.
+
+# anvl 0.5.0
+
+This release contained many breaking changes.
+From now on, the API will be more stable.
+Because of the amount of changes in this release,
+we only list some highlights and top-level
+overviews here.
+
+## Breaking changes
+
+* Many internal functions and classes were renamed,
+  some no longer needed ones removed.
+* The main API functions and primitives, as well as
+  their parameters were renamed to be more consistent
+  with base R.
+* The package now uses col-major semantics to be more
+  consistent with base R.
+  This is e.g. noticeable in `prim_flatten`, the broadcasting
+  functions, `prim_bitcast_convert`, and the `prim_cum*`
+  primitives.
+* The `@jit` roxygen tag was removed; wrap functions in `jit()` at the
+  definition instead.
+* The type system of {anvl} was changed to avoid the problems reported
+  in issue #373. Specifically, the ambiguity system was replaced with the
+  `RData` system and a new system of rules for type promotions.
+  With it, also the promotion behavior of various primitives and API
+  functions was improved.
+* When creating an `AnvlArray` from R data, the inputs are now always
+  checked for `NA`s, as well as out-of-range issues.
+* `as_array()` and the `as.double()` / `as.integer()` /
+  `bit64::as.integer64()` / `as.logical()` methods take `check = "warn"`,
+  `"err"` or `FALSE` instead of a flag, following {pjrt}, and warn by
+  default about a value R's type cannot hold. Write `check = "err"` where
+  you wrote `check = TRUE`, and `check = FALSE` to materialize silently.
+* `common_dtype()` now errors for `ui64` and a signed integer instead of
+  returning `i64`, which could not hold every `ui64` value. Convert one of them
+  with `nv_convert()`.
+* There is now exactly one backend used at a time and it is configured via the
+  `anvl.backend` option.
+  With this change the `device_arg` parameter was removed from `jit()` as it is no longer needed.
+* The internal graph representation is now pure. Only the top-level graph
+  can now have constants.
+
+## Features
+
+* Many new API functions and extensions to existing ones.
+* Some new primitives (including `prim_scan`).
+* Added support for configuring the default device.
+* Added support for configuring the default data types.
+* `as_anvl_array()` gained a `.promote` argument, naming the data type the
+  input is brought to, as `as_anvl_arrays()` already had.
+* Error messages are improved across the package.
+* `nv_array()` now accepts a `raw()` vector.
+* `as.vector()` now returns a `bit64::integer64` for integer data types that
+  do not fit into R's 32 bit integers.
+* Added support for more base R generics.
+* Improved documentation of API functions and primitives.
+
+## Performance
+
+* `nv_quantile()` and `nv_median()` select the needed order statistics with
+  `top_k` instead of a full sort.
+* `prim_top_k()` gained `indices`; without them the CUDA lowering uses an
+  unstable sort of the values and a slice instead of the CHLO op, which
+  costs no more than a full sort there. `nv_top_k(indices = FALSE)`
+  and the quantile fast path use it.
+
+## Bug fixes
+
+* Many bugs in the API functions and primitives have been fixed.
+* `gradient()` now handles values that `prim_if()` / `prim_scan()` sub-graphs
+  close over, and treats values the differentiated function closes over as
+  constants, as in JAX. Several individual gradient rules were fixed, too.
+* `jit()` no longer evaluates its arguments a second time.
+* Arrays created inside a trace or loaded from disk are now placed on the
+  right device.
+* Type promotion was fixed in several API functions, and floating-point
+  functions now refuse boolean inputs.
+* Input validation was tightened across the API and primitives, so invalid
+  arguments now give a clear error instead of failing inside the backend,
+  aborting the R session, or silently returning a wrong result.
+* Edge cases of subsetting, such as empty selections and ranges that count
+  down, now work.
+* Improved the numerics of some functions, e.g. `nv_mod()` and `nv_qnorm()`.
 
 ## Tests
 
+* The environment variables that configure only the test suite are now spelled
+  with an `ANVL_TEST` prefix: `ANVL_TEST_SKIP_QUICKR`. `ANVL_TEST` itself is
+  unchanged.
+* The suite can be run with `ANVL_DEFAULT_DEVICE=cpu:1`, which makes anything
+  allocating on the first CPU device rather than following the trace land on a
+  device of its own instead of agreeing with everything else by accident. The
+  `default-device` workflow runs it that way on the `full-test` label.
 * Moved some of pjrt's dispatcher tests into anvl.
 
 # anvl 0.4.0

@@ -2,7 +2,7 @@
 % Please edit documentation in R/graph-to-quickr.R
 \name{graph_to_quickr_r_function}
 \alias{graph_to_quickr_r_function}
-\title{Convert an AnvlGraph to a plain R function}
+\title{Convert an AnvlGraph to a Plain R Function}
 \usage{
 graph_to_quickr_r_function(graph)
 }
@@ -11,7 +11,8 @@ graph_to_quickr_r_function(graph)
 Graph to convert.}
 }
 \value{
-(\code{function})
+(\code{function})\cr
+Takes one plain R value per graph input and returns plain R values.
 }
 \description{
 Lowers a supported subset of \code{AnvlGraph} objects to a plain R function (no
@@ -19,10 +20,10 @@ compilation) suitable for \code{quickr::quick()}. The returned function expects
 plain R scalars/vectors/arrays and returns plain R values/arrays.
 }
 \details{
-Most users will prefer \code{\link[=jit]{jit()}} with \code{backend = "quickr"}.
+Most users will prefer \code{\link[=jit]{jit()}} under \code{with_backend("quickr", ...)}.
 This function is the lower-level graph API.
 }
 \seealso{
-\code{\link[=jit]{jit()}} with \code{options(anvl.backend = "quickr")} for tracing and compiling a
+\code{\link[=jit]{jit()}} under \code{with_backend("quickr", ...)} for tracing and compiling a
 regular R function in one step.
 }

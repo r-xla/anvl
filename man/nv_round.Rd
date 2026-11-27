@@ -8,23 +8,28 @@ nv_round(x, method = "nearest_even")
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any numeric data type: a float is rounded and
+keeps its own, and an integer one is already whole and is returned
+unchanged. An R value materializes at its
+\link[=default_dtypes]{default data type} and is treated in the same way.}
 
 \item{method}{(\code{character(1)})\cr
 Rounding method.
 Either \code{"nearest_even"} (default) or \code{"afz"} (away from zero).}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+(\code{\link{arrayish}})\cr
+Has the input's shape and data type.
 }
 \description{
-Element-wise rounding. You can also use the \code{round()} generic.
+Element-wise rounding to a whole number.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1.4, 2.5, 3.6))
-round(x)
+nv_round(x)
+nv_round(nv_array(1:3)) # an integer array is already whole
 \dontshow{\}) # examplesIf}
 }
 \seealso{

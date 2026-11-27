@@ -5,8 +5,9 @@ exec_compiled_pjrt_for_test <- function(compiled, args_nv) {
   args_unwrapped <- lapply(args_nv, function(a) {
     pjrt::copy_buffer(a$data, compiled$device)
   })
+  # phantom specs carry R shapes; the buffers hold the reversed ones
   phantom_bufs <- lapply(compiled$phantom_specs, function(spec) {
-    pjrt::pjrt_empty(dtype = spec$dtype, shape = spec$shape, device = compiled$device)
+    pjrt::pjrt_empty(dtype = spec$dtype, shape = rev(spec$shape), device = compiled$device)
   })
   out_vals <- rlang::exec(
     pjrt::pjrt_execute,
@@ -16,7 +17,7 @@ exec_compiled_pjrt_for_test <- function(compiled, args_nv) {
     !!!phantom_bufs,
     simplify = FALSE
   )
-  jit_wrap_outputs(out_vals, compiled$out_tree, compiled$ambiguous_out, "pjrt")
+  unflatten(compiled$out_tree, lapply(out_vals, pjrt_anvl_array))
 }
 
 graph_runner_pjrt <- function(graph) {
@@ -58,7 +59,7 @@ graph_runner_pjrt <- function(graph) {
         if (inherits(x, "AnvlArray")) {
           return(x)
         }
-        expected_shape <- gval$aval$shape$dims
+        expected_shape <- shape(gval$aval)
         expected_dtype <- as.character(gval$aval$dtype)
         if (expected_dtype == "i1") {
           expected_dtype <- "pred"
@@ -67,9 +68,9 @@ graph_runner_pjrt <- function(graph) {
           if (length(x) != 1L) {
             cli::cli_abort("Expected scalar input")
           }
-          nv_scalar(x, dtype = expected_dtype, backend = "pjrt")
+          nv_scalar(x, dtype = expected_dtype)
         } else {
-          nv_array(x, dtype = expected_dtype, shape = expected_shape, backend = "pjrt")
+          nv_array(x, dtype = expected_dtype, shape = expected_shape)
         }
       },
       args,

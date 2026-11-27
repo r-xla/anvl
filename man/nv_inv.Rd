@@ -8,15 +8,21 @@ nv_inv(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Square non-singular matrix.}
+One input, a square non-singular matrix with exactly 2 axes. Can be any numeric data type: a float keeps its
+own, and an integer one is converted to the default float data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}). An R value materializes at its
+\link[=default_dtypes]{default data type} and is converted in the same way.}
 }
 \value{
-\code{\link{arrayish}}\cr
-The inverse, same shape and dtype as \code{x}.
+(\code{\link{arrayish}})\cr
+The inverse, with the input's shape, and its data type -- or the default
+float data type (see \code{\link[=default_dtypes]{default_dtypes()}}) where the input was an integer
+one.
 }
 \description{
 Computes \code{x^-1}, the inverse of a square non-singular matrix \code{x}, by
-solving \code{x \%*\% y = I} for \code{y}.
+solving \code{x \%*\% y = I} for \code{y}. Unlike \code{\link[base:solve]{base::solve()}}, a singular \code{x} is
+not an error: the result then holds non-finite values.
 
 For most use cases prefer \code{\link[=nv_solve]{nv_solve()}} directly: forming the explicit
 inverse is both slower and less numerically stable than solving against
@@ -24,6 +30,7 @@ a right-hand side.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the inverse has the matrix's shape and data type
 a <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 nv_inv(a)
 \dontshow{\}) # examplesIf}

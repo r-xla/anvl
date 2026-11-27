@@ -2,12 +2,13 @@
 % Please edit documentation in R/backend-pjrt.R
 \name{AnvlBackendPjrt}
 \alias{AnvlBackendPjrt}
-\title{PJRT backend}
+\title{PJRT Backend}
 \usage{
 AnvlBackendPjrt()
 }
 \value{
-An \code{\link{AnvlBackend}} object with subclass \code{"AnvlBackendPjrt"}.
+(\code{\link{AnvlBackend}})\cr
+With subclass \code{"AnvlBackendPjrt"}.
 }
 \description{
 Constructs the PJRT backend, which stores array data in PJRT buffers (via
@@ -18,9 +19,11 @@ backend.
 \section{Data representation}{
 
 An \code{\link{AnvlArray}} with \code{backend = "pjrt"} wraps a \code{\link[pjrt:pjrt_buffer]{pjrt::pjrt_buffer()}}
-stored in the \verb{$data} field. The buffer owns the memory holding the tensor
-values and may live on any device supported by PJRT (CPU, CUDA, Metal,
-...). Calling \code{\link[=as_array]{as_array()}} transfers the buffer contents back to an R
+stored in the \verb{$data} field. The buffer owns the memory holding the array
+values and may live on any device supported by PJRT (CPU, CUDA, ...). It
+holds the array's column-major bytes as an XLA array of the reversed shape,
+so that uploads and read-backs copy the bytes without reordering them.
+Calling \code{\link[=as_array]{as_array()}} transfers the buffer contents back to an R
 array; calling \code{\link[=nv_array]{nv_array()}} on an R object uploads it to the requested
 device.
 
@@ -28,20 +31,27 @@ Each \code{AnvlArray} therefore has an associated device, queryable via
 \code{\link[=device]{device()}}. A device is a \code{\link[pjrt:as_pjrt_device]{pjrt::as_pjrt_device()}} object (e.g. the
 platform \code{"cpu"} or \code{"cuda"}, optionally with an index such as \code{"cuda:1"}).
 When \code{device} is \code{NULL} in \code{\link[=nv_array]{nv_array()}} or the \code{\link[=jit]{jit()}} wrapper, the
-device defaults to the \code{PJRT_PLATFORM} environment variable (falling back
-to \code{"cpu"}), or is inferred from the existing inputs of a jitted call.
+device defaults to \code{\link[=default_device]{default_device()}}, or is inferred from the existing
+inputs of a jitted call.
 Operations require all inputs to live on the same device.
 }
 
-\section{PJRT JIT arguments}{
+\section{Supported data types}{
 
-\itemize{
-\item \code{donate} (\code{character()}, default \code{character()}): names of arguments whose
-underlying buffers may be donated to (i.e., reused/consumed by) the
-compiled XLA executable. Donated buffers must not be used again by the
-caller after the call; this can reduce memory usage and copies for large
-inputs. Must not overlap with \code{static}.
+\code{bool}; the signed integers \code{i8}, \code{i16}, \code{i32} and \code{i64}; the unsigned
+integers \code{ui8}, \code{ui16}, \code{ui32} and \code{ui64}; and the floats \code{f32} and \code{f64}.
+An R double materializes at \code{f32} on this backend and an R integer at \code{i32}
+unless the defaults say otherwise (see \code{\link[=default_dtypes]{default_dtypes()}}).
 }
+
+\section{Floating-point behavior}{
+
+Subnormal floating-point values may be preserved when stored in an array and
+read back into R, yet treated as zero in calculations. On CPUs, XLA enables
+a mode that replaces subnormal inputs and results with zero. The exact
+behavior depends on the platform, backend, and operation.
+
+See the \href{https://r-xla.github.io/anvl/articles/gotchas.html}{Gotchas} article for an explanation and examples.
 }
 
 \seealso{

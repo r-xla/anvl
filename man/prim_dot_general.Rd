@@ -14,9 +14,12 @@ prim_dot_general(
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Left and right operand.
-Operands are \link[=nv_promote_to_common]{promoted to a common data type}.
-Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other operand.}
+Two inputs of the same data type whose shapes are constrained by \code{contracting_axes} and \code{batching_axes} rather than having to match. Can be any data type. R
+values take the other operand's data type when it is in their
+\link[=dtype_categories]{data type category}, and their
+\link[=default_dtypes]{default data type} when neither operand has one. An R
+value outside the other operand's category is an error, as are two R
+values of different storage types.}
 
 \item{contracting_axes}{(\code{list(integer(), integer())})\cr
 A list of two integer vectors specifying which axes of \code{lhs} and
@@ -32,9 +35,11 @@ operation. One of \code{"highest"} (default), \code{"high"} or \code{"default"}.
 Only the StableHLO backend honors this; it is ignored by the quickr backend.}
 }
 \value{
-\code{\link{arrayish}}\cr
-The output shape is the batch axes followed by the remaining
-(non-contracted, non-batched) axes of \code{lhs}, then \code{rhs}.
+(\code{\link{arrayish}})\cr
+Has the data type the operands agreed on. The output shape is the remaining
+(non-contracted, non-batched) axes of \code{lhs}, then those of \code{rhs}, each in
+ascending order, and last the batch axes, in the order \code{batching_axes}
+names them.
 }
 \description{
 General dot product of two arrays, supporting contraction over arbitrary
@@ -45,22 +50,34 @@ axes and batching.
 \itemize{
 \item \code{stablehlo}
 \item \code{quickr}
-\item \code{reverse}
+\item \code{pullback}
+\item \code{vectorize}
 }
 }
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_dot_general]{hlo_dot_general()}}.
+Lowers to \code{\link[stablehlo:hlo_dot_general]{hlo_dot_general()}}, specified under
+\href{https://openxla.org/stablehlo/spec#dot_general}{dot_general}.
+StableHLO puts the batch dimensions first in its result; anvl's result has
+them last, which is the same array once the lowering reverses every axis.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# contracting a 2x3 with a 3x2 gives a 2x2 at the operands' data type
 x <- nv_matrix(1:6, nrow = 2)
 y <- nv_matrix(1:6, nrow = 3)
 prim_dot_general(x, y,
   contracting_axes = list(2L, 1L),
   batching_axes = list(integer(0), integer(0))
+)
+# two such products at once: the batch axis trails, in the result as well
+x <- nv_array(1:12, shape = c(2, 3, 2))
+y <- nv_array(1:12, shape = c(3, 2, 2))
+prim_dot_general(x, y,
+  contracting_axes = list(2L, 1L),
+  batching_axes = list(3L, 3L)
 )
 \dontshow{\}) # examplesIf}
 }

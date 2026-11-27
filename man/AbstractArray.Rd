@@ -5,47 +5,37 @@
 \alias{AbstractArray}
 \title{Abstract Array Class}
 \usage{
-nv_aval(dtype, shape, ambiguous = FALSE)
+nv_aval(dtype, shape)
 
-AbstractArray(dtype, shape, ambiguous = FALSE)
+AbstractArray(dtype, shape)
 }
 \arguments{
-\item{dtype}{(\code{\link[tengen:DataType]{tengen::DataType}} | \code{character(1)})\cr
-The data type of the array.}
+\item{dtype}{(\code{\link[xlamisc:DataType]{xlamisc::DataType}} | \code{character(1)})\cr
+The data type of the array. For \code{nv_aval()} only, \code{"double"},
+\code{"integer"} or \code{"logical"} create an \code{\link{RData}} instead.}
 
 \item{shape}{(\code{\link[stablehlo:Shape]{stablehlo::Shape}} | \code{integer()})\cr
 The shape of the array. Can be provided as an integer vector.}
+}
+\value{
+\code{AbstractArray()}: (\code{\link{AbstractArray}})
 
-\item{ambiguous}{(\code{logical(1)})\cr
-Whether the type is ambiguous.
-Ambiguous types usually arise from R literals (e.g., \code{1L}, \code{1.0}) and follow special promotion rules.
-See the \code{vignette("type-promotion")} for more details.}
+\code{nv_aval()}: (\code{\link{AbstractArray}} | \code{\link{RData}})\cr
+An \code{\link{RData}} when \code{dtype} names an R storage type.
 }
 \description{
 Representation of an abstract array type.
-During tracing, it is wrapped in a \code{\link{GraphNode}} held by a \code{\link{GraphBox}}.
-In the lowered \code{\link{AnvlGraph}} it is also part of \code{\link{GraphNode}}s representing the values in the program.
 
 The base class represents an \emph{unknown} value, but child classes exist for:
 \itemize{
 \item closed-over constants: \code{\link{ConcreteArray}}
 \item scalar arrays arising from R literals: \code{\link{LiteralArray}}
 \item sequence patterns: \code{\link{IotaArray}}
+\item R values \code{\link{RData}}. They are special because they do not have a data type.
 }
 
-To convert a \code{\link{arrayish}} value to an abstract array, use \code{\link[=to_abstract]{to_abstract()}}.
+To convert an \code{\link{arrayish}} value to an abstract array, use \code{\link[=to_abstract]{to_abstract()}}.
 }
-\section{Extractors}{
-
-The following extractors are available on \code{AbstractArray} objects:
-\itemize{
-\item \code{\link[tengen:dtype]{dtype()}}: Get the data type of the array.
-\item \code{\link[tengen:shape]{shape()}}: Get the shape (axis sizes) of the array.
-\item \code{\link[=ambiguous]{ambiguous()}}: Get whether the dtype is ambiguous.
-\item \code{\link[tengen:naxes]{naxes()}}: Get the number of axes.
-}
-}
-
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # -- Creating abstract arrays --
@@ -53,17 +43,19 @@ a <- AbstractArray("f32", c(2L, 3L))
 a
 dtype(a)
 shape(a)
-ambiguous(a)
 
-# Shorthand
+# shorthand
 nv_aval("f32", c(2L, 3L))
 
-# How AbstractArrays appear in an AnvlGraph
-graph <- trace_fn(function(x) x + 1, list(x = nv_aval("i32", 4L)))
+# an R value, which has no dtype until it is used
+nv_aval("double", c(2L, 3L))
+
+# how AbstractArrays appear in an AnvlGraph
+graph <- trace_fn(function(x) x + 1L, list(x = nv_aval("i32", 4L)))
 graph
 graph$inputs[[1]]$aval
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\link{LiteralArray}, \link{ConcreteArray}, \link{IotaArray}, \link{GraphValue}, \code{\link[=to_abstract]{to_abstract()}}, \link{GraphBox}
+\link{LiteralArray}, \link{ConcreteArray}, \link{IotaArray}, \link{RData}, \link{GraphValue}, \code{\link[=to_abstract]{to_abstract()}}, \link{GraphBox}
 }

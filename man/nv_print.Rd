@@ -8,20 +8,33 @@ nv_print(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Returns \code{x} unchanged.
+(\code{\link{arrayish}})\cr
+Returns the input unchanged, data type and shape included.
 }
 \description{
 Prints an array value to the console during JIT execution and returns the
 input unchanged. Useful for debugging.
+For \code{\link{RData}} inputs, that do not have an actual data type, the \link[=default_dtypes]{default data type}
+is used for printing.
 }
+\section{Order of prints}{
+
+A print is currently not ordered with respect to other prints.
+Due to compiler reordering it is possible that the order of the
+prints differs from their location in the code.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the value is printed and handed back unchanged
 x <- nv_array(c(1, 2, 3))
 nv_print(x)
+# RData is printed at the default dtype
+nv_print(1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

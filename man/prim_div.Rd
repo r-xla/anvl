@@ -8,13 +8,16 @@ prim_div(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Arrayish values of data type integer, unsigned integer, or floating-point.
-Must have the same shape.}
+Two inputs of the same data type and shape, except that a scalar is broadcast to the shape of the other. Can be any numeric data type. R
+values take the other operand's data type when it is in their
+\link[=dtype_categories]{data type category}, and their
+\link[=default_dtypes]{default data type} when neither operand has one. An R
+value outside the other operand's category is an error, as are two R
+values of different storage types.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the inputs.
-It is ambiguous if both inputs are ambiguous.
+(\code{\link{arrayish}})\cr
+Has the inputs' broadcast shape and data type.
 }
 \description{
 Divides two arrays element-wise.
@@ -24,20 +27,24 @@ Divides two arrays element-wise.
 \itemize{
 \item \code{stablehlo}
 \item \code{quickr}
-\item \code{reverse}
+\item \code{pullback}
+\item \code{vectorize}
 }
 }
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_divide]{hlo_divide()}}.
+Lowers to \code{\link[stablehlo:hlo_divide]{hlo_divide()}}, specified under
+\href{https://openxla.org/stablehlo/spec#divide}{divide}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(10, 20, 30))
-y <- nv_array(c(2, 5, 10))
-prim_div(x, y)
+# two R values: both take an R double's default data type
+prim_div(10, 4)
+
+# the R value is built at the array's data type instead
+prim_div(10, nv_scalar(4, "f64"))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

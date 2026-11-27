@@ -6,7 +6,7 @@
 \usage{
 nv_conv2d(
   x,
-  weight,
+  kernel,
   stride = 1L,
   padding = 0L,
   dilation = 1L,
@@ -15,28 +15,63 @@ nv_conv2d(
 )
 }
 \arguments{
-\item{x}{(\code{\link{arrayish}})\cr \verb{[N, C_in, H, W]}.}
+\item{x}{(\code{\link{arrayish}})\cr Input with the shape given under Shapes. Can be
+any data type; \code{x} and \code{kernel} are
+\link[=nv_promote_to_common]{promoted to a common data type}. An R value
+assumes the other operand's data type, and materializes at its
+\link[=default_dtypes]{default data type} when that has none either.}
 
-\item{weight}{(\code{\link{arrayish}})\cr \verb{[C_out, C_in / groups, kH, kW]}.}
+\item{kernel}{(\code{\link{arrayish}})\cr Kernel with the shape given under Shapes.
+Promoted together with \code{x} -- see \code{x}.}
 
-\item{stride}{(\code{integer()})\cr Length 1 or 2.}
+\item{stride}{(\code{integer()})\cr Step between neighbouring window positions,
+as \verb{(W, H)} or one value for both spatial axes.}
 
-\item{padding}{(\code{integer()})\cr Symmetric padding, length 1 or 2.}
+\item{padding}{(\code{integer()})\cr Number of zeros added on each side of each
+spatial axis, as \verb{(W, H)} or one value for both.}
 
-\item{dilation}{(\code{integer()})\cr Kernel dilation, length 1 or 2.}
+\item{dilation}{(\code{integer()})\cr Spacing between the kernel's elements, as
+\verb{(W, H)} or one value for both.}
 
-\item{groups}{(\code{integer(1)})\cr Grouped/depthwise convolution.}
+\item{groups}{(\code{integer(1)})\cr Number of groups the channels are split into:
+the \code{g}-th block of input channels is convolved with the \code{g}-th block of
+output channels only. It must divide \code{C_in} and \code{C_out}, and
+\code{groups = C_in} is a depthwise convolution.}
 
 \item{precision}{(\code{character(1)})\cr \code{"highest"}, \code{"high"} or \code{"default"}.}
 }
 \value{
-\code{\link{arrayish}} \verb{[N, C_out, out_H, out_W]}.
+(\code{\link{arrayish}})\cr
+Has the operands' common data type and the shape given under Shapes.
 }
 \description{
-Torch-style 2D convolution in NCHW layout: \code{x} is
-\verb{[batch, in_channels, height, width]}, \code{weight} is
-\verb{[out_channels, in_channels / groups, kh, kw]}, output is
-\verb{[batch, out_channels, out_h, out_w]}. Symmetric zero padding.
+2D convolution like torch's \code{nnf_conv2d()}, but with the axes in reverse
+order: width, height, channels, batch.
+}
+\section{Shapes}{
+
+\itemize{
+\item \code{x}: \verb{(W, H, C_in, N)}
+\item \code{kernel}: \verb{(kW, kH, C_in / groups, C_out)}
+\item output: \verb{(W_out, H_out, C_out, N)}, with each spatial axis as in
+\code{\link[=nv_conv1d]{nv_conv1d()}}
+}
+}
+
+\examples{
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# a 4x4 image with one channel, in a batch of one, convolved with a 3x3
+# kernel
+x <- nv_array(1:16, shape = c(4, 4, 1, 1), dtype = "f32")
+kernel <- nv_fill(1, shape = c(3, 3, 1, 1), dtype = "f32")
+nv_conv2d(x, kernel)
+
+# a batch of two 6x4 images with three channels, and a kernel with two
+# output channels; the stride is 2 along the width and 1 along the height
+x <- nv_fill(1, shape = c(6, 4, 3, 2), dtype = "f32")
+kernel <- nv_fill(1, shape = c(3, 3, 3, 2), dtype = "f32")
+shape(nv_conv2d(x, kernel, stride = c(2L, 1L)))
+\dontshow{\}) # examplesIf}
 }
 \seealso{
 \code{\link[=nv_conv1d]{nv_conv1d()}}, \code{\link[=nv_conv3d]{nv_conv3d()}}, \code{\link[=prim_convolution]{prim_convolution()}}.

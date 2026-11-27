@@ -3,58 +3,6 @@ dtype_from_buffer <- function(x) {
   as_dtype(d)
 }
 
-#' @title Apply a `@jit` registry
-#' @description
-#' Iterates over a registry produced by [`jit_roclet()`] and rebinds each
-#' listed function in `envir` to
-#' `jit(f, backend = "auto", static = entry$static)`.
-#'
-#' Call this from the top level of your package's `R/zzz.R`, right next to
-#' `.onLoad`, so the wrappers are byte-compiled during package install
-#' instead of being rebuilt on every `.onLoad`:
-#'
-#' ```r
-#' anvl::apply_jit_registry(.jit_registry)
-#' ```
-#'
-#' `.jit_registry` is the variable defined by `R/jit-registry.R`, which is
-#' regenerated on every `devtools::document()`.
-#'
-#' @param registry (`list`)\cr
-#'   List of `list(name = <chr>, static = <chr|int>)` entries. Typically the
-#'   `.jit_registry` object emitted by the roclet.
-#' @param envir (`environment`)\cr
-#'   Environment in which to look up and rebind functions. Defaults to
-#'   `parent.frame()`, which at top-level package source time is the package
-#'   namespace.
-#' @return Invisibly returns `envir`.
-#' @seealso [`jit_roclet()`], [`jit()`]
-#' @export
-apply_jit_registry <- function(registry, envir = parent.frame()) {
-  for (entry in registry) {
-    assign(
-      entry$name,
-      jit(
-        get(entry$name, envir = envir, inherits = FALSE),
-        backend = "auto",
-        static = entry$static
-      ),
-      envir = envir
-    )
-  }
-  invisible(envir)
-}
-
-hashvalues <- function(h) {
-  val <- vector("list", numhash(h))
-  idx <- 0
-  maphash(h, function(k, v) {
-    idx <<- idx + 1
-    val[[idx]] <<- v
-  })
-  val
-}
-
 # these functions also work with primitives etc.
 formalArgs2 <- function(f) {
   names(formals2(f))
@@ -67,8 +15,8 @@ formals2 <- function(f) {
 
 # We assume little endian
 minmax_raw <- function(bits, signed = TRUE) {
-  stopifnot(bits %% 8 == 0, bits >= 8)
-  n <- bits %/% 8
+  stopifnot(bits %% 8L == 0L, bits >= 8L)
+  n <- bits %/% 8L
   if (!signed) {
     return(list(
       min = as.raw(rep(0x00, n)),
@@ -77,44 +25,32 @@ minmax_raw <- function(bits, signed = TRUE) {
   }
   hi_min <- as.raw(0x80) # 1000 0000
   hi_max <- as.raw(0x7F) # 0111 1111
-  zeros <- as.raw(rep(0x00, n - 1))
-  ff <- as.raw(rep(0xFF, n - 1))
+  zeros <- as.raw(rep(0x00, n - 1L))
+  ff <- as.raw(rep(0xFF, n - 1L))
   list(min = c(zeros, hi_min), max = c(ff, hi_max))
 }
 
 
-nv_minval <- function(dtype, device) {
-  dtype <- as.character(dtype)
-  if (grepl("^f", dtype)) {
-    nv_scalar(-Inf, dtype = dtype, device = device)
-  } else if (dtype == "bool") {
-    nv_scalar(FALSE, dtype = "bool", device = device)
-  } else {
-    nv_scalar(pjrt_buffer(
-      globals$ranges_raw[[dtype]]$min,
-      dtype = dtype,
-      device = device,
-      row_major = TRUE,
-      shape = integer()
-    ))
-  }
+# The smallest / largest value of a data type as a scalar: `-Inf` / `Inf` for a
+# float, `FALSE` / `TRUE` for `bool`, and the bounds of the integer range
+# otherwise.
+nv_minval <- function(dtype, device = NULL) {
+  nv_extremal_value(dtype, "min", -Inf, FALSE, device)
 }
 
-nv_maxval <- function(dtype, device) {
+nv_maxval <- function(dtype, device = NULL) {
+  nv_extremal_value(dtype, "max", Inf, TRUE, device)
+}
+
+nv_extremal_value <- function(dtype, which, float_value, bool_value, device) {
   dtype <- as.character(dtype)
   if (grepl("^f", dtype)) {
-    nv_scalar(Inf, dtype = dtype, device = device)
-  } else if (dtype == "bool") {
-    nv_scalar(TRUE, dtype = "bool", device = device)
-  } else {
-    nv_scalar(pjrt_buffer(
-      globals$ranges_raw[[dtype]]$max,
-      dtype = dtype,
-      device = device,
-      row_major = TRUE,
-      shape = integer()
-    ))
+    return(nv_scalar(float_value, dtype = dtype, device = device))
   }
+  if (dtype == "bool") {
+    return(nv_scalar(bool_value, dtype = "bool", device = device))
+  }
+  nv_scalar(globals$ranges_raw[[dtype]][[which]], dtype = dtype, device = device)
 }
 
 without <- function(x, indices) {
@@ -126,92 +62,67 @@ without <- function(x, indices) {
 }
 
 shape2string <- function(x, parenthesize = TRUE) {
-  if (is_shape(x)) {
-    x <- x$dims
+  s <- paste0(x, collapse = ",")
+  if (parenthesize) sprintf("(%s)", s) else s
+}
+
+# The shape spelling for user-facing messages: `(2x3)`, and `()` for a scalar.
+# `shape2string()` above is the *repr* spelling -- it is what `f32[2,3]` and
+# `RData(double, (2,3))` are built from and stays as it is -- so everything a
+# caller reads in an error or warning goes through these two instead.
+#
+# A shape can also be one a caller typed (`shape = 1:1000`), so past
+# `repr_max_entries` axes it is cut short, with the rank stated. That is enough
+# for an array's real shape to print whole.
+shape_repr <- function(shape) {
+  n <- length(shape)
+  if (n <= repr_max_entries) {
+    return(sprintf("(%s)", paste0(shape, collapse = "x")))
   }
-  if (parenthesize) {
-    sprintf("(%s)", paste0(x, collapse = ","))
-  } else {
-    paste0(x, collapse = ",")
-  }
+  sprintf("(%sx...) with %d axes", paste0(shape[seq_len(repr_max_entries)], collapse = "x"), n)
 }
 
-shapes2string <- function(shapes) {
-  paste0(sapply(shapes, shape2string), sep = ", ")
+shapes_repr <- function(shapes) {
+  paste0(vapply(shapes, shape_repr, character(1L)), collapse = ", ")
 }
 
-zeros <- function(dtype, shape, ambiguous) {
-  prim_fill(0L, dtype = dtype, shape = shape, ambiguous = ambiguous)
+# `prim_fill()` takes a whole number at any data type -- `0L` builds at `bool`,
+# at an integer one and at a float one alike -- so the fills that do not know
+# their data type statically write `0L` / `1L`.
+zeros <- function(dtype, shape) {
+  prim_fill(0L, dtype = dtype, shape = shape)
 }
 
-ones <- function(dtype, shape, ambiguous) {
-  prim_fill(1L, dtype = dtype, shape = shape, ambiguous = ambiguous)
+ones <- function(dtype, shape) {
+  prim_fill(1L, dtype = dtype, shape = shape)
 }
 
 
-zeros_like <- function(x, ambiguous = FALSE) {
-  zeros(dtype(x), shape(x), ambiguous)
+zeros_like <- function(x) {
+  zeros(dtype(x), shape(x))
 }
 
-ones_like <- function(x, ambiguous = FALSE) {
-  ones(dtype(x), shape(x), ambiguous)
+ones_like <- function(x) {
+  ones(dtype(x), shape(x))
 }
 
-#' @title Abstract Properties
-#' @name abstract_properties
-#' @description
-#' Calls the extractor after converting the input to an [`AbstractArray`].
-#' @param x ([`arrayish`])\cr
-#' @export
-shape_abstract <- function(x) {
-  shape(to_abstract(x))
-}
-
-#' @rdname abstract_properties
-#' @export
-naxes_abstract <- function(x) {
-  length(shape_abstract(x))
-}
-
-#' @rdname abstract_properties
-#' @export
-dtype_abstract <- function(x) {
-  dtype(to_abstract(x))
-}
-
-#' @export
-#' @rdname abstract_properties
-ambiguous_abstract <- function(x) {
-  to_abstract(x)$ambiguous
-}
-
-dtype2string <- function(dtype, ambiguous = FALSE) {
-  paste0(repr(dtype), if (ambiguous) "?")
-}
-
+# An R value anvl accepts as data is a bare numeric or logical: one carrying a
+# class (`bit64::integer64`, a user's own) is rejected rather than read through
+# its storage type, which would silently ignore what the class means. This also
+# agrees with pjrt's dispatcher, which rejects any classed input.
 is_valid_r_lit <- function(x) {
-  length(x) == 1L &&
+  !is.object(x) &&
+    length(x) == 1L &&
     is.null(dim(x)) &&
-    (is.numeric(x) || is.logical(x)) &&
-    # Accept NaN/Inf but reject NA (NA has no obvious dtype).
-    (is.nan(x) || !is.na(x))
+    (is.numeric(x) || is.logical(x))
 }
 
 is_valid_r_array <- function(x) {
-  is.array(x) && (is.numeric(x) || is.logical(x))
+  !is.object(x) && is.array(x) && (is.numeric(x) || is.logical(x))
 }
 
 is_valid_r <- function(x) {
-  (is.numeric(x) || is.logical(x)) && (is.array(x) || (length(x) == 1L))
-}
-
-cache_size <- function(f) {
-  # All jit paths cache in pjrt's native dispatcher.
-  dispatcher <- environment(f)$dispatcher
-  if (is.null(dispatcher)) {
-    cli_abort("{.arg f} has no dispatcher; is it a jitted function?")
-  }
-  pjrt::dispatcher_size(dispatcher)
+  !is.object(x) && (is.numeric(x) || is.logical(x)) && (is.array(x) || (length(x) == 1L))
 }
 
 # Clamp gather start indices to valid ranges, matching XLA's forward pass behavior.
@@ -224,52 +135,41 @@ gather_clamp_indices <- function(
   start_index_map,
   index_vector_axis
 ) {
-  # slice_sizes are in the order of `x_shape`, so we need to reverse the start_index_map
   if (length(x_shape) != length(slice_sizes)) {
     cli_abort("{.arg x_shape} and {.arg slice_sizes} must have the same length")
   }
 
-  indices_shape <- shape(start_indices)
   n_index_coords <- length(start_index_map)
-
   if (n_index_coords == 0L) {
     return(start_indices)
   }
 
-  # Build max bounds for each coordinate
-  max_bounds <- integer(n_index_coords)
-  for (coord_idx in seq_len(n_index_coords)) {
-    x_axis <- start_index_map[coord_idx]
-    x_size <- x_shape[x_axis]
-    slice_size_for_axis <- slice_sizes[x_axis]
-    max_bounds[coord_idx] <- max(1L, x_size - slice_size_for_axis + 1L)
-  }
+  # The largest valid start index of each coordinate. `slice_sizes` is in the
+  # order of `x_shape`, so it is read through `start_index_map`.
+  max_bounds <- pmax(1L, x_shape[start_index_map] - slice_sizes[start_index_map] + 1L)
 
-  if (index_vector_axis <= length(indices_shape)) {
-    # Explicit index vector axis - build bounds arrays
-    bounds_shape <- rep(1L, length(indices_shape))
-    bounds_shape[index_vector_axis] <- n_index_coords
-
-    min_tensor <- prim_broadcast_in_axes(
-      prim_fill(1L, dtype = dtype(start_indices), shape = integer()),
-      indices_shape,
-      integer()
-    )
-
-    # The max bound is the same for a given slice along the index_vector_axis
-    max_tensor_vals <- prim_reshape(
-      nv_convert(nv_array(max_bounds, dtype = "i64"), dtype = dtype(start_indices)),
-      bounds_shape
-    )
-    max_tensor <- nv_broadcast_to(max_tensor_vals, indices_shape)
-
-    prim_clamp(min_tensor, start_indices, max_tensor)
-  } else {
+  indices_shape <- shape(start_indices)
+  index_dtype <- dtype(start_indices)
+  if (index_vector_axis > length(indices_shape)) {
     # Implicit index vector (single coordinate)
-    min_tensor <- prim_fill(1L, dtype = dtype(start_indices), shape = integer())
-    max_tensor <- prim_fill(max_bounds[1L], dtype = dtype(start_indices), shape = integer())
-    prim_clamp(min_tensor, start_indices, max_tensor)
+    return(prim_clamp(start_indices, 1L, max_bounds[[1L]]))
   }
+
+  # Explicit index vector axis - build bounds arrays
+  bounds_shape <- rep(1L, length(indices_shape))
+  bounds_shape[index_vector_axis] <- n_index_coords
+
+  # The max bound is the same for a given slice along the index_vector_axis
+  max_bound_vals <- prim_reshape(
+    prim_convert(
+      nv_array(max_bounds, dtype = default_int()),
+      dtype = index_dtype
+    ),
+    bounds_shape
+  )
+  max_bound <- nv_broadcast_to(max_bound_vals, indices_shape)
+
+  prim_clamp(start_indices, 1L, max_bound)
 }
 
 # Compute gather slice_sizes from scatter parameters.
@@ -285,9 +185,7 @@ scatter_to_gather_slice_sizes <- function(
   slice_sizes <- integer(length(x_shape))
   update_window_pos <- 1L
   for (i in seq_along(x_shape)) {
-    if (i %in% inserted_window_axes) {
-      slice_sizes[i] <- 1L
-    } else if (i %in% x_batching_axes) {
+    if (i %in% inserted_window_axes || i %in% x_batching_axes) {
       slice_sizes[i] <- 1L
     } else {
       slice_sizes[i] <- update_shape[update_window_axes[update_window_pos]]
@@ -298,136 +196,22 @@ scatter_to_gather_slice_sizes <- function(
 }
 
 col_major_layout <- function(naxes) {
-  as.integer(seq.int(0L, naxes - 1L))
+  seq_len(naxes) - 1L
 }
 
-col_major_layouts <- function(...) {
-  lapply(list(...), col_major_layout)
+row_major_layouts <- function(...) {
+  lapply(list(...), \(naxes) rev(col_major_layout(naxes)))
 }
 
-is_device_arg <- function(x) {
-  inherits(x, "AnvlDeviceArg")
-}
-
-# returns list(device | NULL, backend)
-resolve_device <- function(device, backend) {
-  if (is.character(device)) {
-    backend <- backend %||% default_backend()
-    device <- if (backend == "auto") {
-      nv_device(device, default_backend())
-    } else {
-      nv_device(device, backend)
-    }
-    return(list(device, backend))
+# Transpose the matrix an array's first two axes form, leaving any trailing
+# batch axes in place -- what `t()` means for the batched operands
+# `nv_matmul()` takes. `nv_aperm()` reverses *every* axis, which would put a
+# batch axis into the contraction slot. An array with fewer than two axes is
+# handed on unchanged, for `nv_matmul()` to report.
+transpose_matrix_axes <- function(x) {
+  n <- naxes(x)
+  if (n < 2L) {
+    return(x)
   }
-  if (is.null(device)) {
-    return(list(NULL, backend %||% default_backend()))
-  }
-  # concrete device
-  if (is.null(backend) || (backend == "auto")) {
-    return(list(device, backend(device)))
-  }
-  if (backend(device) != backend) {
-    cli_abort(c(
-      "Backend of requested device does not match requested backend",
-      i = "backend(device) = {backend(device)}",
-      i = "backend = {backend}"
-    ))
-  }
-  list(device, backend)
-}
-
-row_major_layout <- function(naxes) {
-  rev(as.integer(seq.int(0L, naxes - 1L)))
-}
-
-# Turn a named list of R values into a stablehlo `backend_config`. Values that
-# are already attribute objects pass through, so a caller who needs a dtype
-# other than the R default can build the attribute itself.
-custom_call_backend_config <- function(attrs) {
-  items <- Map(
-    function(nm, value) {
-      if (inherits(value, "OpInputAttr")) {
-        return(value)
-      }
-      if (!is.atomic(value) || !length(value) || anyNA(value)) {
-        cli_abort(c(
-          "Attribute {.val {nm}} must be a non-empty atomic vector without missing values.",
-          i = "Alternatively pass a {.cls stablehlo::OpInputAttr} to choose the dtype yourself."
-        ))
-      }
-      if (is.character(value)) {
-        if (length(value) != 1L) {
-          cli_abort("String attribute {.val {nm}} must have length 1.")
-        }
-        return(stablehlo::StringAttr(name = nm, value = value))
-      }
-      dt <- default_dtype(value)
-      if (length(value) == 1L) {
-        if (is.logical(value)) {
-          stablehlo::BoolAttr(name = nm, value = value)
-        } else {
-          stablehlo::ScalarAttr(name = nm, value = value, dtype = dt)
-        }
-      } else {
-        stablehlo::constant_attr(name = nm, value = value, dtype = as.character(dt))
-      }
-    },
-    names(attrs),
-    attrs
-  )
-  stablehlo::CustomOpBackendConfig(unname(items))
-}
-
-# Layouts are either one spec used everywhere (a list of integer vectors) or
-# one spec per platform (a list of such lists, named "cpu" / "cuda").
-is_per_platform_layouts <- function(x) {
-  is.list(x) &&
-    length(x) &&
-    !is.null(names(x)) &&
-    all(vapply(x, is.list, logical(1)))
-}
-
-# Resolved during lowering rather than at call time: which platform a program
-# is compiled for is only known once `stablehlo()` runs.
-custom_call_layouts <- function(layouts, arg) {
-  if (!is_per_platform_layouts(layouts)) {
-    return(layouts)
-  }
-  platform <- current_platform()
-  chosen <- if (!is.null(platform)) layouts[[platform]]
-  if (is.null(chosen)) {
-    cli_abort(c(
-      "{.arg {arg}} has no entry for platform {.val {platform %||% 'unknown'}}.",
-      i = "It lists {.val {names(layouts)}}."
-    ))
-  }
-  chosen
-}
-
-assert_layouts <- function(layouts, n, arg, what) {
-  if (is_per_platform_layouts(layouts)) {
-    for (platform in names(layouts)) {
-      if (length(layouts[[platform]]) != n) {
-        cli_abort(
-          "{.arg {arg}} for platform {.val {platform}} must have one entry per {what} ({n})."
-        )
-      }
-    }
-  } else if (length(layouts) != n) {
-    cli_abort("{.arg {arg}} must have one entry per {what} ({n}).")
-  }
-  invisible(NULL)
-}
-
-# `aliases` is 1-based and one entry per result; NA means "no alias".
-custom_call_aliases <- function(aliases, n_results) {
-  idx <- which(!is.na(aliases))
-  lapply(idx, function(i) {
-    stablehlo::OutputOperandAlias(
-      operand_index = aliases[[i]] - 1L,
-      # a call with a single result is not tuple-typed
-      output_tuple_indices = if (n_results > 1L) i - 1L else integer()
-    )
-  })
+  nv_aperm(x, c(2L, 1L, seq_len(n - 2L) + 2L))
 }

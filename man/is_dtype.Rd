@@ -2,7 +2,7 @@
 % Please edit documentation in R/reexports.R
 \name{is_dtype}
 \alias{is_dtype}
-\title{Check if an object is a DataType}
+\title{Check If an Object Is a DataType}
 \usage{
 is_dtype(x)
 }
@@ -10,7 +10,7 @@ is_dtype(x)
 \item{x}{An object to test.}
 }
 \value{
-\code{TRUE} or \code{FALSE}.
+(\code{logical(1)})
 }
 \description{
 Tests whether \code{x} is a \code{DataType} object.
@@ -20,5 +20,5 @@ is_dtype("f32")
 is_dtype(as_dtype("f32"))
 }
 \seealso{
-\code{\link[=as_dtype]{as_dtype()}}, \code{\link[tengen:is_dtype]{tengen::is_dtype()}}
+\code{\link[=as_dtype]{as_dtype()}}, \code{\link[xlamisc:is_dtype]{xlamisc::is_dtype()}}
 }

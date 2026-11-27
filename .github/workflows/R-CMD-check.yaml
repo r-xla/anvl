@@ -4,50 +4,78 @@ on:
   push:
     branches: [main, master]
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  workflow_dispatch:
 
 name: R-CMD-check.yaml
 
 permissions: read-all
 
+# CI budget: on pull requests only the ubuntu / release / cpu configuration
+# with torch is checked. Put the `full-test` label on a PR to check the whole
+# matrix (macos, macos-intel, windows, oldrel-1, oldrel-2, as-cran). Pushes to
+# main/master, the weekly cron and manual dispatches always run everything.
 jobs:
-  R-CMD-check:
-    runs-on: ${{ matrix.runner }}
+  setup:
+    # A `labeled` event only matters when it is `full-test` going on.
+    if: ${{ github.event.action != 'labeled' || contains(github.event.pull_request.labels.*.name, 'full-test') }}
 
-    name: ${{ matrix.config.os }} - ${{ matrix.config.platform }} (${{ matrix.config.r }})${{ matrix.config.torch && ' – with torch' || '' }}
+    runs-on: ubuntu-latest
+    name: setup
+    outputs:
+      config: ${{ steps.select.outputs.config }}
+
+    steps:
+      - name: Select the check configurations
+        id: select
+        env:
+          FULL: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-test') }}
+        run: |
+          if [ "$FULL" = "true" ]; then
+            config='[
+              {"os": "macos", "runner": "macos-latest", "r": "release", "device": "cpu"},
+              {"os": "macos-intel", "runner": "macos-15-intel", "r": "release", "device": "cpu"},
+              {"os": "ubuntu", "runner": "ubuntu-latest", "r": "release", "device": "cpu"},
+              {"os": "ubuntu", "runner": "ubuntu-latest", "r": "release", "device": "cpu", "torch": true},
+              {"os": "windows", "runner": "windows-latest", "r": "release", "device": "cpu"},
+              {"os": "ubuntu", "runner": "ubuntu-latest", "r": "oldrel-1", "device": "cpu"},
+              {"os": "ubuntu", "runner": "ubuntu-latest", "r": "oldrel-2", "device": "cpu"}
+            ]'
+          else
+            config='[
+              {"os": "ubuntu", "runner": "ubuntu-latest", "r": "release", "device": "cpu", "torch": true}
+            ]'
+          fi
+          echo "config=$(echo "$config" | tr -d '\n' | tr -s ' ')" >> "$GITHUB_OUTPUT"
+
+  R-CMD-check:
+    needs: setup
+    # Each configuration carries its own runner. An `include:` entry cannot
+    # serve that: one matching none of the generated combinations is added as a
+    # combination of its own, which on a trimmed matrix starts jobs whose
+    # config has no `r`.
+    runs-on: ${{ matrix.config.runner }}
+
+    name: ${{ matrix.config.os }} - ${{ matrix.config.device }} (${{ matrix.config.r }})${{ matrix.config.torch && ' – with torch' || '' }}
 
     strategy:
       fail-fast: false
       matrix:
-        config:
-          - { os: "macos", r: "release", platform: "cpu" }
-          - { os: "ubuntu", r: "release", platform: "cpu" }
-          - { os: "ubuntu", r: "release", platform: "cpu", torch: true }
-          - { os: "windows", r: "release", platform: "cpu"}
-          - { os: "ubuntu", r: "oldrel-1", platform: "cpu" }
-          - { os: "ubuntu", r: "oldrel-2", platform: "cpu" }
-
-        include:
-          - config: {os: "ubuntu", platform: "cpu"}
-            runner: 'ubuntu-latest'
-          - config: {os: "macos", platform: "cpu"}
-            runner: 'macos-latest'
-            setup: |
-              brew install protobuf@21
-              brew link protobuf@21 --force --overwrite
-          - config: {os: "windows", platform: "cpu"}
-            runner: 'windows-latest'
+        config: ${{ fromJSON(needs.setup.outputs.config) }}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
-      PJRT_PLATFORM: ${{ matrix.config.platform }}
+      ANVL_DEFAULT_DEVICE: ${{ matrix.config.device }}
       ANVL_TEST: "1"
       PJRT_INSTALL: "1"
 
     steps:
-      - name: Setup
-        if: ${{ matrix.setup }}
-        run: ${{ matrix.setup }}
+      - name: Install protobuf
+        if: ${{ startsWith(matrix.config.os, 'macos') }}
+        run: |
+          brew install protobuf@21
+          brew link protobuf@21 --force --overwrite
 
       - uses: actions/checkout@v7
 
@@ -76,7 +104,7 @@ jobs:
   #   env:
   #     GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
   #     R_KEEP_PKG_SOURCE: yes
-  #     PJRT_PLATFORM: cuda
+  #     ANVL_DEFAULT_DEVICE: cuda
   #     ANVL_TEST: "1"
   #     PJRT_INSTALL: "1"
   #

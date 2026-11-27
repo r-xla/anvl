@@ -7,9 +7,9 @@
 prim_convolution(
   x,
   kernel,
-  input_batch_axis,
-  input_feature_axis,
-  input_spatial_axes,
+  x_batch_axis,
+  x_feature_axis,
+  x_spatial_axes,
   kernel_input_feature_axis,
   kernel_output_feature_axis,
   kernel_spatial_axes,
@@ -26,27 +26,33 @@ prim_convolution(
 )
 }
 \arguments{
-\item{x}{(\code{\link{arrayish}})\cr Input, e.g. \verb{[batch, channels, *spatial]}.}
+\item{x}{(\code{\link{arrayish}})\cr Input, e.g. \verb{(*spatial, channels, batch)}.
+Can be any data type. \code{x} and \code{kernel} must have the same data type. An R value among them
+assumes the data type of the others when it is in its \link[=dtype_categories]{data type category}, and its \link[=default_dtypes]{default data type}
+when none of them has one.}
 
-\item{kernel}{(\code{\link{arrayish}})\cr Kernel, e.g. \verb{[out_ch, in_ch/groups, *spatial]}.}
+\item{kernel}{(\code{\link{arrayish}})\cr Kernel, e.g.
+\verb{(*spatial, in_channels / groups, out_channels)}.
+Shares \code{x}'s data type -- see \code{x}.}
 
-\item{input_batch_axis, input_feature_axis}{(\code{integer(1)})\cr
-1-based batch/feature axis of \code{x}.}
+\item{x_batch_axis, x_feature_axis}{(\code{integer(1)})\cr
+Batch and feature axis of \code{x}.}
 
-\item{input_spatial_axes}{(\code{integer()})\cr 1-based spatial axes of \code{x}.}
+\item{x_spatial_axes}{(\code{integer()})\cr Spatial axes of \code{x}.}
 
 \item{kernel_input_feature_axis, kernel_output_feature_axis}{(\code{integer(1)})\cr
-1-based input/output feature axis of \code{kernel}.}
+Input and output feature axis of \code{kernel}.}
 
-\item{kernel_spatial_axes}{(\code{integer()})\cr 1-based spatial axes of \code{kernel}.}
+\item{kernel_spatial_axes}{(\code{integer()})\cr Spatial axes of \code{kernel}.}
 
 \item{output_batch_axis, output_feature_axis}{(\code{integer(1)})\cr
-1-based batch/feature axis of the output.}
+Batch and feature axis of the output.}
 
 \item{output_spatial_axes}{(\code{integer()})\cr
-1-based spatial axes of the output.}
+Spatial axes of the output.}
 
-\item{window_strides}{(\code{integer()})\cr Stride per spatial axis.}
+\item{window_strides}{(\code{integer()})\cr Stride per spatial axis, in the
+order of \code{x_spatial_axes}, as are all per-spatial-axis parameters.}
 
 \item{padding}{(\code{matrix})\cr \verb{[n_spatial, 2]} of \verb{(low, high)} padding.}
 
@@ -58,11 +64,51 @@ prim_convolution(
 \code{"default"}.}
 }
 \value{
-\code{\link{arrayish}}
+(\code{\link{arrayish}})\cr
+Has the data type \code{x} and \code{kernel} agreed on. Its shape is given by the
+output axis arguments: the batch axis holds \code{x}'s batch size divided by
+\code{batch_group_count}, the feature axis \code{kernel}'s output feature size, and
+each spatial axis the number of window positions along it.
 }
 \description{
-General N-D windowed convolution, lowering to StableHLO's
-\code{convolution} op. Axis numbers are given 1-based (anvl
-convention) and converted to StableHLO's 0-based layout internally.
+General N-D windowed convolution. The axis arguments say which axis of each
+operand plays which role, so any layout can be described.
 Most users want \code{\link[=nv_conv1d]{nv_conv1d()}} / \code{\link[=nv_conv2d]{nv_conv2d()}} / \code{\link[=nv_conv3d]{nv_conv3d()}} instead.
+}
+\section{Implemented Rules}{
+
+\itemize{
+\item \code{stablehlo}
+\item \code{pullback}
+\item \code{vectorize}
+}
+}
+
+\section{StableHLO}{
+
+Lowers to \code{\link[stablehlo:hlo_convolution]{hlo_convolution()}}, specified under
+\href{https://openxla.org/stablehlo/spec#convolution}{convolution}.
+The axis numbers are converted on the way down.
+}
+
+\examples{
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# a causal 1-D convolution in the layout of nv_conv1d(): width 5, one
+# channel, a batch of one, convolved with a width-3 kernel; padding only the
+# start of the width keeps all 5 window positions
+x <- nv_array(1:5, shape = c(5, 1, 1), dtype = "f32")
+kernel <- nv_array(c(1, 0, -1), shape = c(3, 1, 1), dtype = "f32")
+prim_convolution(
+  x, kernel,
+  x_spatial_axes = 1L, x_feature_axis = 2L, x_batch_axis = 3L,
+  kernel_spatial_axes = 1L, kernel_input_feature_axis = 2L,
+  kernel_output_feature_axis = 3L,
+  output_spatial_axes = 1L, output_feature_axis = 2L, output_batch_axis = 3L,
+  window_strides = 1L, padding = matrix(c(2L, 0L), nrow = 1),
+  x_dilation = 1L, kernel_dilation = 1L
+)
+\dontshow{\}) # examplesIf}
+}
+\seealso{
+\code{\link[=nv_conv1d]{nv_conv1d()}}, \code{\link[=nv_conv2d]{nv_conv2d()}}, \code{\link[=nv_conv3d]{nv_conv3d()}}
 }

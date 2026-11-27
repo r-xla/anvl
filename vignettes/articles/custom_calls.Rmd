@@ -191,13 +191,13 @@ nothing forces you to write them out as literals: [`dtype()`] and [`shape()`]
 of the operands are available at trace time, so a generic call reads
 
 ```{r}
-nv_custom_call("anvl_hypot", x, y, output_types = vt(dtype(x), shape(x)))
+nv_custom_call("anvl_hypot", x, y, output_types = AbstractArray(dtype(x), shape(x)))
 ```
 
 and works for `f32` just as well:
 
 ```{r}
-nv_custom_call("anvl_hypot", xf, yf, output_types = vt(dtype(xf), shape(xf)))
+nv_custom_call("anvl_hypot", xf, yf, output_types = AbstractArray(dtype(xf), shape(xf)))
 ```
 
 Wrapping that up gives an ordinary-looking `nv_*` function.
@@ -213,7 +213,7 @@ nv_hypot <- function(x, y) {
     "anvl_hypot",
     operands[[1L]],
     operands[[2L]],
-    output_types = vt(dtype(operands[[1L]]), shape(operands[[1L]]))
+    output_types = AbstractArray(dtype(operands[[1L]]), shape(operands[[1L]]))
   )
 }
 
@@ -229,24 +229,29 @@ becomes one op among the others -- and since the output types are derived
 from the traced operands, one `jit()`ed function serves both dtypes:
 
 ```{r}
-f <- jit(function(x, y) nv_reduce_sum(nv_hypot(x, y)))
+f <- jit(function(x, y) nv_sum(nv_hypot(x, y)))
 f(x, y)
 f(xf, yf)
 ```
 
 The arguments worth knowing about:
 
-- `output_types` is a [`stablehlo::ValueType`], or a list of them for a
-  handler with several results, most easily built with [`vt()`]. Pass a bare
-  `vt()` and you get a bare array back; pass a list and you get a list.
+- `output_types` is an [`AbstractArray()`] -- a data type and a shape -- or a
+  list of them for a handler with several results. Pass a bare
+  `AbstractArray()` and you get a bare array back; pass a list and you get a
+  list.
 - `attrs` is a named list of values the handler reads through
   `.Attr<T>("name")` or `.Attrs<Dictionary>()`. Scalars, strings and vectors
   are converted using anvl's usual dtype defaults; pass a
   [`stablehlo::ScalarAttr()`] and friends to pin a different one.
 - `operand_layouts` / `result_layouts` fix the memory layout XLA hands the
-  handler, in minor-to-major order. They default to row-major, which is what
-  `hypot_impl()` -- walking its buffers linearly -- wants. A handler calling
-  a column-major library such as LAPACK wants `c(0L, 1L)` instead.
+  handler: one entry per operand or result, listing its axes in
+  minor-to-major order. They default to R's own column-major order
+  (`seq_len(n)`, axis 1 varying fastest), so the handler sees an array laid
+  out exactly as R lays out the vector it was made from -- which is also
+  what a LAPACK routine wants. `hypot_impl()` walks its equally shaped
+  buffers in lockstep and does not care. A handler written for row-major
+  (C order) buffers wants `rev(seq_len(n))` instead.
 - `aliases` says which operand's buffer each result is written into, so an
   in-place kernel does not force a copy. `aliases = 1L` on a single-result
   call hands the handler the same pointer for operand 1 and the result.
@@ -263,14 +268,17 @@ It also shows up in a traced graph as a generic `custom_call` rather than
 an operation with a name of its own.
 
 Both are fixed the same way -- by giving the call its own primitive with a
-reverse rule, exactly as in
+pullback rule, exactly as in
 [Adding a Primitive](extending_primitive.html).
 The dtype stays generic here too: the shape rule propagates whatever dtype
 the operands were traced with, and the lowering rule is handed the
 `output_types` that follow from it.
 That rule reaches one level lower than `nv_custom_call()` does, emitting
 [`stablehlo::hlo_custom_call()`] directly, because a rule is handed
-`FuncValue`s rather than arrays:
+`FuncValue`s rather than arrays.
+Those speak XLA's order: an array of R shape `(d1, ..., dn)` is an XLA array
+of shape `(dn, ..., d1)`, so XLA's default row-major layout, `n - 1` down to
+`0`, is R's column-major one:
 
 ```{r}
 prim_hypot <- new_primitive("hypot", function(x, y) {
@@ -280,7 +288,7 @@ prim_hypot <- new_primitive("hypot", function(x, y) {
 })
 
 prim_hypot[["stablehlo"]] <- function(x, y, output_types) {
-  row_major <- rev(seq_along(shape(x)) - 1L)
+  layout <- rev(seq_along(shape(x)) - 1L)
   list(stablehlo::hlo_custom_call(
     x,
     y,
@@ -288,13 +296,13 @@ prim_hypot[["stablehlo"]] <- function(x, y, output_types) {
     api_version = 4L,
     has_side_effect = FALSE,
     output_types = output_types,
-    operand_layouts = list(row_major, row_major),
-    result_layouts = list(row_major)
+    operand_layouts = list(layout, layout),
+    result_layouts = list(layout)
   ))
 }
 
 # d/dx hypot(x, y) = x / hypot(x, y), and the forward result is already there
-prim_hypot[["reverse"]] <- rule_reverse(function(
+prim_hypot[["pullback"]] <- rule_pullback(function(
   inputs,
   outputs,
   grads,
@@ -315,7 +323,7 @@ prim_hypot[["reverse"]] <- rule_reverse(function(
 Now the call differentiates, in either precision:
 
 ```{r}
-g <- function(x, y) nv_reduce_sum(prim_hypot(x, y))
+g <- function(x, y) nv_sum(prim_hypot(x, y))
 a <- nv_array(c(3, 6), dtype = "f64")
 b <- nv_array(c(4, 8), dtype = "f64")
 jit(gradient(g))(a, b)

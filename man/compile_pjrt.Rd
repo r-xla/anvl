@@ -2,16 +2,19 @@
 % Please edit documentation in R/backend-pjrt.R
 \name{compile_pjrt}
 \alias{compile_pjrt}
-\title{Trace, lower, and compile a function to an XLA executable}
+\title{Trace, Lower, and Compile a Function to an XLA Executable}
 \usage{
 compile_pjrt(
   f,
   args_flat,
   in_tree,
+  static_flat = NULL,
   donate = character(),
+  xla_options = list(),
   device = NULL,
-  arg_devices = list(),
-  fallback_device = NULL
+  arg_device = NULL,
+  fallback_device = NULL,
+  default_dtypes = NULL
 )
 }
 \arguments{
@@ -21,35 +24,67 @@ Function to compile.}
 \item{args_flat}{(\code{list})\cr
 Flat list of abstract input values.}
 
-\item{in_tree}{(\code{Node})\cr
+\item{in_tree}{(\code{\link[pjrt:build_tree]{RTree}})\cr
 Tree structure of the inputs.}
+
+\item{static_flat}{(\code{NULL} | \code{logical()})\cr
+Which of \code{args_flat} are static, see \code{\link[=trace_fn]{trace_fn()}}.}
 
 \item{donate}{(\code{character()})\cr
 Names of the arguments whose buffers should be donated.}
 
-\item{device}{(\code{NULL} | \code{character(1)})\cr
-Target device (e.g. \code{"cpu"}, \code{"cuda"}). If \code{NULL}, inferred from \code{arg_devices}
-and traced arrays.}
+\item{xla_options}{(named \code{list()})\cr
+XLA options for this compile, passed to \code{\link[pjrt:pjrt_compile]{pjrt::pjrt_compile()}}.}
 
-\item{arg_devices}{(\code{list})\cr
-Devices of the concrete (non-static) input arguments, extracted before
-converting to abstract values. Used together with traced devices for
-device inference when \code{device} is \code{NULL}.}
+\item{device}{(\code{NULL} | \code{character(1)} | \code{PJRTDevice})\cr
+Target device (e.g. \code{"cpu"}, \code{"cuda"}). If \code{NULL}, inferred from
+\code{arg_device} and traced arrays.}
+
+\item{arg_device}{(\code{NULL} | device)\cr
+The device the array inputs live on, or \code{NULL} when there are none. Used
+together with traced devices for device inference when \code{device} is \code{NULL}.}
 
 \item{fallback_device}{(\code{NULL} | device)\cr
 The device to compile for when \code{device} is \code{NULL} and nothing in the graph
 names one. pjrt's dispatcher supplies the device it keyed the entry on, so
 the program and its cache key agree. \code{NULL} (a caller with no dispatcher in
 front of it) falls back to \code{\link[=default_device]{default_device()}}.}
+
+\item{default_dtypes}{(\code{NULL} | \code{list(float, int)})\cr
+The data types the traced R values materialize at when nothing else decides
+one (see \code{\link[=default_dtypes]{default_dtypes()}}).}
 }
 \value{
-A \code{list} with elements:
+(\code{list})\cr
+With elements:
 \itemize{
 \item \code{exec}: The compiled PJRT executable.
 \item \code{out_tree}: The output tree structure.
 \item \code{const_arrays}: Constants needed at execution time.
-\item \code{out_avals}: One \code{list(dtype, shape, ambiguous)} per output leaf; pjrt's
+\item \code{out_avals}: One \code{list(dtype, shape)} per output leaf; pjrt's
 dispatcher builds the output wrappers from these.
+\item \code{input_dtypes}: One entry per input: the dtype an input built from bare
+R data is uploaded at, and \code{NA} for an array input, which is supplied as
+it is. The R data has no dtype of its own, so the program is the only
+thing that knows what it is uploaded as -- pjrt's dispatcher therefore
+requires an entry for every bare R input and rejects a dtype declared
+for an array one. \code{NULL} for a call whose inputs are all arrays.
+\item \code{device}: The \code{PJRTDevice} the executable was compiled for.
+\item \code{phantom_specs}: One \code{list(dtype, shape)} per phantom donated input the
+executor must allocate for an output (see \code{\link[=stablehlo]{stablehlo()}}).
+\item \code{implicit_inputs}: One \code{list(get, dtype, shape)} per value of a side
+effect the program takes from outside of it, which pjrt's dispatcher
+supplies as an input after the call's own: \code{get()} takes no arguments
+and returns the current value, a \code{PJRTBuffer} of \code{dtype} and \code{shape},
+e.g. the key of the global random state.
+\item \code{on_success}: \code{NULL}, or a function pjrt's dispatcher calls after every
+successful run with the call's arguments: it advances the host object
+of each side effect by its count, e.g. a random state passed as an
+argument.
+\item \code{uses_default_device}: Whether the program was compiled for
+\code{fallback_device} (or the default device) because nothing else named
+one. \code{FALSE} means its device is fixed by \code{device}, the inputs or the
+traced arrays, which the default device does not affect.
 }
 }
 \description{

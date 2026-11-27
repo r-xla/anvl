@@ -23,44 +23,44 @@ The values passed to the handler, in the order it binds them.}
 \item{target_name}{(\code{character(1)})\cr
 The name the handler was registered under.}
 
-\item{output_types}{(\code{\link[stablehlo:ValueType]{stablehlo::ValueType}} | \code{list} of them | \code{NULL})\cr
-Shape and dtype of each result, most easily built with \code{\link[=vt]{vt()}}. The
-handler, not the inputs, decides these, so anvl cannot infer them.
+\item{output_types}{(\code{\link{AbstractArray}} | \code{list} of them | \code{NULL})\cr
+Data type and shape of each result. The handler, not the inputs,
+decides these, so anvl cannot infer them.
 \code{NULL} declares a call that only runs for its side effect; \code{operands}
 are then returned unchanged, so at least one is required.}
 
 \item{attrs}{(\code{list})\cr
 Named attributes the handler reads via \verb{.Attr<T>("name")} or
-\verb{.Attrs<Dictionary>()}. Scalars, strings and vectors are converted
-using anvl's usual dtype defaults (\code{f32} for doubles, \code{i32} for
-integers, \code{bool} for logicals); pass a \code{stablehlo} attribute object
-such as \code{\link[stablehlo:ScalarAttr]{stablehlo::ScalarAttr()}} to pin a different dtype.}
+\verb{.Attrs<Dictionary>()}. Strings, and numbers and logicals at the default
+data type of their category (see \code{\link[=default_dtypes]{default_dtypes()}}), are converted
+for you; pass a \code{stablehlo} attribute object such as
+\code{\link[stablehlo:ScalarAttr]{stablehlo::ScalarAttr()}} to pin another data type.}
 
 \item{has_side_effect}{(\code{logical(1)})\cr
 Whether XLA must keep the call even when its results are unused.
 Defaults to \code{TRUE} exactly when \code{output_types} is \code{NULL}.}
 
 \item{operand_layouts, result_layouts}{(\code{list} | \code{NULL})\cr
-Memory layouts in minor-to-major order, as in
-\code{\link[stablehlo:hlo_custom_call]{stablehlo::hlo_custom_call()}}. \code{NULL} (the default) requests
-row-major for every operand and result, which is what a handler
-walking its buffers linearly expects.
+The memory layout of each operand and result: its axes in minor-to-major
+order, the axis whose index varies fastest in memory first. \code{NULL} (the
+default) is R's own column-major order, \code{seq_len(n)} for an \code{n}-axis
+array, which is how a LAPACK routine wants a matrix. A handler written
+for row-major (C order) buffers wants \code{rev(seq_len(n))} instead.
 
 A handler whose platforms disagree -- a LAPACK CPU kernel wanting
 column-major next to a row-major CUDA one -- can instead pass a list of
 such lists named by platform, e.g.
-\code{list(cpu = list(c(0L, 1L)), cuda = list(c(1L, 0L)))}. The entry is
-picked when the program is lowered, which is the first point at which
-the target platform is known.}
+\code{list(cpu = list(1:2), cuda = list(2:1))}. The entry is picked when the
+program is lowered, which is the first point at which the target
+platform is known.}
 
 \item{aliases}{(\code{integer()} | \code{NULL})\cr
-One entry per result, giving the 1-based index of the operand whose
-buffer that result is written into, or \code{NA} for no aliasing. XLA then
-hands the handler the same pointer for both, so an in-place kernel
-avoids a copy.}
+One entry per result, giving the index of the operand whose buffer that
+result is written into, or \code{NA} for no aliasing. XLA then hands the
+handler the same pointer for both, so an in-place kernel avoids a copy.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
-Where to run. Only needed when there are no operands to infer it from.}
+Where to run. Only needed when there are no operands to take it from.}
 }
 \value{
 \code{list} of \code{\link{arrayish}}\cr

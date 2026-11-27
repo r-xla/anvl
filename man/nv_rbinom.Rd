@@ -4,46 +4,54 @@
 \alias{nv_rbinom}
 \title{Sample from a Binomial Distribution}
 \usage{
-nv_rbinom(shape, initial_state, size = 1L, prob = 0.5, dtype = "i32")
+nv_rbinom(shape, size = 1L, prob = 0.5, dtype = NULL)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
-Shape.}
-
-\item{initial_state}{(\code{\link{arrayish}})\cr
-RNG state (\code{ui64[2]}).}
+Shape of the result.}
 
 \item{size}{(\code{integer(1)})\cr
-Number of trials.}
+Number of trials. \code{0} gives a sample of zeros, like \code{rbinom()}.}
 
 \item{prob}{(\code{numeric(1)})\cr
 Probability of success on each trial.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type.}
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
+Numeric type of the sample.
+\code{NULL} (default) uses the \link[=default_dtypes]{default integer type}.
+The number of successes are converted to it, so it must hold \code{size}.}
 }
 \value{
-(\code{list()} of \code{\link{arrayish}})\cr
-List of two elements: the updated RNG state and the sampled values.
+(\code{\link{arrayish}})\cr
+The sample, of shape \code{shape} and data type \code{dtype}.
 }
 \description{
 Samples from a binomial distribution with \eqn{n} trials and success probability \eqn{p}.
 When \code{size = 1} (the default), this is a Bernoulli distribution.
 }
+\section{Random State}{
+
+The draws come from the active random state: the global random state (see
+\code{\link[=nv_set_seed]{nv_set_seed()}}), or the random state that \code{\link[=with_nv_rng_state]{with_nv_rng_state()}} or
+\code{\link[=local_nv_rng_state]{local_nv_rng_state()}} make the default for a scope. They advance it in
+place.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-state <- nv_rng_state(42L)
 # Bernoulli samples
-result <- nv_rbinom(c(2, 3), state)
-result[[2]]
+with_nv_seed(42L, nv_rbinom(c(2, 3)))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
 Other rng:
+\code{\link[=local_nv_rng_state]{local_nv_rng_state()}},
 \code{\link{nv_normal}},
 \code{\link[=nv_rng_state]{nv_rng_state()}},
-\code{\link[=nv_runif]{nv_runif()}},
 \code{\link[=nv_sample]{nv_sample()}},
-\code{\link[=nv_sample_int]{nv_sample_int()}}
+\code{\link[=nv_sample_int]{nv_sample_int()}},
+\code{\link[=nv_set_seed]{nv_set_seed()}},
+\code{\link[=nv_split_rng_states]{nv_split_rng_states()}},
+\code{\link{nv_uniform}}
 }
 \concept{rng}

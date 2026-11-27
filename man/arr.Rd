@@ -2,21 +2,35 @@
 % Please edit documentation in R/array.R
 \name{arr}
 \alias{arr}
-\title{Create an R array}
+\title{Create an R Array}
 \usage{
-arr(..., shape = NULL)
+arr(..., shape = "auto")
 }
 \arguments{
-\item{...}{(any)\cr
-Values of new array.}
+\item{...}{(atomic vectors)\cr
+Values of the new array. They are combined with \code{\link[=c]{c()}}, so vectors are
+spliced in and the result takes the common R type of all values, and fill
+the array in column-major order. A single value is recycled to fill all
+of \code{shape}.}
 
-\item{shape}{(\code{NULL} | \code{integer()})\cr
-Shape of new array. If \code{NULL} (default), uses length of elements to create a 1D array.}
+\item{shape}{(\code{"auto"} | \code{integer()})\cr
+Shape of the new array, with at least one axis. The default \code{"auto"}
+creates a 1-D array holding all values.}
+}
+\value{
+(\code{array})
 }
 \description{
 Create an R array without having to wrap data in \code{c()}
 }
 \examples{
 arr(1, 2, 3)
-arr(1, 2, 3, 4, shape = c(2, 2))
+arr(1, 2, 3, 4, shape = shp(2, 2))
+# vectors are spliced in
+arr(1:3, 4L)
+# a single value fills the whole shape
+arr(0, shape = shp(2, 3))
+}
+\seealso{
+\code{\link[=shp]{shp()}} to create a shape.
 }

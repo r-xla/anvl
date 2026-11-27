@@ -2,14 +2,13 @@
 % Please edit documentation in R/backend.R
 \name{AnvlBackend}
 \alias{AnvlBackend}
-\title{Create a backend}
+\title{Create a Backend}
 \usage{
 AnvlBackend(
   new_data,
   new_empty,
   dtype,
   shape,
-  ambiguous,
   as_array,
   as_raw,
   platform,
@@ -17,49 +16,94 @@ AnvlBackend(
   new_device,
   print_data,
   jit,
-  await_data
+  await_data,
+  default_dtypes
 )
 }
 \arguments{
-\item{new_data}{(\code{function})\cr Constructs an AnvlArray from R data.
-This should be a \code{structure()} with at least a \verb{$data} field that contains the actual
-underlying data (\code{PJRTBuffer} for \code{"pjrt"} backend, \code{array()} for \code{"quickr"} backend).}
+\item{new_data}{(\verb{function(data, dtype, shape, device, row_major = FALSE)})\cr
+Constructs an AnvlArray of the given \code{dtype} and \code{shape} (an \code{integer()}
+vector, which \code{\link[=nv_array]{nv_array()}} has already worked out) from R data. Must return
+\verb{structure(list(data = , backend = <name>, ...), class = "AnvlArray")}, where
+\code{data} holds the underlying data (a \code{PJRTBuffer} for the \code{"pjrt"} backend, an
+R \code{array()} for the \code{"quickr"} backend) and \code{backend} is the name the
+backend is registered under. \code{row_major} gives the element order of raw
+byte payloads; a backend that does not support raw \code{data} should abort on
+it.}
 
-\item{new_empty}{(\code{function})\cr Constructs an AnvlArray of the given
-\code{dtype} and \code{shape} with unspecified contents. Called by \code{\link[=nv_empty]{nv_empty()}}.}
+\item{new_empty}{(\verb{function(dtype, shape, device)})\cr
+Constructs an AnvlArray of the given \code{dtype} and \code{shape} with unspecified
+contents. Called by \code{\link[=nv_empty]{nv_empty()}}.}
 
-\item{dtype}{(\code{function})\cr Extracts the dtype from an AnvlArray.}
+\item{dtype}{(\verb{function(x)})\cr Extracts the dtype from an AnvlArray.}
 
-\item{shape}{(\code{function})\cr Extracts the shape from an AnvlArray.}
-
-\item{ambiguous}{(\code{function})\cr Extracts the ambiguous flag from an AnvlArray.}
+\item{shape}{(\verb{function(x)})\cr Extracts the shape from an AnvlArray.}
 
 \item{as_array}{(\verb{function(x, check)})\cr Converts an AnvlArray to an R
-array. The \code{check} flag is forwarded from \code{\link[=as_array]{as_array()}}; backends may use
+array. The \code{check} level is forwarded from \code{\link[=as_array]{as_array()}}; backends may use
 it to abort when materialization would lose information (e.g. ui64 values
 wrapping through \code{bit64::integer64}). See \code{\link[pjrt:as_array.PJRTBuffer]{pjrt::as_array.PJRTBuffer()}}.}
 
-\item{as_raw}{(\code{function})\cr Converts an AnvlArray to raw bytes.}
+\item{as_raw}{(\verb{function(x, row_major)})\cr Converts an AnvlArray to raw
+bytes.}
 
-\item{platform}{(\code{function})\cr Returns the platform name (e.g. \code{"cpu"}).}
+\item{platform}{(\verb{function(x)})\cr Returns the platform name (e.g. \code{"cpu"}).}
 
-\item{device}{(\code{function})\cr Returns the device object for an AnvlArray.}
+\item{device}{(\verb{function(x)})\cr Returns the device object for an AnvlArray.}
 
-\item{new_device}{(\code{function})\cr Constructs a backend-specific device
-object from a device type string (e.g. \code{"cpu"}). Called by \code{\link[=nv_device]{nv_device()}}.}
+\item{new_device}{(\verb{function(x)})\cr Constructs a backend-specific device
+object from a device identifier (e.g. \code{"cpu"} or \code{"cuda:1"}). Called by
+\code{\link[=nv_device]{nv_device()}}.}
 
-\item{print_data}{(\code{function})\cr Prints the array data with a footer.}
+\item{print_data}{(\verb{function(x, footer, ...)})\cr Prints the array data with a
+footer, passing \code{...} (e.g. \code{max_rows} for the pjrt backend) on to the backend's printer.}
 
-\item{jit}{(\code{function})\cr Creates a JIT-compiled function implementation.}
+\item{jit}{(\verb{function(f, static, cache_size, <options>, device = NULL)})\cr
+Creates the backend's implementation of a JIT-compiled function and returns
+it as a \code{function}. The formals in place of \verb{<options>} are the
+backend-specific options \code{\link[=jit]{jit()}} accepts through \code{...}. The returned
+function is given the formals of \code{f}, so it reads its arguments by name,
+e.g. with \code{match.call()}, rather than through \code{...}. It is only called
+outside a trace: inside one, \code{\link[=jit]{jit()}} calls \code{f} itself.}
 
-\item{await_data}{(\code{function})\cr Blocks until the array's underlying data
+\item{await_data}{(\verb{function(x)})\cr Blocks until the array's underlying data
 is ready. Called by \code{\link[=await]{await()}} for \code{AnvlArray}s; a no-op for backends
 without async execution.}
+
+\item{default_dtypes}{(\code{NULL} | \code{list(float, int)})\cr
+The default data types for this backend.
+Can be overwritten, see \code{\link[=default_dtypes]{default_dtypes()}}. Only the internal backend
+that holds the constants of a trace has none; a backend that can be
+selected needs them.}
 }
 \value{
-An \code{AnvlBackend} object.
+(\code{AnvlBackend})
 }
 \description{
-Create a backend
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+
+A backend defines how arrays are stored, converted to R and placed on
+devices, and how \code{\link[=jit]{jit()}} runs a function. \code{AnvlBackend()} bundles the
+methods that do this, and \code{\link[=register_backend]{register_backend()}} makes the result selectable
+by name. anvl registers two backends itself, \code{\link[=AnvlBackendPjrt]{AnvlBackendPjrt()}} and
+\code{\link[=AnvlBackendQuickr]{AnvlBackendQuickr()}}, and a package can add more.
 }
-\keyword{internal}
+\details{
+An array of the backend is an \code{\link{AnvlArray}} that \code{new_data} and \code{new_empty}
+construct and the other methods take apart; see \code{new_data} for its
+structure.
+
+A device of the backend is an object whose class inherits from
+\code{"AnvlDevice"}, such as \code{structure("cpu", class = c("MyDevice", "AnvlDevice"))}. Its class needs a \code{\link[=backend]{backend()}} method that returns the
+name the backend is registered under, and two devices must be comparable
+with \code{==}.
+
+The \code{jit} method should trace the function into an \code{\link{AnvlGraph}} with
+\code{\link[=trace_fn]{trace_fn()}}, so that every backend runs the same graph, and then lower or
+evaluate each statement of the graph with a rule of the primitive it applies:
+a rule of a type registered with \code{\link[=register_rule_type]{register_rule_type()}}, which
+\verb{statement$primitive[[<type>]]} returns.
+}
+\seealso{
+\code{\link[=register_backend]{register_backend()}}, \code{\link[=register_rule_type]{register_rule_type()}}
+}

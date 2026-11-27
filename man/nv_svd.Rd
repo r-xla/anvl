@@ -8,12 +8,17 @@ nv_svd(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Matrix of data type floating-point with exactly 2 axes.}
+One input, with at least 2 axes, the first two forming the matrix; any trailing axes are batch axes. Can be any numeric data type: a float keeps its
+own, and an integer one is converted to the default float data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}). An R value materializes at its
+\link[=default_dtypes]{default data type} and is converted in the same way.}
 }
 \value{
-Named \code{list} with elements \code{d} (length \code{k}), \code{u} (shape
-\verb{(m, k)}), and \code{vt} (shape \verb{(k, n)}). All have the same dtype as
-the input.
+(named \code{list} of three \code{\link{arrayish}})\cr
+Elements \code{d} (shape \verb{(k, ...)}), \code{u} (shape \verb{(m, k, ...)}), and \code{vt}
+(shape \verb{(k, n, ...)}), where \verb{(m, n, ...) = shape(x)}. All have the
+input's data type -- or the default float data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}) where the input was an integer one.
 }
 \description{
 Computes the reduced ("economy") singular value decomposition of a
@@ -32,9 +37,12 @@ extra transpose).
 Supports any matrix shape on both the host (LAPACK \code{gesdd}) and CUDA
 (cuSOLVER \code{gesvd}) backends. cuSOLVER's \code{m >= n} requirement is handled
 transparently via a layout flip for wide matrices.
+
+The first two axes form the matrix, and any trailing axes are batch axes.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# all three outputs have the input's data type
 x <- nv_matrix(c(1, 0, 0, 1, 0, 1), nrow = 3, dtype = "f64")
 nv_svd(x)
 \dontshow{\}) # examplesIf}

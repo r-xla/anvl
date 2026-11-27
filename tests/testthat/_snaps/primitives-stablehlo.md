@@ -9,3 +9,30 @@
        3
       [ f32{3} ]
 
+# prim_print / prints an array with a size-0 axis
+
+    Code
+      out <- jit(function(x) prim_print(x))(x)
+    Output
+      AnvlArray
+      [ f32{2,0,3} ]
+
+# prim_print shows the R type where a value has no data type yet
+
+    Code
+      invisible(g(1))
+    Output
+      RData
+       1
+      [ double{} printed at f32 ]
+
+---
+
+    Code
+      invisible(h(matrix(1:4, nrow = 2)))
+    Output
+      RData
+       1 3
+       2 4
+      [ integer{2,2} printed at i32 ]
+

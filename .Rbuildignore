@@ -8,7 +8,6 @@
 ^\.github$
 ^LICENSE\.md$
 ^.ccache.*
-CLAUDE.md
 SPEC.md
 ^README\.Rmd$
 ^_pkgdown\.yml$
@@ -31,5 +30,6 @@ anvl.Rproj
 ^jarl\.toml$
 ^specs$
 ^paper$
-^vignettes/articles/
+^assets$
+^vignettes/articles$
 ^integrations$

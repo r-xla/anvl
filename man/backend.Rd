@@ -2,18 +2,26 @@
 % Please edit documentation in R/array.R
 \name{backend}
 \alias{backend}
-\title{Get Backend of an Array}
+\title{Get Backend Name of an Array}
 \usage{
 backend(x, ...)
 }
 \arguments{
-\item{x}{An array object}
+\item{x}{(\code{\link{AnvlArray}} | device object)\cr
+An array or a device (see \code{\link[=nv_device]{nv_device()}}).}
 
-\item{...}{Additional arguments (unused)}
+\item{...}{Unused.}
 }
 \value{
-\code{character(1)} - the backend name
+(\code{character(1)})\cr
+The backend name.
 }
 \description{
-Get Backend of an Array
+Returns the name of the backend an array or device belongs to.
+}
+\examples{
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+backend(nv_array(1:3))
+backend(nv_device("cpu"))
+\dontshow{\}) # examplesIf}
 }

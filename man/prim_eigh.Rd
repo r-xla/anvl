@@ -8,11 +8,14 @@ prim_eigh(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Symmetric square matrix of floating-point data type.}
+One input, with at least 2 axes, the first two forming a symmetric square matrix; any trailing axes are batch axes. Can be any float data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-Named \code{list} with elements \code{values} (length \code{n}) and \code{vectors}
-(shape \verb{(n, n)}). Both have the same dtype as the input.
+(named \code{list} of two \code{\link{arrayish}})\cr
+Elements \code{values} (shape \verb{(n, ...)}) and \code{vectors}
+(shape \verb{(n, n, ...)}), where \verb{(n, n, ...) = shape(x)}. Both have the
+input's data type.
 }
 \description{
 Computes the eigendecomposition of a symmetric matrix \code{x} of
@@ -22,12 +25,15 @@ shape \verb{(n, n)}:
 Only the lower triangle of \code{x} is read. The columns of \code{vectors}
 are the (orthonormal) eigenvectors and \code{values} is the length-\code{n}
 vector of (real) eigenvalues in ascending order. Output names and
-order match \code{\link[base:eigen]{base::eigen()}}.
+order match \code{\link[base:eigen]{base::eigen()}}, which unlike this primitive also handles
+non-symmetric matrices.
+The first two axes form the matrix, and any trailing axes are batch axes.
 }
 \section{Implemented Rules}{
 
 \itemize{
 \item \code{stablehlo}
+\item \code{vectorize}
 }
 }
 
@@ -38,6 +44,7 @@ Lowers to \code{\link[stablehlo:hlo_custom_call]{hlo_custom_call()}} with target
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `values` and `vectors` both have the input's data type
 x <- nv_array(c(2, 1, 1, 2), shape = c(2, 2), dtype = "f64")
 prim_eigh(x)
 \dontshow{\}) # examplesIf}

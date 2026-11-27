@@ -10,21 +10,19 @@ as_dtype(x)
 \item{x}{A character string or \code{DataType} to convert.}
 }
 \value{
-A \code{DataType} object.
+(\code{DataType})
 }
 \description{
 Coerces a value to a \code{DataType}. Accepts data type strings
 (e.g. \code{"f32"}, \code{"i64"}, \code{"bool"}) or existing \code{DataType} objects (they are returned unchanged).
 }
 \details{
-This is implemented via the generic \code{\link[tengen:as_dtype]{tengen::as_dtype()}}.
+This is implemented via the generic \code{\link[xlamisc:as_dtype]{xlamisc::as_dtype()}}.
 }
 \examples{
-\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 as_dtype("f32")
 as_dtype("i32")
-\dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=is_dtype]{is_dtype()}}, \code{\link[tengen:as_dtype]{tengen::as_dtype()}}, \code{\link[tengen:DataType]{tengen::DataType}}
+\code{\link[=is_dtype]{is_dtype()}}, \code{\link[xlamisc:as_dtype]{xlamisc::as_dtype()}}, \code{\link[xlamisc:DataType]{xlamisc::DataType}}
 }

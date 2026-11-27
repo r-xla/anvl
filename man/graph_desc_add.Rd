@@ -2,17 +2,26 @@
 % Please edit documentation in R/graph.R
 \name{graph_desc_add}
 \alias{graph_desc_add}
-\title{Add a Primitive Call to a Graph Descriptor}
+\title{Add a Statement to a Graph Descriptor}
 \usage{
-graph_desc_add(primitive, args, params = list(), infer_fn, desc = NULL)
+graph_desc_add(
+  primitive,
+  args,
+  params = list(),
+  infer_fn,
+  desc = NULL,
+  device = NULL
+)
 }
 \arguments{
-\item{primitive}{(\code{\link{AnvlPrimitive}} | \code{JitPrimitive})\cr
-The primitive the call is for. A \code{JitPrimitive} is accepted and unwrapped
-to its underlying \code{AnvlPrimitive} metadata.}
+\item{primitive}{(\code{\link{AnvlPrimitiveDef}} | \code{\link{AnvlPrimitive}})\cr
+The primitive the statement applies. An \code{AnvlPrimitive} is accepted and
+unwrapped to its underlying \code{AnvlPrimitiveDef}.}
 
-\item{args}{(\code{list} of \code{\link{GraphNode}})\cr
-The arguments to the primitive.}
+\item{args}{(\code{list} of \code{\link{arrayish}})\cr
+The arguments to the primitive: \code{\link{GraphBox}}es, \code{\link{AnvlArray}}s (registered
+as constants of the graph) or R values (materialized at their default data
+type).}
 
 \item{params}{(\code{list})\cr
 The parameters to the primitive.}
@@ -22,14 +31,23 @@ The inference function to use.
 Must output a list of \code{\link{AbstractArray}}s.}
 
 \item{desc}{(\code{\link{GraphDescriptor}} | \code{NULL})\cr
-The graph descriptor to add the primitive call to.
-Uses the \link[=.current_descriptor]{current descriptor} if \code{NULL}.}
+The graph descriptor to add the statement to.
+Uses the \link[=current_descriptor]{current descriptor} if \code{NULL}.}
+
+\item{device}{(\code{NULL} | \code{character(1)} | device object)\cr
+The device the call places its result on, for a primitive that constructs
+an array out of nothing (e.g. \code{\link[=prim_fill]{prim_fill()}}, \code{\link[=prim_iota]{prim_iota()}}) and so has
+no operand to carry one. It is declared to \code{desc}, where it counts like
+the device of an array input to the same trace: it decides what that
+program is compiled for, and disagreeing with another device in it is an
+error. Every other primitive takes its device from its operands and leaves
+this \code{NULL}.}
 }
 \value{
 (\code{list} of \code{\link{GraphBox}})
 }
 \description{
-Add a primitive call to a graph descriptor. Inside a primitive body created
+Record a call of a primitive as a \code{\link{GraphStatement}} in a graph descriptor. Inside a primitive body created
 with \code{\link[=new_primitive]{new_primitive()}}, pass the lexically-bound \code{self} as the primitive
 argument.
 }

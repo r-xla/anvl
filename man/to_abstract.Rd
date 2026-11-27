@@ -7,29 +7,33 @@
 to_abstract(x, pure = FALSE)
 }
 \arguments{
-\item{x}{(\code{any})\cr
+\item{x}{(\code{\link{arrayish}} | \code{\link{AbstractArray}})\cr
 Object to convert.}
 
 \item{pure}{(\code{logical(1)})\cr
-Whether to convert to a pure \code{AbstractArray} and not e.g. \code{LiteralArray} or \code{ConcreteArray}.}
+Whether to convert to a pure \code{AbstractArray} and not e.g. \code{RData} or \code{ConcreteArray}.}
 }
 \value{
-\code{\link{AbstractArray}}
+(\code{\link{AbstractArray}})\cr
+A \code{\link{ConcreteArray}} for an \code{\link{AnvlArray}}, an \code{\link{RData}} for an R value,
+the abstract array of a \code{\link{GraphBox}}, and \code{x} itself for an
+\code{\link{AbstractArray}}. With \code{pure = TRUE}, a plain \code{AbstractArray} of the same
+shape and data type.
 }
 \description{
 Convert an object to its abstract array representation (\code{\link{AbstractArray}}).
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# R literals become LiteralArrays (ambiguous by default, except logicals)
+# an R value becomes `RData`: it has no data type of its own yet
 to_abstract(1.5)
 to_abstract(1L)
 to_abstract(TRUE)
 
-# AnvlArrays become ConcreteArrays
+# an AnvlArray becomes a ConcreteArray
 to_abstract(nv_array(1:4))
 
-# Use pure = TRUE to strip subclass info
+# use pure = TRUE to strip subclass info
 to_abstract(nv_array(1:4), pure = TRUE)
 \dontshow{\}) # examplesIf}
 }

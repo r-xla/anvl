@@ -7,11 +7,12 @@
 \usage{
 nv_upper_tri(shape, diagonal = 1L, device = NULL)
 
-nv_upper_tri_like(like, diagonal = 1L, shape = NULL, device = NULL)
+nv_upper_tri_like(like, shape = "auto", diagonal = 1L, device = NULL)
 }
 \arguments{
-\item{shape}{(\code{integer()})\cr
-Shape.}
+\item{shape}{(\code{integer()} | \code{"auto"})\cr
+Shape of the result: exactly two axis sizes, since the result is a matrix.
+For \code{nv_upper_tri_like()}, \code{"auto"} (the default) uses \code{shape(like)}.}
 
 \item{diagonal}{(\code{integer(1)})\cr
 Diagonal offset, with the same meaning as in \code{\link[=nv_triu]{nv_triu()}}. The default
@@ -25,20 +26,20 @@ The device the data lives on, given either as:
 \code{"cuda:<n>"}), which is resolved against the backend in use, or
 \item a \emph{device object} as returned by \code{\link[=nv_device]{nv_device()}}: a
 \code{\link[pjrt:pjrt_device]{PJRTDevice}} for the \code{"pjrt"} backend or a
-\code{\link{quickr_device}} for the \code{"quickr"} backend. Because a device object
-is backend-specific, it also determines the backend.
+\code{\link{quickr_device}} for the \code{"quickr"} backend. It must belong to the
+active backend (\code{\link[=active_backend]{active_backend()}}); a device of another backend is an
+error.
 }
 
-The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}: the CPU, or the platform
-named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} backend.}
+The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}.}
 
 \item{like}{(\code{\link{AnvlArray}})\cr
 Existing array whose attributes are used as defaults
 (only for \code{nv_upper_tri_like()}).}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the given \code{shape} and dtype \code{bool}.
+(\code{\link{arrayish}})\cr
+Has the given \code{shape} and boolean data type.
 }
 \description{
 Returns a boolean matrix that is \code{TRUE} on and above the given diagonal,
@@ -47,6 +48,7 @@ triangle of an existing array instead.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# a boolean mask, whatever the array it is later used with
 nv_upper_tri(c(3, 3))
 nv_upper_tri(c(3, 3), diagonal = 0L)
 x <- nv_fill(0, shape = c(3, 3))

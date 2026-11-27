@@ -8,14 +8,59 @@
 \description{
 \if{html}{\figure{logo.svg}{options: style='float: right' alt='logo' width='120'}}
 
-Accelerated array computing and code transformations for R. Numerical programs operating on multi-dimensional arrays can be just-in-time compiled to optimized executables via 'XLA' -- the same compiler that powers 'JAX' and 'TensorFlow' -- and run on CPU or NVIDIA GPU from the same source. Also provides reverse-mode automatic differentiation, returning the gradient of a function as another R function.
+Accelerated array computing and code transformations for R. Numerical programs operating on arrays can be just-in-time compiled to optimized executables via 'XLA' -- the same compiler that powers 'JAX' and 'TensorFlow' -- and run on CPU or NVIDIA GPU from the same source. Also provides reverse-mode automatic differentiation, returning the gradient of a function as another R function.
 }
+\section{Options}{
+
+\itemize{
+\item \code{anvl.backend} (\code{character(1)}): the backend every
+operation runs on.
+Must be \code{"pjrt"}, \code{"quickr"}, or a backend a package added with
+\code{\link[=register_backend]{register_backend()}}. If not set, \code{"pjrt"} is used.
+Also see \code{\link[=active_backend]{active_backend()}}, \code{\link[=local_backend]{local_backend()}} and \code{\link[=with_backend]{with_backend()}}.
+\item \code{anvl.default_dtypes} (named \code{character()} | named \code{list()}): the data
+types an R double and an R integer settle on when they meet no typed
+array.
+See \code{\link[=default_dtypes]{default_dtypes()}} for more details.
+\item \code{anvl.default_device} (\code{character(1)} | device object): the device a call
+that names none allocates on.
+Also see \code{\link[=default_device]{default_device()}}, \code{\link[=local_default_device]{local_default_device()}} and
+\code{\link[=with_default_device]{with_default_device()}}.
+}
+}
+
+\section{Environment variables}{
+
+\itemize{
+\item \code{ANVL_DEFAULT_DTYPES}: \code{category=dtype} pairs such as
+\code{"float=f64,int=i64"}, used for every backend when the
+\code{anvl.default_dtypes} option is not set.
+\item \code{ANVL_DEFAULT_DEVICE}: a device identifier such as \code{"cuda"} or \code{"cuda:0"},
+used when the \code{anvl.default_device} option is not set.
+}
+
+Both are read once, when anvl is loaded, and kept as fallbacks for the
+options rather than set as them: \code{getOption("anvl.default_device")} stays
+\code{NULL}, and an option set later takes precedence. Changing a variable after
+anvl is loaded has no effect until the package is loaded again, e.g. in a
+new R session.
+
+The remaining ones, all prefixed \code{ANVL_TEST}, affect only anvl's own test
+suite, not the package:
+\itemize{
+\item \code{ANVL_TEST}: \code{tests/testthat.R} runs the tests only when this is \code{"1"},
+so \verb{R CMD check} in a shell without it runs none of them.
+\item \code{ANVL_TEST_SKIP_QUICKR}: when set to anything non-empty, the tests that need
+the quickr backend are skipped -- they are comparatively slow.
+}
+}
+
 \section{Third-Party Licenses}{
 
 The \code{anvl} package itself is MIT-licensed. The CUDA backend dynamically
 loads NVIDIA software which is not bundled with \code{anvl}, but downloaded
 from NVIDIA's official redistributable channels by the CUDA toolkit R
-package (e.g. \code{cuda12.8}) at install time. Its use is governed by the
+package (e.g. \code{pjrt.cuda}) at install time. Its use is governed by the
 \href{https://docs.nvidia.com/cuda/eula/}{NVIDIA CUDA Toolkit EULA}, with the
 exception of cuDNN, which is covered by the
 \href{https://docs.nvidia.com/deeplearning/cudnn/sla/index.html}{NVIDIA cuDNN SLA},
@@ -41,11 +86,12 @@ Authors:
   \item Daniel Falbel \email{daniel@posit.co} (\href{https://orcid.org/0009-0006-0143-2392}{ORCID})
   \item Tomasz Kalinowski \email{tomasz@posit.co}
   \item Nikolai German \email{niko.german@gmail.com} (\href{https://orcid.org/0009-0001-7394-8367}{ORCID})
+  \item Louis Aslett \email{louis.aslett@durham.ac.uk} (\href{https://orcid.org/0000-0003-2211-233X}{ORCID})
 }
 
 Other contributors:
 \itemize{
-  \item Louis Aslett \email{louis.aslett@durham.ac.uk} (\href{https://orcid.org/0000-0003-2211-233X}{ORCID}) [contributor]
+  \item Hugh Graham \email{hugh@belian.earth} (\href{https://orcid.org/0000-0001-9451-5010}{ORCID}) [contributor]
 }
 
 }

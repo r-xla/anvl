@@ -17,7 +17,8 @@ Target platform name (e.g. \code{"cpu"}, \code{"cuda"}), or \code{NULL} to clear
 Environment whose exit triggers restoration of the previous platform.}
 }
 \value{
-\code{current_platform()} returns \code{NULL} or \code{character(1)}.
+(\code{NULL} | \code{character(1)})\cr
+The current platform.
 \code{local_platform()} invisibly returns the previous platform.
 }
 \description{
@@ -31,6 +32,14 @@ Returns \code{NULL} outside of a lowering call.
 calling scope, restoring the previous value via \code{\link[withr:defer]{withr::defer()}} when the
 scope exits. Useful in tests and for manually exercising platform-aware
 lowering rules outside of a \code{\link[=stablehlo]{stablehlo()}} call.
+}
+\examples{
+current_platform()
+f <- function() {
+  local_platform("cuda")
+  current_platform()
+}
+f()
 }
 \seealso{
 \code{\link[=stablehlo]{stablehlo()}}

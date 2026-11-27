@@ -10,6 +10,9 @@ ConcreteArray(data)
 \item{data}{(\code{\link{AnvlArray}})\cr
 The actual array data.}
 }
+\value{
+(\code{\link{ConcreteArray}})
+}
 \description{
 An \code{\link{AbstractArray}} that also holds a reference to the actual array data.
 Usually represents a closed-over constant in a program.
@@ -27,12 +30,11 @@ This is to avoid increasing compilation time and bloating the size of the execut
 y <- nv_array(c(0.5, 0.6))
 x <- ConcreteArray(y)
 x
-ambiguous(x)
 shape(x)
 naxes(x)
 dtype(x)
 
-# How it appears during tracing
+# how it appears during tracing
 graph <- trace_fn(function() y, list())
 graph
 graph$outputs[[1]]$aval

@@ -26,19 +26,25 @@ navbar:
         href: articles/installation.html
       - text: Get Started
         href: articles/anvl.html
+      - text: Next Steps
+        href: articles/next_steps.html
     user_guide:
       text: User guide
       menu:
+      - text: Data Types and Promotion Rules
+        href: articles/type-promotion.html
       - text: JIT Deep Dive
         href: articles/jit.html
+      - text: Automatic Differentiation
+        href: articles/autodiff.html
+      - text: Vectorization
+        href: articles/vectorize.html
       - text: Static Shape Restriction
         href: articles/static_shapes.html
       - text: Subsetting
         href: articles/subsetting.html
       - text: Random Number Generation
         href: articles/random-numbers.html
-      - text: Type Promotion
-        href: articles/type-promotion.html
       - text: Gotchas
         href: articles/gotchas.html
       - text: Efficiency
@@ -48,8 +54,6 @@ navbar:
     examples:
       text: Examples
       menu:
-      - text: Logistic Regression
-        href: articles/logistic-regression.html
       - text: Metropolis Hastings
         href: articles/metropolis-hastings.html
       - text: Gaussian Process
@@ -69,6 +73,9 @@ navbar:
         href: articles/internals.html
       - text: Available Primitives
         href: articles/primitives.html
+      - text: Packages
+      - text: "Depending on anvl"
+        href: articles/depending-on-anvl.html
 
 reference:
   - title: Array
@@ -82,9 +89,12 @@ reference:
       - nv_matrix
       - nv_scalar
       - nv_empty
+      - nv_dtype_constructors
+      - shp
       - nv_fill
       - nv_iota
       - nv_seq
+      - nv_linspace
       - nv_diag
       - nv_eye
       - as_anvl_array
@@ -93,10 +103,10 @@ reference:
     desc: Functions for querying array properties
     contents:
       - backend
-      - ambiguous
       - dtype
       - shape
       - naxes
+      - axes
       - device
       - starts_with("platform")
 
@@ -105,46 +115,46 @@ reference:
     contents:
       - as_array
       - as_raw
-      - as_dtype
-      - is_dtype
       - as-AnvlArray
+
+  - subtitle: Miscellaneous
+    contents:
+      - is_arrayish
       - await
 
-  - subtitle: Serialization
-    desc: Functions for serializing and deserializing arrays
+  - subtitle: Base R Generics
+    desc: >
+      Methods for base R generics that have no `nv_*` twin. Every other
+      generic is documented together with the `nv_*` function it delegates to.
     contents:
-      - nv_save
-      - nv_read
-      - nv_serialize
-      - nv_unserialize
+      - dim.AnvlArray
+      - length.AnvlArray
 
-  - title: API Functions
+  - title: Array API
     desc: User-facing `nv_*` functions for array operations
 
   - subtitle: Type Conversion and Broadcasting
-    desc: Functions for type conversion, promotion, and broadcasting
+    desc: Functions for converting data types and broadcasting shapes
     contents:
       - nv_convert
       - nv_bitcast_convert
-      - nv_promote_to_common
       - nv_broadcast_scalars
       - nv_broadcast_arrays
       - nv_broadcast_to
-      - common_dtype
 
   - subtitle: Array Manipulation
     desc: Functions for reshaping and rearranging arrays
     contents:
       - nv_reshape
       - nv_flatten
-      - nv_transpose
+      - nv_aperm
       - nv_concatenate
       - nv_rbind
       - nv_cbind
       - nv_static_slice
       - nv_select
       - nv_pad
-      - nv_reverse
+      - nv_rev
       - nv_squeeze
       - nv_unsqueeze
       - nv_subset
@@ -161,6 +171,7 @@ reference:
       - nv_negate
       - nv_remainder
       - nv_mod
+      - nv_floor_div
 
   - subtitle: Comparison Operations
     desc: Element-wise comparison operations
@@ -188,6 +199,9 @@ reference:
       - nv_sin
       - nv_cos
       - nv_tan
+      - nv_sinpi
+      - nv_cospi
+      - nv_tanpi
       - nv_asin
       - nv_acos
       - nv_atan
@@ -203,13 +217,14 @@ reference:
       - nv_ceiling
       - nv_trunc
       - nv_round
-      - nv_logistic
+      - nv_plogis
       - nv_erf
       - nv_erfc
       - nv_erf_inv
+      - nv_gamma
       - nv_digamma
       - nv_lgamma
-      - nv_polygamma
+      - nv_psigamma
       - nv_is_finite
       - nv_is_nan
       - nv_is_infinite
@@ -217,12 +232,13 @@ reference:
   - subtitle: Reduction Operations
     desc: Operations that reduce array axes
     contents:
-      - nv_reduce_sum
-      - nv_reduce_prod
-      - nv_reduce_max
-      - nv_reduce_min
-      - nv_reduce_any
-      - nv_reduce_all
+      - nv_sum
+      - nv_prod
+      - nv_max
+      - nv_min
+      - nv_range
+      - nv_any
+      - nv_all
 
   - subtitle: Statistical Summaries
     desc: Summary statistics over array axes
@@ -287,39 +303,82 @@ reference:
   - subtitle: Element-wise Operations
     desc: Other element-wise array operations
     contents:
-      - nv_min
-      - nv_max
+      - nv_pmin
+      - nv_pmax
       - nv_clamp
 
   - subtitle: Sorting and Searching
     desc: Sorting arrays and finding extrema
     contents:
       - nv_sort
-      - nv_argsort
+      - nv_order
       - nv_top_k
-      - nv_argmax
-      - nv_argmin
+      - nv_which_max
+      - nv_which_min
 
   - subtitle: Control Flow
     desc: Control flow operations
     contents:
       - nv_if
       - nv_while
+      - nv_scan
       - nv_ifelse
 
   - subtitle: Distributions
     desc: Densities, distribution functions, and samplers for probability distributions
     contents:
       - nv_normal
-      - nv_runif
+      - nv_uniform
+      - nv_binomial
+      - nv_poisson
+      - nv_exponential
       - nv_rbinom
       - nv_sample
       - nv_sample_int
 
+  - subtitle: Random Numbers
+    desc: Seeding, saving and restoring the global random state the samplers draw from
+    contents:
+      - nv_set_seed
+      - nv_rng_state
+      - nv_split_rng_states
+      - local_nv_rng_state
+
   - subtitle: Utilities
     desc: Helpers supporting the API functions
     contents:
-      - nv_rng_state
+      - nv_print
+      - nv_optimization_barrier
+
+  - title: Data Types and Promotion
+    desc: Data types, their defaults, and the rules for promoting inputs to a common one
+
+  - subtitle: Data Types
+    contents:
+      - dtype_categories
+      - as_dtype
+      - is_dtype
+      - common_dtype
+      - peek_dtype
+      - default_dtypes
+      - default_float
+      - default_int
+      - local_default_dtypes
+      - with_dtypes
+
+  - subtitle: Promotion Rules
+    desc: >
+      How `nv_*` functions promote their inputs; see the
+      [Data Types and Promotion Rules](../articles/type-promotion.html) article for how they are used.
+    contents:
+      - nv_promote_to_common
+      - apply_promotion
+      - promotion_rule
+      - promotion_common
+      - promotion_like
+      - promotion_dtype
+      - promotion_rdata_common
+      - promotion_grouped
 
   - subtitle: Custom Calls
     desc: Calling hand-written XLA FFI handlers
@@ -331,29 +390,28 @@ reference:
     contents:
       - jit
       - gradient
-      - value_and_gradient
-
-  - title: Debugging
-    desc: Debugging utilities and tools
-    contents:
-      - nv_print
+      - pullback
+      - vectorize
 
   - title: Backend
     desc: Backend-related functionality and implementations
     contents:
       - backend
-      - default_backend
       - local_backend
-      - with_backend
-      - install_anvl
-      - device_arg
-      - nv_device
-      - default_device
-      - is_device
-      - quickr_device
-      - AnvlBackend
       - AnvlBackendPjrt
       - AnvlBackendQuickr
+      - AnvlBackend
+      - register_backend
+      - register_rule_type
+
+  - title: Device
+    desc: Devices of the active backend and the default device
+    contents:
+      - nv_device
+      - default_device
+      - local_default_device
+      - is_device
+      - quickr_device
 
   - title: Miscellaneous
     desc: General-purpose helpers
@@ -361,6 +419,7 @@ reference:
       - arr
       - eq_type
       - neq_type
+      - map_tree
 
   - title: Internals
     desc: Internal data structures and functions
@@ -373,17 +432,10 @@ reference:
       - GraphValue
       - GraphBox
       - GraphLiteral
-      - AnvlBox
-      - graph_desc_add
+      - GraphStatement
       - local_descriptor
-      - .current_descriptor
+      - current_descriptor
       - subgraphs
-
-  - subtitle: Primitives
-    contents:
-      - new_primitive
-      - AnvlPrimitive
-      - PrimitiveCall
 
   - subtitle: Abstract Types
     contents:
@@ -391,23 +443,16 @@ reference:
       - AbstractArray
       - ConcreteArray
       - LiteralArray
+      - RData
       - IotaArray
-      - dtype_abstract
-      - shape_abstract
-      - naxes_abstract
-      - ambiguous_abstract
       - to_abstract
       - arrayish
 
   - subtitle: Transformations
     contents:
-      - jit_roclet
-      - apply_jit_registry
       - trace_fn
-      - transform_gradient
-      - rule_reverse
+      - graph_gradient
       - graph_to_quickr_r_function
-      - jit_eval
       - compile_pjrt
       - stablehlo
       - current_platform
@@ -421,22 +466,34 @@ reference:
       - build_tree
       - tree_size
       - tree_path
-      - map_tree
-      - pmap_tree
 
   - subtitle: Miscellaneous
     contents:
-      - at2vt
-      - vt2at
-      - vt
-      - is_arrayish
-      - Shape
+      - active_backend
+      - jit_cache_size
 
   - title: Primitives
     desc: Low-level primitive operations (prim_* functions)
+
+  - subtitle: Construction
+    contents:
+      - new_primitive
+      - AnvlPrimitiveDef
+      - graph_desc_add
+      - rule_pullback
+      - rule_vectorize
+      - vec_shape
+
+  - subtitle: Implemented Primitives
     contents:
       - starts_with("prim_")
 
   - title: Package
     contents:
       - anvl-package
+      - install_anvl
+
+  - title: Testing
+    desc: Helpers for the tests of packages that depend on anvl
+    contents:
+      - skip_if_no_plugin

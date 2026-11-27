@@ -1,0 +1,470 @@
+---
+title: "Efficiency"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+library(anvl)
+```
+
+This article collects what makes {anvl} programs fast or slow, from compiling with `jit()` and running on a GPU to data types, XLA compiler options, compilation cost, asynchronous execution, and memory.
+
+## Eager vs. JIT {#eager-vs-jit}
+
+In eager mode we don't compile the whole program but compile many tiny XLA programs.
+This is more convenient to debug as you can inspect intermediate results and step through the program with the R debugger.
+This comes at a performance cost, however.
+Specifically:
+
+1. More per-primitive call overhead (such as launching a kernel on the GPU).
+   When `jit()`ting the whole function, you only have the per-call overhead once.
+2. The compiler has less context for optimization, as it compiles many small programs individually instead of one large program.
+
+To get the best performance, you will therefore usually want to `jit()` the whole function.
+
+## CUDA
+
+Provided your computation is large enough to be worth shipping over to the GPU, running on a CUDA GPU is the single biggest speed-up {anvl} offers -- typically 10x to 100x over CPU on linear algebra and large elementwise work.
+
+See the [CUDA setup](installation.html#cuda-setup) section of the installation article for setup; once that's done, any `AnvlArray` constructor and `jit()` accept `device = "cuda"`:
+
+```{r, eval = FALSE}
+library(anvl)
+x <- nv_array(1:8, dtype = "f32", device = "cuda")
+y <- nv_array(9:16, dtype = "f32", device = "cuda")
+x + y
+
+# Or pin a jitted function to a specific GPU:
+f_cuda <- jit(function(x, y) x + y, device = "cuda:0")
+```
+
+A few things to keep in mind when moving to GPU:
+
+- **Copying data between R and the GPU is slow.** Each transfer has a fixed overhead plus a per-byte cost. Once you've moved an array onto the GPU, keep it there; avoid `as_array()` (which copies the value back into R) inside loops you want to run fast (see [asynchronous execution](#asynchronous-execution) below).
+- **Each call to the GPU has more overhead than a CPU call.** Small operations on small arrays can actually be *slower* on GPU than on CPU because the per-call overhead dominates the actual work.
+
+### Writing GPU-friendly code
+
+GPUs get their speed from running thousands of operations in parallel, so they reward code that does a lot of work per call on large arrays.
+A few rules of thumb:
+
+- **Avoid R-level loops over array elements or rows.** Each iteration launches a separate kernel with non-trivial overhead, and the kernels run one after another instead of in parallel. Express the work as a single vectorized operation on the whole array whenever possible (e.g. `x * y` or `nv_sum(x)` instead of a `for` loop).
+- **Prefer batched operations.** Operations like `nv_matmul()` accept a full batch of matrices at once, stacked along trailing batch axes. Stacking many small inputs into one larger array and processing them in a single call is typically much faster than calling the same operation many times. This mirrors plain R, where vectorized code beats a `for` loop -- except that on a GPU the win comes from running the batch entries in parallel rather than from avoiding interpreter overhead.
+- **Sometimes the algorithm itself has to be rewritten.** Inherently sequential formulations -- e.g. a running update that depends on the previous step -- can leave most of the GPU idle. Reformulating the computation to expose parallelism can be dramatically faster, even when the parallel version does more total work.
+
+## Data types
+
+The data type of an `AnvlArray` (`f32`, `f64`, `i32`, `i64`, ...) affects both how much memory it uses and how fast operations on it run.
+On the pjrt backend the default is `f32` for R `double`s and `i32` for R `integer`s.
+Currently, we don't support other floating-point data types such as `f16` or `bf16`.
+There is of course a trade-off between efficiency and precision here.
+Speedups from using `f32` over `f64` also depend on the specific hardware.
+
+To use `f64` throughout, set it once rather than annotating every value: `options(anvl.default_dtypes = c(float = "f64"))`, or `with_default_dtypes(c(float = "f64"), ...)` for a single scope.
+`default_dtypes()` reports the active pair.
+Note that a program is compiled for the defaults it was compiled under, so changing them recompiles rather than reusing a program built at the other precision.
+
+## BLAS / LAPACK
+
+A handful of linear-algebra primitives -- `nv_svd()`, `nv_eigh()`, `nv_qr()`, `nv_lu()` -- use R's BLAS / LAPACK on the CPU backend, so the performance of these operations is determined by how R was built.
+
+The default R install on many platforms ships with a reference BLAS / LAPACK that is single-threaded and considerably slower than tuned alternatives such as OpenBLAS, Intel MKL, or Apple's Accelerate framework.
+The CUDA backend is unaffected.
+
+## XLA compiler options
+
+XLA has many options that control how it compiles a program: which optimizations run, how operations are fused into kernels, whether floating-point arithmetic may be reordered, and so on.
+The defaults work well in general, but for some programs changing them gives a significant speed-up.
+`jit()` passes such options to XLA through its `xla_options` argument (pjrt backend only), and they apply to the compiles of that function only.
+For example, the following allows XLA on the CPU to use fast-math optimizations, which trade some floating-point accuracy for speed:
+
+```{r, eval = FALSE}
+f <- jit(
+  function(x) nv_sum(exp(x) / (1 + x * x)),
+  xla_options = list(xla_cpu_enable_fast_math = TRUE)
+)
+```
+
+The names of the options are the fields of the `DebugOptions` message in XLA's [`xla.proto`](https://github.com/openxla/xla/blob/main/xla/xla.proto), where each one comes with a short description.
+The [XLA flags guidance](https://openxla.org/xla/flags_guidance) discusses the options most commonly tuned for performance.
+The type of a value decides how XLA reads it, so an integer option takes `3L` and not `3`; see `pjrt::pjrt_compile()` for the details.
+
+Some things to keep in mind:
+
+- **Only the outermost `jit()` counts.** A jitted function called inside another one's trace becomes part of the outer program, so pass the options to the function you call from R, e.g. `jit(value_and_gradient(f), xla_options = ...)`.
+- **Measure.** Whether an option helps depends on the program and the hardware, and some options make things slower or change the results. See the [FAQ](faq.html#why-does-timing-my-function-show-suspiciously-fast-results) on how to time {anvl} functions correctly.
+- **Session-wide options.** To apply options to every compile of the R session instead, set the `XLA_FLAGS` environment variable before anything is compiled, e.g. `XLA_FLAGS="--xla_cpu_enable_fast_math=true"` in your `.Renviron`.
+
+## Compilation cost
+
+Compiling an {anvl} function can take anywhere from milliseconds to seconds (or even minutes) depending on the size of the function.
+The compilation cache reuses the compiled function across calls with matching input types -- see [the compilation cache](jit.html#the-compilation-cache) section of the JIT Deep Dive for the details.
+What follows is the complementary trick of reshaping inputs so that more calls land on the same cache entry.
+
+### Padding inputs to avoid recompilation
+
+Every new combination of input shapes triggers a fresh recompile.
+If the input shapes vary often, this can considerably degrade performance and you might spend more time compiling than computing.
+
+A common workaround is to *round each varying axis up to a fixed bucket size and pad* the data to that size.
+All calls then share one compiled function, at the cost of doing some wasted work on the padded positions.
+
+For example, suppose we want to sum a vector whose length varies between calls:
+
+```{r}
+sum_jit <- jit(function(x) {
+  cat("compiling for length ", shape(x), "\n", sep = "")
+  nv_sum(x, axes = 1L)
+})
+
+for (n in c(7, 11, 13, 17)) {
+  sum_jit(nv_array(seq_len(n), dtype = "f32"))
+}
+```
+
+Each new length triggers a recompile.
+By padding each input up to the next multiple of 32 with zeros, all four calls share one compiled function:
+
+```{r}
+pad_to_multiple <- function(x, m) {
+  n <- length(x)
+  c(x, rep(0, ceiling(n / m) * m - n))
+}
+
+for (n in c(7, 11, 13, 17)) {
+  sum_jit(nv_array(pad_to_multiple(seq_len(n), 32), dtype = "f32"))
+}
+```
+
+Here, we only compile once for input size 32 and then reuse the compiled executable.
+One common strategy is to split up the varying lengths into buckets of size `2^n` to balance recompilation with wasted computation.
+The example above only works because the padded zeros are the *neutral value* of the performed computation (addition).
+For computations where the pad value is not neutral -- e.g. the mean, where the padded positions would skew the average -- the padded entries have to be masked out explicitly.
+See the [Static Shape Restriction](static_shapes.html) article for the masking patterns and a table of neutral values for common reductions.
+
+## Asynchronous execution
+
+One surprising fact about {anvl} is that calls into compiled functions (as long as we have a cache hit) return almost immediately.
+In R terms, we would say what is actually returned is a promise.
+The actual computation keeps running in the background while the R interpreter can do something else.
+This is especially important when working with a GPU, because we want to use both CPU and GPU simultaneously.
+But it also matters on CPU as XLA runs many threads in parallel, while R itself is single-threaded.
+
+The natural question is how we avoid reading wrong results when functions always return immediately, before the computation has finished.
+This works out because {anvl} will await the computation whenever it actually needs to read the data.
+This happens, for example, when we print the array or convert it back to R via `as_array()`.
+However, some operations such as accessing `dtype()`, `shape()` or `device()` do not require awaiting the result.
+
+One classic mistake that can degrade GPU performance is to always force this synchronization.
+For example, in a typical model fitting loop, we have some batch preparation that runs on the CPU and then some expensive computation that runs on the GPU.
+Ideally, the CPU and the GPU run simultaneously.
+This is what will happen when you write code like the one below.
+Because the GPU call returns immediately, the R loop will continue preparing the next batch while the GPU computation from the previous iteration is still running.
+In the next iteration we will call into the `step()` function again and the computation will be scheduled to run on the GPU.
+Note that the GPU computation from the previous `step()` call might not yet be done at this point.
+This is exactly the situation we want to be in, as we don't want the GPU to idle.
+
+```{r, eval = FALSE}
+for (i in seq_len(n_steps)) {
+  batch   <- prepare_batch(i)                # CPU-work
+  weights <- step(batch$X, weights, batch$y) # GPU-work
+}
+```
+
+One way to make this slower is to always print the result after each `step()`:
+
+```{r, eval = FALSE}
+# Bad: blocks every step to print the loss.
+for (i in seq_len(n_steps)) {
+  batch <- prepare_batch(i)                # CPU-work
+  weights <- step(batch$X, weights, batch$y) # GPU-work
+  print(loss(batch$X, weights, batch$y))
+}
+```
+
+The figure below shows both loops over time:
+
+```text
+Calls return immediately: R prepares the next batch while the device computes
+
+R (host)  [prep 1][prep 2][prep 3][prep 4][prep 5]
+Device            [  step 1  ][  step 2  ][  step 3  ][  step 4  ]
+
+print(loss) in every step: R waits for the device, and the device for R
+
+R (host)  [prep 1][ waiting  ]p[prep 2][ waiting  ]p[prep 3]
+Device            [  step 1  ].........[  step 2  ].........[  step 3  ]
+
+          ----------------------------------------------------------> time
+
+[prep i]  R code, e.g. preparing a batch     p     print()
+[step i]  compiled step on the device        ...   device idle
+```
+
+Because `print()` requires the actual data, we now have to wait for the GPU to finish its computation so the result can be sent back to the CPU.
+But this means that while the next batch is being prepared, the GPU will be idle.
+Solutions include logging less often, or printing the loss from the previous iteration.
+
+## Memory
+
+Value semantics and the fact that subset-assignment always copies were introduced in the [Next Steps article](next_steps.html#value-semantics).
+This section covers the one extra lever `jit()` gives you: telling XLA it can reuse an input buffer for the output.
+
+### Donation
+
+Inside a jitted function XLA avoids unnecessary copies on its own.
+Across the jit boundary, though, it cannot tell whether the R caller still needs the input arrays, so by default it has to leave them intact.
+If you know a particular input will not be used after the call, you can pass its name to `donate` so XLA is free to reuse its memory for the output:
+
+```{r}
+update <- jit(function(x, delta) x + delta, donate = "x")
+
+x <- nv_array(c(1, 2, 3), dtype = "f32")
+x <- update(x, nv_array(c(0.1, 0.1, 0.1), dtype = "f32"))
+x
+```
+
+One common scenario for this pattern is weight updates in model fitting loops, where every step would otherwise allocate a new buffer for the parameters and leave the previous one for the garbage collector.
+
+The donated input is consumed by the call, so it must not be used afterwards, otherwise an error is thrown:
+
+```{r, error = TRUE, eval = startsWith(Sys.getenv("ANVL_DEFAULT_DEVICE", "cpu"), "cpu")}
+x_old <- nv_array(c(1, 2, 3), dtype = "f32")
+x_new <- update(x_old, nv_array(c(0.1, 0.1, 0.1), dtype = "f32"))
+x_old
+```
+
+### Subset assignment in eager mode
+
+In plain R, `y[i] <- val` may happen in place when `y` has only one reference.
+{anvl} cannot track references to an array, so outside of `jit()`, such a call produces a copy by default: modifying the array in place would also modify it for every other variable referring to it.
+If the original array is not needed anymore, `y[i, inplace = TRUE] <- val` instead donates `y`'s memory to the result and avoids the copy.
+See the [in-place updates](subsetting.html#in-place-updates) section of the Subsetting article for details.
+
+## Optimization barriers
+
+When XLA compiles a program, it *fuses* chains of element-by-element operations into a single pass (called a kernel) over the data.
+Instead of creating and saving temporary arrays in memory between steps, each value is processed all the way through in one go.
+Cutting out that memory traffic is one of the main reasons a `jit()`ted function is so fast, so as a general rule we want as much fusion as we can get.
+
+For example, computing `sqrt(2 * x + 1)` in R would normally take three passes over `x`: one to multiply by `2`, one to add `1`, and one to take the square root.
+Fusion means collapsing those into a single pass that finishes all three steps on each element before moving to the next.
+
+Occasionally, though, XLA's choices end up working against us, and `nv_optimization_barrier()` lets us step in and overrule the optimizer.
+The function returns its input unchanged, but acts as a wall: XLA cannot fuse operations across it, and any later step that uses the result has to wait until the input is fully computed.
+Below we look at three situations where this helps.
+
+**Note 1:** this is not an exhaustive list, but are the places we have observed optimization barriers helping.
+
+**Note 2:** always benchmark, because these are not hard and fast rules: there will exist exceptions where the barrier does not help despite the code matching the described scenario.
+
+### Avoiding repeated work
+
+When a value has more than one consumer (i.e. is used in more than one place), XLA has to decide whether to store it in memory once or to compute it again inside each consumer's kernel.
+It recomputes the value whenever it judges the work to do so would be cheap.
+However, XLA makes that judgement one operation at a time, so a long chain of individually cheap operations can look cheap, even when computing it twice actually costs far more than the memory traffic to store it.
+
+To see how this happens, consider a small toy example.
+The `chain()` function below uses a regular R `for` loop (rather than an {anvl} loop) to apply 50 simple multiply-and-add steps to its input.
+Because R executes the loop while building the computation, XLA sees a long chain of fifty consecutive element-by-element operations, which gives a lengthy sequence of simple arithmetic, such as evaluating a high-degree polynomial.
+We then use the result twice in the `list()` return value:
+
+```{r}
+chain <- function(x) {
+  for (i in 1:50) {
+    x <- x * 0.999 + 0.001
+  }
+  x
+}
+
+f <- jit(function(x) {
+  y <- chain(x)
+  list(y * 2, y + 1)
+})
+
+f_barrier <- jit(function(x) {
+  y <- nv_optimization_barrier(chain(x))
+  list(y * 2, y + 1)
+})
+```
+
+It may be surprising that in `f` (without the barrier), XLA builds one kernel *per output*, fusing all 50 steps of `chain()` into both!
+Hence, the entire chain is computed twice.
+With the barrier, `chain()` runs once and saves its result to memory for both outputs to read.
+Both functions return exactly the same values.
+
+XLA does not copy every kind of operation like this.
+It treats many simple arithmetic operations (like addition and multiplication) as always cheap, judging each operation individually regardless of how many are chained together.
+Other operations it always considers expensive, such as `exp()`, `log()`, `sqrt()` and matrix multiplication, meaning they are not copied, their results instead being stored in memory so they can be read by every consumer.
+This is a simplified picture, because XLA's actual decision also depends on the surrounding computation, even for these operations.
+
+Whether XLA's optimization pays off depends on how long the chain is.
+For a short chain, doing the arithmetic twice is faster than writing the intermediate result to memory and reading it back, but for a long chain, the extra computation costs more than that memory trip.
+The table below shows example timings for 10 million `f32` values on an Apple M1:
+
+| steps in `chain()` | without barrier | with barrier |
+|---|---|---|
+| 10  | 3.4 ms  | 4.4 ms  |
+| 30  | 6.0 ms  | 5.8 ms  |
+| 50  | 14.1 ms | 9.5 ms  |
+| 100 | 42.8 ms | 23.6 ms |
+
+<details>
+<summary>Show the code for these timings</summary>
+
+```{r, eval = FALSE}
+# We build both versions of the example for a chain of a given length.
+make_fns <- function(steps) {
+  chain <- function(x) {
+    for (i in seq_len(steps)) x <- x * 0.999 + 0.001
+    x
+  }
+  list(
+    without = jit(function(x) {
+      y <- chain(x)
+      list(y * 2, y + 1)
+    }),
+    with = jit(function(x) {
+      y <- nv_optimization_barrier(chain(x))
+      list(y * 2, y + 1)
+    })
+  )
+}
+
+# We report the fastest of 15 runs in milliseconds. The first two calls compile
+# the function and are not timed. Calls return before the work is done, so we
+# await both outputs. We also collect garbage before each run, so that R does
+# not free the previous outputs in the middle of a timed call.
+time_ms <- function(f, x, reps = 15) {
+  for (i in 1:2) lapply(f(x), await)
+  times <- numeric(reps)
+  for (i in seq_len(reps)) {
+    gc()
+    start <- bench::hires_time()
+    lapply(f(x), await)
+    times[i] <- bench::hires_time() - start
+  }
+  min(times) * 1e3
+}
+
+x <- nv_array(runif(1e7), dtype = "f32")
+for (steps in c(10, 30, 50, 100)) {
+  fns <- make_fns(steps)
+  cat(sprintf(
+    "%3d steps: without barrier %5.1f ms, with barrier %5.1f ms\n",
+    steps, time_ms(fns$without, x), time_ms(fns$with, x)
+  ))
+}
+```
+
+</details>
+
+So for a short chain, the barrier clearly makes things slower and gets in the way of XLA's optimizer.
+However, for a sufficiently long chain the barrier wins, approaching a 2x speed-up because it removes the duplicated chain.
+
+The concatenation in the returning `list()` counts as two consumers, because XLA computes each part of the output separately.
+
+### Keeping heavy work out of kernels that cannot vectorize
+
+Modern CPUs get much of their speed by processing several values simultaneously in a single hardware step, and XLA relies heavily on this.
+Some operations, however, force a pass to handle values one at a time instead.
+The most common culprit is looking up values in an array at computed positions, because each entry has to be fetched from a different spot in memory.
+If XLA fuses other work into that same pass, everything is dragged down to one value at a time as well.
+
+Placing a barrier on the lookup positions separates the two steps so the heavy work stays in its own fast pass.
+To see this, we reuse `chain()` from above and turn its result into positions in a table of 1024 values:
+
+```{r}
+lookup <- jit(function(table, x) {
+  idx <- nv_convert(nv_floor(chain(x) * 1024), "i32") + 1L
+  table[idx]
+})
+
+lookup_barrier <- jit(function(table, x) {
+  idx <- nv_convert(nv_floor(chain(x) * 1024), "i32") + 1L
+  table[nv_optimization_barrier(idx)]
+})
+```
+
+Without the barrier, XLA fuses all 50 steps of `chain()` into the lookup, so they run one value at a time.
+With the barrier, `chain()` runs in a pass of its own that processes many values at once, and only the lookup itself is left to run one value at a time.
+Both functions return exactly the same values.
+The table below shows example timings for `f32` values on an Apple M1, but similar gains happen on x86 processors:
+
+| values | without barrier | with barrier |
+|---|---|---|
+| 1 million   | 3.5 ms   | 1.3 ms  |
+| 10 million  | 32.2 ms  | 10.5 ms |
+| 100 million | 313.2 ms | 97.6 ms |
+
+<details>
+<summary>Show the code for these timings</summary>
+
+```{r, eval = FALSE}
+# We use time_ms() from the timing code in the previous section. It expects a
+# function of x that returns a list, so we wrap each lookup in one.
+table <- nv_array(runif(1024), dtype = "f32")
+without_barrier <- function(x) list(lookup(table, x))
+with_barrier <- function(x) list(lookup_barrier(table, x))
+for (n in c(1e6, 1e7, 1e8)) {
+  x <- nv_array(runif(n), dtype = "f32")
+  cat(sprintf(
+    "%.0e values: without barrier %6.1f ms, with barrier %6.1f ms\n",
+    n, time_ms(without_barrier, x), time_ms(with_barrier, x)
+  ))
+}
+```
+
+</details>
+
+The barrier makes the lookup about three times faster at every size.
+
+### Reducing peak memory in unrolled loops
+
+When you write a regular R `for` loop inside `jit()`, R executes the loop while building the computation, handing XLA every iteration at once (loop unrolling).
+With the entire loop visible, XLA is free to reorganize work across iterations. Two of its optimizations can keep every iteration's intermediate result in memory simultaneously:
+
+- **Kernel fusion:** It may fuse the running-total updates into a single kernel that takes all of the intermediate results as inputs.
+- **Parallel execution:** Even without fusion, XLA on the CPU may compute all the independent products upfront so they can run in parallel.
+
+The function below adds up nine matrix products, each producing a full-size temporary matrix:
+
+```{r}
+sum_of_squares <- jit(function(x) {
+  total <- nv_fill(0, shape = shape(x), dtype = dtype(x))
+  for (i in 1:9) {
+    term <- nv_matmul(x + i, x)
+    total <- total + term * term
+    step <- nv_optimization_barrier(list(total = total, x = x))
+    total <- step$total
+    x <- step$x
+  }
+  total
+})
+```
+
+At the end of each iteration, we pass both the running total and `x` through the barrier.
+Passing `total` through the barrier stops the updates from being fused, and passing `x` through it makes each product depend on the previous iteration, so there is nothing to run in parallel.
+Each product can then be freed as soon as it has been added.
+
+For 1024 by 1024 f32 matrices, XLA's memory report shows the difference clearly.
+Without the barrier, the program uses 36 MB of temporary memory (corresponding to all nine products at once).
+With the barrier, it uses just 8 MB (corresponding to two at a time).
+In this instance, the running time is the same, so one may prefer the one requiring less memory (particularly in more extreme cases than this toy example).
+
+### When to reach for a barrier
+
+Some guidance for using barriers in your own code:
+
+- **Look for a long chain of seemingly cheap work whose result is used more than once.** Put the barrier on the result, just before it splits. A barrier after the split is too late, because XLA has already duplicated the chain.
+- **Look for expensive work that feeds into an array lookup.** Put the barrier on the positions, just before they are used to index the array.
+- **Look for an R for loop whose iterations create large temporary arrays.** Pass the variables carried from one iteration to the next through a barrier at the end of each step.
+- **Leave short chains and results that are only used once alone.** In those cases, fusion is faster, and a barrier only adds an unnecessary trip to memory.
+- **Measure!!** The benefit depends on the program, the data size and the hardware. See the [FAQ](faq.html#why-does-timing-my-function-show-suspiciously-fast-results) on how to time {anvl} functions correctly.
+
+A barrier never alters the values passing through it, though it can change how XLA groups the surrounding arithmetic, so results can occasionally show tiny rounding differences.
+Also note that we have only studied barriers on the CPU so far.
+On a GPU, fusion is usually more valuable, so a barrier might be less likely to help there.
