@@ -95,6 +95,7 @@ metadata needed for execution.</p>
 <span>  <span class="va">f</span>,</span>
 <span>  <span class="va">args_flat</span>,</span>
 <span>  <span class="va">in_tree</span>,</span>
+<span>  static_flat <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  donate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  xla_options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  device <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -121,6 +122,11 @@ Flat list of abstract input values.</p></dd>
 <dt id="arg-in-tree">in_tree<a class="anchor" aria-label="anchor" href="#arg-in-tree"></a></dt>
 <dd><p>(<code><a href="https://r-xla.github.io/pjrt/reference/build_tree.html" class="external-link">RTree</a></code>)<br>
 Tree structure of the inputs.</p></dd>
+
+
+<dt id="arg-static-flat">static_flat<a class="anchor" aria-label="anchor" href="#arg-static-flat"></a></dt>
+<dd><p>(<code>NULL</code> | <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical()</a></code>)<br>
+Which of <code>args_flat</code> are static, see <code><a href="trace_fn.html">trace_fn()</a></code>.</p></dd>
 
 
 <dt id="arg-donate">donate<a class="anchor" aria-label="anchor" href="#arg-donate"></a></dt>

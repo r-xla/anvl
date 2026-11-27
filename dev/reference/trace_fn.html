@@ -106,6 +106,7 @@ than among its inputs and outputs (see <code><a href="AnvlGraph.html">AnvlGraph<
 <span>  desc <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  args_flat <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  in_tree <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  static_flat <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  optimize <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -138,6 +139,13 @@ Flattened arguments. Must be accompanied by <code>in_tree</code>.</p></dd>
 <dt id="arg-in-tree">in_tree<a class="anchor" aria-label="anchor" href="#arg-in-tree"></a></dt>
 <dd><p>(<code><a href="https://r-xla.github.io/pjrt/reference/build_tree.html" class="external-link">RTree</a></code>)<br>
 Tree structure describing how <code>args_flat</code> maps back to <code>f</code>'s arguments.</p></dd>
+
+
+<dt id="arg-static-flat">static_flat<a class="anchor" aria-label="anchor" href="#arg-static-flat"></a></dt>
+<dd><p>(<code>NULL</code> | <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical()</a></code>)<br>
+Which of <code>args_flat</code> are static: passed to <code>f</code> as they are, even an
+<code><a href="AbstractArray.html">AbstractArray</a></code>, rather than becoming inputs of the graph. <code>NULL</code>
+(the default) makes every array and abstract array an input.</p></dd>
 
 
 <dt id="arg-optimize">optimize<a class="anchor" aria-label="anchor" href="#arg-optimize"></a></dt>

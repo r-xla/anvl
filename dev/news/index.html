@@ -121,6 +121,7 @@
 <li><p>An array that a branch of <code><a href="../reference/nv_if.html">nv_if()</a></code>, the body of <code><a href="../reference/nv_while.html">nv_while()</a></code> or a function differentiated by <code><a href="../reference/gradient.html">gradient()</a></code> closes over now counts toward the device <code><a href="../reference/jit.html">jit()</a></code> detects, as it already did for the jitted function itself.</p></li>
 <li><p><code><a href="../reference/as_raw.html">as_raw()</a></code> of a <code>"quickr"</code> array returns the bytes of its data type, in row-major order with <code>row_major = TRUE</code>.</p></li>
 <li><p>The <code>"quickr"</code> backend accepts a device given as a string, <code>"cpu"</code>.</p></li>
+<li><p>A static argument of <code><a href="../reference/jit.html">jit()</a></code> that is an <code>AbstractArray</code> reaches the function as that value, instead of becoming an input of the program that the call does not supply.</p></li>
 </ul></div>
 <div class="section level3">
 <h3 id="performance-development-version">Performance<a class="anchor" aria-label="anchor" href="#performance-development-version"></a></h3>

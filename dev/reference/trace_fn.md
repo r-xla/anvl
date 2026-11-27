@@ -22,6 +22,7 @@ trace_fn(
   desc = NULL,
   args_flat = NULL,
   in_tree = NULL,
+  static_flat = NULL,
   optimize = FALSE
 )
 ```
@@ -59,6 +60,14 @@ trace_fn(
   ([`RTree`](https://r-xla.github.io/pjrt/reference/build_tree.html))  
   Tree structure describing how `args_flat` maps back to `f`'s
   arguments.
+
+- static_flat:
+
+  (`NULL` \| [`logical()`](https://rdrr.io/r/base/logical.html))  
+  Which of `args_flat` are static: passed to `f` as they are, even an
+  [`AbstractArray`](https://r-xla.github.io/anvl/dev/reference/AbstractArray.md),
+  rather than becoming inputs of the graph. `NULL` (the default) makes
+  every array and abstract array an input.
 
 - optimize:
 

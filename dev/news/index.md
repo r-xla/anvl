@@ -131,6 +131,11 @@
 
 - The `"quickr"` backend accepts a device given as a string, `"cpu"`.
 
+- A static argument of
+  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) that is
+  an `AbstractArray` reaches the function as that value, instead of
+  becoming an input of the program that the call does not supply.
+
 ### Performance
 
 - Constructing `AnvlArray`s from R objects is now more efficient.

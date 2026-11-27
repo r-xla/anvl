@@ -11,6 +11,7 @@ compile_pjrt(
   f,
   args_flat,
   in_tree,
+  static_flat = NULL,
   donate = character(),
   xla_options = list(),
   device = NULL,
@@ -36,6 +37,12 @@ compile_pjrt(
 
   ([`RTree`](https://r-xla.github.io/pjrt/reference/build_tree.html))  
   Tree structure of the inputs.
+
+- static_flat:
+
+  (`NULL` \| [`logical()`](https://rdrr.io/r/base/logical.html))  
+  Which of `args_flat` are static, see
+  [`trace_fn()`](https://r-xla.github.io/anvl/dev/reference/trace_fn.md).
 
 - donate:
 
