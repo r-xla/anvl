@@ -2,20 +2,20 @@ describe("prim_scaled_dot_product_attention", {
   it("computes batched rectangular attention with a stable softmax", {
     q <- array(seq_len(12L), c(2L, 3L, 2L))
     k <- array(seq_len(16L), c(2L, 4L, 2L))
-    v <- array(seq_len(24L), c(2L, 4L, 3L))
+    v <- array(seq_len(24L), c(3L, 4L, 2L))
     x <- nv_array(q, dtype = "f64")
     key <- nv_array(k, dtype = "f64")
     value <- nv_array(v, dtype = "f64")
 
     for (causal in c(FALSE, TRUE)) {
-      expected <- array(0, c(2L, 3L, 3L))
+      expected <- array(0, c(3L, 3L, 2L))
       for (batch in 1:2) {
-        scores <- tcrossprod(q[batch, , ], k[batch, , ]) / sqrt(2)
+        scores <- crossprod(q[,, batch], k[,, batch]) / sqrt(2)
         if (causal) {
           scores[col(scores) > row(scores)] <- -Inf
         }
         weights <- exp(scores - apply(scores, 1L, max))
-        expected[batch, , ] <- (weights / rowSums(weights)) %*% v[batch, , ]
+        expected[,, batch] <- v[,, batch] %*% t(weights / rowSums(weights))
       }
 
       out <- prim_scaled_dot_product_attention(x, key, value, causal = causal)
@@ -26,9 +26,9 @@ describe("prim_scaled_dot_product_attention", {
 
   it("uses half-precision operands with f32 inputs and output under jit", {
     withr::local_seed(440L)
-    q <- matrix(runif(16L * 64L, -1, 1), 16L, 64L)
-    k <- matrix(runif(24L * 64L, -1, 1), 24L, 64L)
-    v <- matrix(runif(24L * 64L, -1, 1), 24L, 64L)
+    q <- matrix(runif(16L * 64L, -1, 1), 64L, 16L)
+    k <- matrix(runif(24L * 64L, -1, 1), 64L, 24L)
+    v <- matrix(runif(24L * 64L, -1, 1), 64L, 24L)
     x <- nv_array(q, dtype = "f32")
     key <- nv_array(k, dtype = "f32")
     value <- nv_array(v, dtype = "f32")
@@ -38,9 +38,9 @@ describe("prim_scaled_dot_product_attention", {
       },
       static = "compute_dtype"
     )
-    scores <- 0.2 * tcrossprod(q, k)
+    scores <- 0.2 * crossprod(q, k)
     weights <- exp(scores - apply(scores, 1L, max))
-    expected <- (weights / rowSums(weights)) %*% v
+    expected <- v %*% t(weights / rowSums(weights))
 
     for (compute_dtype in c("f16", "bf16")) {
       out <- f(x, key, value, compute_dtype)
@@ -51,22 +51,30 @@ describe("prim_scaled_dot_product_attention", {
 
   it("rejects mismatched key and value sequence axis sizes", {
     x <- nv_array(matrix(1, 2L, 2L), dtype = "f32")
-    key <- nv_array(matrix(1, 3L, 2L), dtype = "f32")
+    key <- nv_array(matrix(1, 2L, 3L), dtype = "f32")
     expect_error(prim_scaled_dot_product_attention(x, key, x), "sequence axis size")
   })
 
-  it("emits the cuDNN call only for compatible CUDA shapes and data types", {
-    lower <- function(compute_dtype, features, platform) {
-      aval <- nv_aval("f32", c(2L, 3L, 32L, features))
+  it("emits the cuDNN call only for compatible GPUs, shapes and data types", {
+    lower <- function(compute_dtype, features, platform, compute_capability = "8.0") {
+      aval <- nv_aval("f32", c(features, 32L, 3L, 2L))
       fn <- function(x, key, value) {
         prim_scaled_dot_product_attention(x, key, value, compute_dtype = compute_dtype)
       }
       graph <- trace_fn(fn, list(aval, aval, aval))
-      stablehlo::repr(stablehlo(graph, platform = platform)[[1L]])
+      if (platform != "cuda") {
+        compute_capability <- NULL
+      }
+      out <- stablehlo(graph, platform = platform, compute_capability = compute_capability)
+      stablehlo::repr(out[[1L]])
     }
     target <- "__cudnn$fmhaSoftmax"
-    expect_match(lower("f16", 64L, "cuda"), target, fixed = TRUE)
+    fused <- lower("f16", 64L, "cuda")
+    expect_match(fused, target, fixed = TRUE)
+    expect_no_match(fused, "stablehlo.transpose", fixed = TRUE)
     expect_no_match(lower("f16", 64L, "cpu"), target, fixed = TRUE)
+    expect_no_match(lower("f16", 64L, "cuda", compute_capability = "7.5"), target, fixed = TRUE)
+    expect_no_match(lower("f16", 64L, "cuda", compute_capability = NULL), target, fixed = TRUE)
     expect_no_match(lower(NULL, 64L, "cuda"), target, fixed = TRUE)
     expect_no_match(lower("bf16", 6L, "cuda"), target, fixed = TRUE)
   })

@@ -248,6 +248,16 @@ subgraphs <- function(statement) {
   )
 }
 
+# Returned by a lowering rule that has no specialized lowering for a call, so
+# the lowering expands the primitive's decomposition instead.
+use_decomposition <- function() {
+  structure(list(), class = "UseDecomposition")
+}
+
+is_use_decomposition <- function(x) {
+  inherits(x, "UseDecomposition")
+}
+
 # A decomposition is a pure function of the primitive's operands and static
 # parameters. Trace it with abstract operands so both lowering and autodiff
 # can bind the resulting graph to the values in their enclosing program.

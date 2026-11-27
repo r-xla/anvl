@@ -121,31 +121,33 @@ prim_dot_general[["stablehlo"]] <- function(lhs, rhs, contracting_axes, batching
 prim_scaled_dot_product_attention[["stablehlo"]] <- function(x, key, value, scale, causal, compute_dtype) {
   query_shape <- r_shape(x)
   value_shape <- r_shape(value)
-  rank <- length(query_shape)
   dt <- as.character(dtype(x))
   compute_dtype <- compute_dtype %||% dt
-  feature_size <- query_shape[[rank]]
+  feature_size <- query_shape[[1L]]
+  compute_capability <- current_compute_capability()
+  # cuDNN's fused attention needs an Ampere GPU or newer.
   if (
     !identical(current_platform(), "cuda") ||
+      is.null(compute_capability) ||
+      compute_capability < "8.0" ||
       !compute_dtype %in% c("bf16", "f16") ||
       !all(query_shape > 0L) ||
       !all(value_shape > 0L) ||
-      feature_size != value_shape[[rank]] ||
+      feature_size != value_shape[[1L]] ||
       feature_size > 128L ||
       feature_size %% 8L != 0L ||
-      (causal && query_shape[[rank - 1L]] != value_shape[[rank - 1L]])
+      (causal && query_shape[[2L]] != value_shape[[2L]])
   ) {
-    return(NULL)
+    return(use_decomposition())
   }
 
-  # cuDNN expects leading batch axes followed by positions and features.
-  reverse_axes <- function(x) hlo_transpose(x, rev(seq_len(naxes(x)) - 1L))
-  x <- reverse_axes(hlo_convert(x, compute_dtype))
-  key <- reverse_axes(hlo_convert(key, compute_dtype))
-  value <- reverse_axes(hlo_convert(value, compute_dtype))
+  # Reversed XLA axes already put the contiguous feature axis last.
+  x <- hlo_convert(x, compute_dtype)
+  key <- hlo_convert(key, compute_dtype)
+  value <- hlo_convert(value, compute_dtype)
   scale <- scale %||% (1 / sqrt(feature_size))
   out <- hlo_cudnn_attention(x, key, value, scale, causal)
-  list(reverse_axes(hlo_convert(out, dt)))
+  list(hlo_convert(out, dt))
 }
 
 # XLA's cuDNN FMHA custom call expects [batch, heads, positions, features]

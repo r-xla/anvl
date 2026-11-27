@@ -2,23 +2,34 @@
 % Please edit documentation in R/stablehlo.R
 \name{current_platform}
 \alias{current_platform}
+\alias{current_compute_capability}
 \alias{local_platform}
 \title{Current Lowering Target Platform}
 \usage{
 current_platform()
 
-local_platform(platform, envir = parent.frame())
+current_compute_capability()
+
+local_platform(platform, compute_capability = NULL, envir = parent.frame())
 }
 \arguments{
 \item{platform}{(\code{character(1)} | \code{NULL})\cr
 Target platform name (e.g. \code{"cpu"}, \code{"cuda"}), or \code{NULL} to clear it.}
 
+\item{compute_capability}{(\code{character(1)} | \code{NULL})\cr
+Compute capability of the target CUDA device (e.g. \code{"8.6"}), or \code{NULL}
+when it is unknown.}
+
 \item{envir}{(\code{environment})\cr
-Environment whose exit triggers restoration of the previous platform.}
+Environment whose exit triggers restoration of the previous values.}
 }
 \value{
-(\code{NULL} | \code{character(1)})\cr
+\code{current_platform()}: (\code{NULL} | \code{character(1)})\cr
 The current platform.
+
+\code{current_compute_capability()}: (\code{NULL} | \code{\link{numeric_version}})\cr
+The current compute capability.
+
 \code{local_platform()} invisibly returns the previous platform.
 }
 \description{
@@ -28,16 +39,21 @@ branch on the target — e.g. SVD switches to a layout-flip variant when
 targeting CUDA with \code{m < n} because cuSOLVER's \code{gesvd} requires \code{m >= n}.
 Returns \code{NULL} outside of a lowering call.
 
-\code{\link[=local_platform]{local_platform()}} sets the current platform for the duration of the
-calling scope, restoring the previous value via \code{\link[withr:defer]{withr::defer()}} when the
-scope exits. Useful in tests and for manually exercising platform-aware
-lowering rules outside of a \code{\link[=stablehlo]{stablehlo()}} call.
+\code{\link[=current_compute_capability]{current_compute_capability()}} returns the compute capability of the
+target CUDA device, for rules whose lowering needs a newer GPU (e.g. cuDNN's
+fused attention, which needs \code{8.0}). It is \code{NULL} when the target is not a
+CUDA device or the lowering does not know which one.
+
+\code{\link[=local_platform]{local_platform()}} sets the current platform and compute capability for
+the duration of the calling scope, restoring the previous values via
+\code{\link[withr:defer]{withr::defer()}} when the scope exits. Useful in tests and for manually
+exercising platform-aware lowering rules outside of a \code{\link[=stablehlo]{stablehlo()}} call.
 }
 \examples{
 current_platform()
 f <- function() {
-  local_platform("cuda")
-  current_platform()
+  local_platform("cuda", compute_capability = "8.6")
+  list(current_platform(), current_compute_capability() >= "8.0")
 }
 f()
 }

@@ -110,3 +110,21 @@ describe("stablehlo() of a graph with side effects", {
     expect_identical(out[[1L]]$inputs[[4L]]$alias, 0L)
   })
 })
+
+describe("local_platform", {
+  it("sets the compute capability with the platform for the calling scope", {
+    f <- function() {
+      local_platform("cuda", compute_capability = "8.6")
+      list(current_platform(), current_compute_capability())
+    }
+    expect_identical(f(), list("cuda", numeric_version("8.6")))
+    expect_null(current_compute_capability())
+  })
+})
+
+describe("stablehlo", {
+  it("refuses a compute capability without a platform", {
+    graph <- trace_fn(function(x) x + 1, list(x = nv_aval("f32", 2L)))
+    expect_error(stablehlo(graph, compute_capability = "8.0"), "needs a")
+  })
+})

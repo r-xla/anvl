@@ -323,12 +323,13 @@ prim_dot_general <- new_primitive(
 #' Computes softmax of the scaled query-key scores over the key positions,
 #' then uses those probabilities to weight the values.
 #' @param x ([`arrayish`])\cr
-#'   Queries with shape `c(batch_shape, query_positions, query_features)`.
-#'   Leading batch axes can include an attention head axis.
+#'   Queries with shape `c(query_features, query_positions, batch_shape)`.
+#'   Trailing batch axes can include an attention head axis. The feature axis
+#'   is contiguous in column-major order.
 #' @param key ([`arrayish`])\cr
-#'   Keys with shape `c(batch_shape, key_positions, query_features)`.
+#'   Keys with shape `c(query_features, key_positions, batch_shape)`.
 #' @param value ([`arrayish`])\cr
-#'   Values with shape `c(batch_shape, key_positions, value_features)`.
+#'   Values with shape `c(value_features, key_positions, batch_shape)`.
 #'   All three arrays must have the same floating-point data type and batch
 #'   shape. The key sequence and query feature axis must be nonempty.
 #' @param scale (`numeric(1)` | `NULL`)\cr
@@ -342,13 +343,14 @@ prim_dot_general <- new_primitive(
 #'   or `"bf16"`. The returned array keeps the original data type.
 #'   `NULL` computes at the input data type.
 #' @return ([`arrayish`])\cr
-#'   An array with shape `c(batch_shape, query_positions, value_features)`
+#'   An array with shape `c(value_features, query_positions, batch_shape)`
 #'   and the input data type.
 #' @templateVar primitive_id scaled_dot_product_attention
 #' @template section_rules
 #' @section StableHLO:
-#' On CUDA with cuDNN Flash Attention support, setting `compute_dtype`
-#' uses the fused kernel when the query and value feature axes have the
+#' On a CUDA GPU of compute capability 8.0 (Ampere) or newer, setting
+#' `compute_dtype` uses cuDNN's fused Flash Attention kernel when the query
+#' and value feature axes have the
 #' same size, a multiple of eight up to 128. Causal Flash Attention also
 #' requires equal query and key sequence axis sizes.
 #' The portable lowering uses batched dot products and max-shifted softmax.
@@ -375,7 +377,7 @@ prim_scaled_dot_product_attention <- new_primitive(
 prim_scaled_dot_product_attention[["decomposition"]] <- function(x, key, value, scale, causal, compute_dtype) {
   rank <- naxes(x)
   dt <- as.character(dtype(x))
-  scale <- scale %||% (1 / sqrt(shape(x)[[rank]]))
+  scale <- scale %||% (1 / sqrt(shape(x)[[1L]]))
   compute_dtype <- compute_dtype %||% dt
   half <- compute_dtype %in% c("f16", "bf16")
   if (half) {
@@ -385,9 +387,8 @@ prim_scaled_dot_product_attention[["decomposition"]] <- function(x, key, value, 
     value <- to_compute(value)
   }
 
-  batch_axes <- seq_len(rank - 2L)
-  position_axis <- rank - 1L
-  scores <- prim_dot_general(x, key, list(rank, rank), list(batch_axes, batch_axes))
+  batch_axes <- seq_len(rank - 2L) + 2L
+  scores <- prim_dot_general(x, key, list(1L, 1L), list(batch_axes, batch_axes))
   scores <- prim_mul(scores, scale)
   score_shape <- shape(scores)
   if (causal) {
@@ -405,12 +406,11 @@ prim_scaled_dot_product_attention[["decomposition"]] <- function(x, key, value, 
   weights <- prim_div(weights, broadcast(total))
 
   out <- prim_dot_general(
-    weights,
     value,
-    list(2L, position_axis),
-    list(batch_axes + 2L, batch_axes)
+    weights,
+    list(2L, 2L),
+    list(batch_axes, batch_axes)
   )
-  out <- prim_transpose(out, c(batch_axes + 2L, 1L, 2L))
   if (half) prim_convert(out, dt) else out
 }
 

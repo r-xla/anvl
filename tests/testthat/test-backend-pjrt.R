@@ -38,3 +38,19 @@ describe("nv_array(<PJRTBuffer>)", {
     expect_error(nv_array(buf, device = "cpu:1"), "same device")
   })
 })
+
+describe("compile_graph_pjrt", {
+  it("lowers for the compute capability of the CUDA device", {
+    skip_if(!is_cuda())
+    seen <- NULL
+    lower <- stablehlo
+    local_mocked_bindings(stablehlo = function(graph, ...) {
+      seen <<- seen %||% list(...)$compute_capability
+      lower(graph, ...)
+    })
+    device <- pjrt::pjrt_device("cuda")
+    graph <- trace_fn(function(x) x + 1, list(x = nv_aval("f32", 2L)))
+    compile_graph_pjrt(graph, device = device)
+    expect_identical(seen, pjrt::device_attributes(device)$compute_capability)
+  })
+})

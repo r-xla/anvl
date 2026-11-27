@@ -15,14 +15,15 @@ prim_scaled_dot_product_attention(
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Queries with shape \code{c(batch_shape, query_positions, query_features)}.
-Leading batch axes can include an attention head axis.}
+Queries with shape \code{c(query_features, query_positions, batch_shape)}.
+Trailing batch axes can include an attention head axis. The feature axis
+is contiguous in column-major order.}
 
 \item{key}{(\code{\link{arrayish}})\cr
-Keys with shape \code{c(batch_shape, key_positions, query_features)}.}
+Keys with shape \code{c(query_features, key_positions, batch_shape)}.}
 
 \item{value}{(\code{\link{arrayish}})\cr
-Values with shape \code{c(batch_shape, key_positions, value_features)}.
+Values with shape \code{c(value_features, key_positions, batch_shape)}.
 All three arrays must have the same floating-point data type and batch
 shape. The key sequence and query feature axis must be nonempty.}
 
@@ -41,7 +42,7 @@ or \code{"bf16"}. The returned array keeps the original data type.
 }
 \value{
 (\code{\link{arrayish}})\cr
-An array with shape \code{c(batch_shape, query_positions, value_features)}
+An array with shape \code{c(value_features, query_positions, batch_shape)}
 and the input data type.
 }
 \description{
@@ -58,8 +59,9 @@ then uses those probabilities to weight the values.
 
 \section{StableHLO}{
 
-On CUDA with cuDNN Flash Attention support, setting \code{compute_dtype}
-uses the fused kernel when the query and value feature axes have the
+On a CUDA GPU of compute capability 8.0 (Ampere) or newer, setting
+\code{compute_dtype} uses cuDNN's fused Flash Attention kernel when the query
+and value feature axes have the
 same size, a multiple of eight up to 128. Causal Flash Attention also
 requires equal query and key sequence axis sizes.
 The portable lowering uses batched dot products and max-shifted softmax.

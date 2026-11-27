@@ -31,7 +31,7 @@ Imports:
     fastmap,
     jsonlite,
     methods,
-    pjrt (>= 0.8.0.9004),
+    pjrt (>= 0.8.0.9005),
     rlang,
     stablehlo (>= 0.7.0.9000),
     withr,

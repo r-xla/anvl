@@ -2,21 +2,42 @@
 # Just a few selected ones that don't use torch are here
 
 describe("prim_scaled_dot_product_attention", {
+  it("keeps attention opaque until lowering or differentiation", {
+    loss <- function(x, key, value) {
+      nv_sum(prim_scaled_dot_product_attention(x, key, value))
+    }
+    aval <- nv_aval("f32", c(4L, 3L))
+    graph <- trace_fn(loss, list(aval, aval, aval))
+    primitive_names <- function(graph) {
+      vapply(graph$statements, function(call) call$primitive$name, character(1L))
+    }
+    attention <- "scaled_dot_product_attention"
+    traced <- primitive_names(graph)
+    expect_identical(traced, c(attention, "sum"))
+
+    cpu <- stablehlo::repr(stablehlo(graph, platform = "cpu")[[1L]])
+    expect_match(cpu, "stablehlo.dot_general", fixed = TRUE)
+    differentiated <- primitive_names(graph_gradient(graph, wrt = NULL))
+    expect_true("dot_general" %in% differentiated)
+    expect_false(attention %in% differentiated)
+    expect_identical(primitive_names(graph), traced)
+  })
+
   it("differentiates batched causal attention through its decomposition", {
     withr::local_seed(543L)
     q <- array(runif(12L), c(2L, 3L, 2L))
     k <- array(runif(16L), c(2L, 4L, 2L))
-    v <- array(runif(24L), c(2L, 4L, 3L))
-    ct <- array(runif(18L), c(2L, 3L, 3L))
+    v <- array(runif(24L), c(3L, 4L, 2L))
+    ct <- array(runif(18L), c(3L, 3L, 2L))
     args <- list(x = q, key = k, value = v)
     loss <- function(x, key, value) {
       sum(vapply(
         seq_len(2L),
         function(b) {
-          scores <- 0.2 * tcrossprod(x[b, , ], key[b, , ])
+          scores <- 0.2 * crossprod(x[,, b], key[,, b])
           scores[col(scores) > row(scores)] <- -Inf
           weights <- exp(scores - apply(scores, 1L, max))
-          sum(((weights / rowSums(weights)) %*% value[b, , ]) * ct[b, , ])
+          sum((value[,, b] %*% t(weights / rowSums(weights))) * ct[,, b])
         },
         numeric(1L)
       ))

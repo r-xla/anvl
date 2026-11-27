@@ -74,6 +74,7 @@ globals$interpretation_rules <- c("stablehlo", "quickr", "pullback", "vectorize"
 globals[["descriptor_stash"]] <- list()
 globals[["current_descriptor"]] <- NULL
 globals[["lowering_platform"]] <- NULL
+globals[["lowering_compute_capability"]] <- NULL
 globals[["lowering_funcs"]] <- NULL
 globals$rng_state <- NULL
 utils::globalVariables(c("globals", "self"))

@@ -921,21 +921,21 @@ infer_scaled_dot_product_attention <- function(x, key, value, scale, causal, com
   query_shape <- shape(x)
   key_shape <- shape(key)
   value_shape <- shape(value)
-  batch_axes <- seq_len(rank - 2L)
-  sequence_axis <- rank - 1L
+  batch_axes <- seq_len(rank - 2L) + 2L
+  sequence_axis <- 2L
   if (
     !identical(query_shape[batch_axes], key_shape[batch_axes]) ||
       !identical(query_shape[batch_axes], value_shape[batch_axes])
   ) {
     cli_abort("{.arg x}, {.arg key} and {.arg value} must have the same batch shape.")
   }
-  if (query_shape[[rank]] != key_shape[[rank]] || query_shape[[rank]] == 0L) {
+  if (query_shape[[1L]] != key_shape[[1L]] || query_shape[[1L]] == 0L) {
     cli_abort("{.arg x} and {.arg key} must have the same nonzero feature axis size.")
   }
   if (key_shape[[sequence_axis]] != value_shape[[sequence_axis]] || key_shape[[sequence_axis]] == 0L) {
     cli_abort("{.arg key} and {.arg value} must have the same nonzero sequence axis size.")
   }
-  list(AbstractArray(dtype = dtype(x), shape = Shape(replace(query_shape, rank, value_shape[[rank]]))))
+  list(AbstractArray(dtype = dtype(x), shape = Shape(replace(query_shape, 1L, value_shape[[1L]]))))
 }
 
 infer_dot_general <- function(

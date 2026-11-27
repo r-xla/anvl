@@ -10,7 +10,8 @@ stablehlo(
   captured = list(),
   donate = character(),
   donate_unaliased_outputs = FALSE,
-  platform = NULL
+  platform = NULL,
+  compute_capability = NULL
 )
 }
 \arguments{
@@ -50,6 +51,11 @@ global during the call so that platform-aware lowering rules (queried via
 \code{\link[=current_platform]{current_platform()}}) can branch on it. \code{NULL} (the default)
 leaves the current value untouched — recursive calls from higher-order
 primitives inherit the platform of the enclosing call.}
+
+\item{compute_capability}{(\code{NULL} | \code{character(1)})\cr
+Compute capability of the target CUDA device (e.g. \code{"8.6"}), which
+lowering rules query via \code{\link[=current_compute_capability]{current_compute_capability()}}. Set together
+with \code{platform}; \code{NULL} means it is unknown.}
 }
 \value{
 (\code{list})\cr
