@@ -47,6 +47,8 @@ primitive_env <- new.env(parent = emptyenv())
 #   `prim_sum()`.
 # * "cumulative": scans its operand along the axis a parameter names, e.g.
 #   `prim_cumsum()`.
+# * "linear": linear in its float operands, its other operands -- such as
+#   start indices -- held fixed, e.g. `prim_reshape()` or `prim_pad()`.
 
 # The registered primitives tagged with any of `tags`, by name.
 primitives_tagged <- function(tags) {
