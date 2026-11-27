@@ -47,9 +47,10 @@ primitive_env <- new.env(parent = emptyenv())
 #   `prim_sum()`.
 # * "cumulative": scans its operand along the axis a parameter names, e.g.
 #   `prim_cumsum()`.
-# * "linear": linear in its float operands jointly, e.g. `prim_transpose()` or
-#   `prim_pad()`; any other operand, such as a start index of
-#   `prim_dynamic_slice()`, is not a float.
+# * "linear": linear in its float operands, its other operands -- such as
+#   start indices -- held fixed, e.g. `prim_reshape()` or `prim_pad()`.
+# * "bilinear": linear in each of its two operands, the other held fixed, e.g.
+#   `prim_dot_general()`.
 
 # The registered primitives tagged with any of `tags`, by name.
 primitives_tagged <- function(tags) {

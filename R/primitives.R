@@ -316,7 +316,8 @@ prim_dot_general <- new_primitive(
       infer_fn = infer_dot_general
     )[[1L]]
   },
-  static = 3:5
+  static = 3:5,
+  tags = "bilinear"
 )
 
 #' @title Primitive Transpose
@@ -4120,5 +4121,6 @@ prim_convolution <- new_primitive(
       infer_fn = infer_convolution
     )[[1L]]
   },
-  static = 3:18
+  static = 3:18,
+  tags = "bilinear"
 )
