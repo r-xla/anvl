@@ -35,6 +35,23 @@ describe("nv_custom_call", {
     expect_equal(abs(as_array(Q)), abs(as_array(nv_qr(A)$Q)))
   })
 
+  it("keeps the result of a list of one output type in a list", {
+    A <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
+    packed <- nv_custom_call(
+      "geqrf",
+      A,
+      output_types = list(AbstractArray("f64", c(2, 2)), AbstractArray("f64", 2))
+    )
+    Q <- nv_custom_call(
+      "orgqr",
+      packed[[1L]],
+      packed[[2L]],
+      output_types = list(AbstractArray("f64", c(2, 2)))
+    )
+    expect_type(Q, "list")
+    expect_length(Q, 1L)
+  })
+
   it("passes attributes and returns the operand of a side-effect call", {
     x <- nv_array(c(1, 2, 3), dtype = "f32")
     expect_snapshot(
@@ -94,10 +111,14 @@ describe("nv_custom_call", {
       )
     }
     expect_equal(shape(call_eigh(2L)[[2L]]), 2L)
+    n <- jit_cache_size(prim_custom_call)
+    call_eigh(2L)
+    expect_identical(jit_cache_size(prim_custom_call), n)
     # the output types are not derivable from the input, so they have to be
     # part of the compilation cache key: a program served from the cache would
     # return 2 values, a new one hands the handler a buffer it rejects
-    expect_error(call_eigh(1L), "eigh requires W")
+    expect_error(call_eigh(1L))
+    expect_identical(jit_cache_size(prim_custom_call), n + 1L)
   })
 
   it("takes layouts per platform", {
@@ -178,6 +199,10 @@ describe("nv_custom_call", {
     expect_error(
       nv_custom_call("t", x, output_types = AbstractArray("f64", 2), aliases = 7L),
       "between 1 and 1"
+    )
+    expect_error(
+      nv_custom_call("t", x, output_types = AbstractArray("f64", 2), aliases = 1.5),
+      "integerish"
     )
     expect_error(nv_custom_call("t"), "needs at least one")
     expect_error(

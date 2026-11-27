@@ -2085,7 +2085,7 @@ infer_custom_call <- function(
   aliases
 ) {
   operands <- list(...)
-  naxes_of <- \(xs) vapply(xs, \(x) length(shape(x)), integer(1L))
+  naxes_of <- \(xs) vapply(xs, naxes, integer(1L))
   assert_custom_call_layouts(operand_layouts, naxes_of(operands), "operand_layouts", "operand")
   assert_custom_call_layouts(result_layouts, naxes_of(result_types), "result_layouts", "result")
   result_types %||% operands

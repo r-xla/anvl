@@ -4152,7 +4152,9 @@ prim_convolution <- new_primitive(
 #'   [`stablehlo::ScalarAttr()`] to pin another data type.
 #' @param has_side_effect (`logical(1)`)\cr
 #'   Whether XLA must keep the call even when its results are unused.
-#'   Defaults to `TRUE` exactly when `output_types` is `NULL`.
+#'   Defaults to `TRUE` exactly when `output_types` is `NULL`. Under
+#'   [`gradient()`], a side-effect call in the body of an [`nv_scan()`] may
+#'   still be dropped.
 #' @param operand_layouts,result_layouts (`list` | `NULL`)\cr
 #'   The memory layout of each operand and result: its axes in minor-to-major
 #'   order, the axis whose index varies fastest in memory first. `NULL` (the
@@ -4215,6 +4217,7 @@ prim_custom_call <- new_primitive(
 
     n_results <- length(output_types)
     if (!is.null(aliases)) {
+      assert_integerish(aliases)
       aliases <- as.integer(aliases)
       if (length(aliases) != n_results) {
         cli_abort("{.arg aliases} must have one entry per result.")

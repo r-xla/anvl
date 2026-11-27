@@ -38,7 +38,9 @@ for you; pass a \code{stablehlo} attribute object such as
 
 \item{has_side_effect}{(\code{logical(1)})\cr
 Whether XLA must keep the call even when its results are unused.
-Defaults to \code{TRUE} exactly when \code{output_types} is \code{NULL}.}
+Defaults to \code{TRUE} exactly when \code{output_types} is \code{NULL}. Under
+\code{\link[=gradient]{gradient()}}, a side-effect call in the body of an \code{\link[=nv_scan]{nv_scan()}} may
+still be dropped.}
 
 \item{operand_layouts, result_layouts}{(\code{list} | \code{NULL})\cr
 The memory layout of each operand and result: its axes in minor-to-major

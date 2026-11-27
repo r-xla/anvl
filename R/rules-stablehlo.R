@@ -1604,8 +1604,8 @@ prim_custom_call[["stablehlo"]] <- function(
 ) {
   ops <- list(...)
   n_results <- length(result_types)
-  operand_naxes <- vapply(ops, \(op) length(shape(op$value_type)), integer(1L))
-  result_naxes <- vapply(result_types, \(t) length(shape(t)), integer(1L))
+  operand_naxes <- vapply(ops, naxes, integer(1L))
+  result_naxes <- vapply(result_types, naxes, integer(1L))
 
   out <- rlang::exec(
     hlo_custom_call,
