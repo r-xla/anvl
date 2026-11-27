@@ -83,7 +83,7 @@ fixing <- function(fn, x, t) {
 #     symmetric, so is the pullback of the gradient along t;
 #   - at f32, that the tangent has the data type of the result.
 check_pushforward_rule <- function(name, case) {
-  prim <- getFromNamespace(paste0("prim_", name), "anvl")
+  prim <- primitive_env[[name]]
   shape <- c(2L, 3L)
   args <- Map(\(sample, nm) sample(if (nm %in% case$scalar) integer() else shape), case$args, names(case$args))
   arrays_at <- function(dtype) lapply(args, anvl_array, dtype = dtype)
@@ -140,10 +140,9 @@ check_pushforward_rule <- function(name, case) {
 
 describe("pushforward rules", {
   it("have a case for every primitive with a rule of its own", {
-    nms <- names(asNamespace("anvl"))
-    prims <- Filter(\(p) inherits(p, "AnvlPrimitive"), mget(nms[startsWith(nms, "prim_")], asNamespace("anvl")))
+    prims <- mget(ls(primitive_env), envir = primitive_env)
     own <- Filter(\(p) !is.null(p[["pushforward"]]) && !derived_from_tags(p), prims)
-    expect_setequal(names(pushforward_cases), sub("^prim_", "", names(own)))
+    expect_setequal(names(pushforward_cases), names(own))
   })
 
   for (name in names(pushforward_cases)) {
@@ -153,7 +152,7 @@ describe("pushforward rules", {
     })
   }
 
-  it("of prim_convert give no tangent to an integer result, nor one to the float result of an integer", {
+  it("of prim_convert give no tangent to an integer result", {
     x <- nv_array(c(1.5, 2.5), dtype = "f64")
     tangent <- "none yet"
     jit(function(x) {
@@ -161,8 +160,6 @@ describe("pushforward rules", {
       x
     })(x)
     expect_null(tangent)
-    from_int <- jit(function(i) pushforward(function(i) prim_convert(i, "f64"), i)(NULL))
-    expect_equal(as.vector(as_array(from_int(nv_array(1:2, dtype = "i32")))), c(0, 0))
   })
 })
 

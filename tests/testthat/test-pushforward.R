@@ -81,7 +81,6 @@ describe("pushforward", {
 
   it("can be called more than once, e.g. for the columns of a Jacobian", {
     jacobian <- jit(function(x) {
-      # only elementwise primitives have a pushforward rule so far
       push <- pushforward(\(x) nv_sin(x) * x, x)
       eye <- nv_eye(3L, dtype = "f64")
       columns <- lapply(1:3, \(j) nv_reshape(push(eye[, j]), c(3L, 1L)))
@@ -149,6 +148,11 @@ describe("pushforward", {
       jit(function(x) pushforward(f, x)(y = f64(1)))(f64(1)),
       "only of the arguments"
     )
+  })
+
+  it("refuses tangents that do not match the formals of its function", {
+    f <- function(x) x * 2
+    expect_snapshot(error = TRUE, jit(function(x) pushforward(f, x)(f64(1), f64(1)))(f64(1)))
   })
 
   it("refuses a tangent for an array that is not a float", {

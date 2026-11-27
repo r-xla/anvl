@@ -54,15 +54,14 @@ prune_graph <- function(graph, outputs) {
   new_graph <- copy_graph(graph)
   new_graph$outputs <- outputs
   new_graph$out_tree <- NULL
-  new_graph$statements <- graph$statements[values_needed(graph, outputs, keep = call_prints)$kept]
+  new_graph$statements <- graph$statements[statements_needed(graph, outputs, keep = call_prints)]
   new_graph
 }
 
-# The statements of `graph` that the values `outputs` depend on, and those
-# `keep(call)` keeps with what they depend on, as `kept`, a logical vector with
-# an entry per statement, and the values they read or compute, as `needed`, a
-# hashtab(gval -> TRUE).
-values_needed <- function(graph, outputs, keep = function(call) FALSE) {
+# Which statements of `graph` the values `outputs` depend on, together with
+# those `keep(call)` keeps and what they depend on: a logical vector with an
+# entry per statement.
+statements_needed <- function(graph, outputs, keep = function(call) FALSE) {
   needed <- hashtab()
   mark <- function(gvals) {
     for (g in gvals) {
@@ -78,7 +77,7 @@ values_needed <- function(graph, outputs, keep = function(call) FALSE) {
       mark(call$inputs)
     }
   }
-  list(kept = kept, needed = needed)
+  kept
 }
 
 # Whether running `graph` prints, from one of its calls or from the sub-graph

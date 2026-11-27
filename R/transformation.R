@@ -1,6 +1,6 @@
 # Helpers shared by the transformations of a function -- `gradient()`,
-# `pullback()`, `vectorize()` -- that trace it into a graph of its own and
-# replay that graph into the trace they are called in.
+# `pullback()`, `pushforward()`, `vectorize()` -- that trace it into a graph of
+# its own and replay that graph into the trace they are called in.
 
 # The leaves of the arguments `args` of a transformation, as `args_flat`, and
 # their tree, as `in_tree`. A random state among them is a leaf, which the

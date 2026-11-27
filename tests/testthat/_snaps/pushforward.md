@@ -1,3 +1,13 @@
+# pushforward / refuses tangents that do not match the formals of its function
+
+    Code
+      jit(function(x) pushforward(f, x)(f64(1), f64(1)))(f64(1))
+    Condition
+      Error:
+      ! A pushforward takes the tangents as its function takes the arguments.
+      x Got 2 tangents, which do not match the formals of the function.
+      i Its formals are `x`.
+
 # pushforward / refuses a tangent for an array that is not a float
 
     Code

@@ -245,7 +245,7 @@ prim_repeat_along[["pushforward"]] <- function(inputs, outputs, tangents, params
 }
 ```
 
-An elementwise primitive, such as `prim_sin()`, needs no such rule: tagged with `new_primitive(tags = "elementwise")`, it gets one derived from its pullback rule, because its derivative is diagonal.
+The elementwise primitives of {anvl}, such as `prim_sin()`, need no such rule of their own: theirs is derived from their pullback rule, because their derivative is diagonal.
 
 #### Optional: alternative-forward rule
 

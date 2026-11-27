@@ -102,7 +102,19 @@ trace_pushforward <- function(f, prep, fn, call = rlang::caller_env()) {
 # the argument at the same position among those. Errors name `call`.
 flatten_tangents <- function(f, prep, tangents, call) {
   args <- unflatten(prep$in_tree, prep$args_flat)
-  tangents <- match_args_to_formals(f, tangents)
+  tangents <- tryCatch(
+    match_args_to_formals(f, tangents),
+    error = function(e) {
+      cli_abort(
+        c(
+          "A pushforward takes the tangents as its function takes the arguments.",
+          x = "Got {length(tangents)} tangent{?s}, which do not match the formals of the function.",
+          i = "Its formals are {.arg {names(formals2(f))}}."
+        ),
+        call = call
+      )
+    }
+  )
   arg_keys <- argument_keys(args)
   tangent_keys <- argument_keys(tangents)
   unknown <- setdiff(tangent_keys, arg_keys)
@@ -183,7 +195,7 @@ argument_keys <- function(args) {
 # a value no output depends on, whose tangent nobody reads.
 graph_pushforward <- function(graph, inputs) {
   rebuilt <- rebuild_forward_into(graph, current_descriptor(), inputs, required_env = hashtab())
-  needed <- values_needed(graph, graph$outputs)$kept
+  needed <- statements_needed(graph, graph$outputs)
 
   push <- function(tangents) {
     tangent_env <- hashtab()
