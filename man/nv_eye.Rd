@@ -13,7 +13,7 @@ nv_eye_like(like, n, dtype = NULL, device = NULL)
 \item{n}{(\code{integer(1)})\cr
 Size of the identity matrix.}
 
-\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 Data type of the result. Can be any data type; \code{NULL} (default) uses the
 default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}). For
 \code{nv_eye_like()}, \code{NULL} uses \code{dtype(like)}.}

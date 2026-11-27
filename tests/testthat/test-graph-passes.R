@@ -18,7 +18,7 @@ describe("inline_scalarish_constants", {
       expect_length(new_graph$constants, expected_constants_after)
     }
 
-    expect_length(new_graph$calls, length(graph$calls))
+    expect_length(new_graph$statements, length(graph$statements))
     expect_equal(length(new_graph$inputs), length(graph$inputs))
     expect_equal(length(new_graph$outputs), length(graph$outputs))
     expect_identical(new_graph$in_tree, graph$in_tree)
@@ -38,7 +38,13 @@ describe("inline_scalarish_constants", {
       const_arrays <- lapply(consts, \(c) {
         arr <- c$aval$data
         if (backend(arr) == "plain") {
-          pjrt::pjrt_buffer(as_array(arr), as.character(dtype(arr)), shape = shape(arr), device = dev)
+          pjrt::pjrt_buffer(
+            as_array(arr),
+            as.character(dtype(arr)),
+            shape = rev(shape(arr)),
+            device = dev,
+            row_major = TRUE
+          )
         } else {
           arr$data
         }
@@ -66,8 +72,8 @@ describe("inline_scalarish_constants", {
       expected_constants_before = 1L,
       expected_constants_after = 0L,
       check_literals = function(new_graph, original_graph) {
-        expect_true(is_graph_literal(new_graph$calls[[1L]]$inputs[[2L]]))
-        expect_equal(new_graph$calls[[1L]]$inputs[[2L]]$aval$data, const_scalar)
+        expect_true(is_graph_literal(new_graph$statements[[1L]]$inputs[[2L]]))
+        expect_equal(new_graph$statements[[1L]]$inputs[[2L]]$aval$data, const_scalar)
       }
     )
   })
@@ -136,9 +142,9 @@ describe("inline_scalarish_constants", {
       graph_fun = f,
       args = list(list(x = nv_scalar(1))),
       check_literals = function(new_graph, original_graph) {
-        lit <- new_graph$calls[[1L]]$inputs[[2L]]
+        lit <- new_graph$statements[[1L]]$inputs[[2L]]
         expect_true(is_graph_literal(lit))
-        expect_identical(new_graph$calls[[2L]]$inputs[[2L]], lit)
+        expect_identical(new_graph$statements[[2L]]$inputs[[2L]], lit)
       }
     )
   })
@@ -171,8 +177,8 @@ describe("inline_scalarish_constants", {
       expected_constants_before = 3L,
       expected_constants_after = 0L,
       check_literals = function(new_graph, original_graph) {
-        expect_true(is_graph_literal(new_graph$calls[[1L]]$inputs[[2L]]))
-        expect_equal(new_graph$calls[[1L]]$inputs[[2L]]$aval$data, const1)
+        expect_true(is_graph_literal(new_graph$statements[[1L]]$inputs[[2L]]))
+        expect_equal(new_graph$statements[[1L]]$inputs[[2L]]$aval$data, const1)
       }
     )
   })
@@ -185,7 +191,7 @@ describe("inline_scalarish_constants", {
     )
   })
 
-  it("processes nested subgraphs", {
+  it("inlines what nested sub-graphs close over, as operands of the outermost call", {
     # Create a graph with nested nv_if calls
     const_inner_true <- nv_scalar(100)
     const_inner_false <- nv_scalar(200)
@@ -204,12 +210,11 @@ describe("inline_scalarish_constants", {
       graph_fun = f,
       args = list(list(x = nv_scalar(TRUE), y = nv_scalar(TRUE))),
       check_literals = function(new_graph, original_graph) {
-        outer <- new_graph$calls[[1L]]$params
-        branch_outputs <- lapply(
-          c(outer$true$calls[[1L]]$params, outer$false$calls[[1L]]$params),
-          \(g) g$outputs[[1L]]
-        )
-        expect_true(all(vapply(branch_outputs, is_graph_literal, logical(1L))))
+        # The sub-graphs are closed, so the four constants reach them as
+        # operands of the outer call, beside the inner predicate `y`.
+        captured <- new_graph$statements[[1L]]$inputs[-1L]
+        expect_equal(sum(vapply(captured, is_graph_literal, logical(1L))), 4L)
+        expect_length(new_graph$constants, 0L)
       }
     )
   })
@@ -271,13 +276,66 @@ describe("inline_scalarish_constants", {
   })
 })
 
+describe("prune_graph", {
+  it("keeps only the calls the given outputs need", {
+    f <- function(x, y) list(a = nv_exp(x), b = nv_log(y) + y)
+    graph <- trace_fn(f, list(x = nv_scalar(1, "f64"), y = nv_scalar(2, "f64")))
+    pruned <- prune_graph(graph, graph$outputs[1L])
+    expect_equal(vapply(pruned$statements, \(call) call$primitive$name, character(1L)), "exp")
+    expect_identical(pruned$inputs, graph$inputs)
+    expect_length(graph$statements, 3L)
+  })
+
+  it("keeps a call that prints, with what it reads", {
+    f <- function(x) {
+      prim_print(nv_log(x))
+      nv_exp(x)
+    }
+    graph <- trace_fn(f, list(x = nv_scalar(1, "f64")))
+    pruned <- prune_graph(graph, graph$outputs)
+    expect_equal(vapply(pruned$statements, \(call) call$primitive$name, character(1L)), c("log", "print", "exp"))
+  })
+})
+
+describe("split_loop_invariant", {
+  it("computes before the loop what does not depend on the varying inputs", {
+    f <- function(h, w) nv_exp(w) * h
+    graph <- trace_fn(f, list(h = nv_scalar(1, "f64"), w = nv_scalar(2, "f64")))
+    split <- split_loop_invariant(graph, graph$inputs[1L])
+    names_of <- function(g) vapply(g$statements, \(call) call$primitive$name, character(1L))
+    expect_equal(names_of(split$before), "exp")
+    expect_equal(names_of(split$loop), "mul")
+    expect_length(split$invariant, 1L)
+    expect_identical(split$loop$inputs, c(graph$inputs, split$invariant))
+  })
+
+  it("keeps a call that prints in the loop, with what is computed from it", {
+    f <- function(h, w) {
+      k <- nv_if(
+        w > 0,
+        function() {
+          prim_print(w)
+          nv_exp(w)
+        },
+        function() w
+      )
+      nv_log(k) * h
+    }
+    graph <- trace_fn(f, list(h = nv_scalar(1, "f64"), w = nv_scalar(2, "f64")))
+    split <- split_loop_invariant(graph, graph$inputs[1L])
+    names_of <- function(g) vapply(g$statements, \(call) call$primitive$name, character(1L))
+    expect_equal(names_of(split$before), "gt")
+    expect_equal(names_of(split$loop), c("if", "log", "mul"))
+  })
+})
+
 describe("remove_unused_constants", {
   it("removes unused constants", {
     y <- nv_scalar(5, "f32")
     f <- function(x) {
       x + y
     }
-    graph <- transform_gradient(trace_fn(f, list(x = nv_scalar(1, "f32"))), wrt = "x")
+    graph <- graph_gradient(trace_fn(f, list(x = nv_scalar(1, "f32"))), wrt = "x")
     new_graph <- remove_unused_constants(graph)
     # Function should run without error
     expect_true(is_graph(new_graph))

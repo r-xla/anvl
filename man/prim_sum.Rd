@@ -35,7 +35,8 @@ rather than a count. \code{\link[=nv_sum]{nv_sum()}} counts instead.
 \itemize{
 \item \code{stablehlo}
 \item \code{quickr}
-\item \code{reverse}
+\item \code{pullback}
+\item \code{vectorize}
 }
 }
 

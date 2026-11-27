@@ -10,13 +10,14 @@
 #'
 #' `nv_fill_like()` is a variant where `dtype`, `shape`, and
 #' `device` default to those of `like`.
-#' @param value (`numeric(1)`)\cr
+#' @param value (`numeric(1)` | `logical(1)`)\cr
 #'   Scalar value to fill the array with. It has to be something `dtype` can
 #'   hold: a whole number in its range for an integer data type, a non-negative
 #'   one for an unsigned integer, and a logical or `0` / `1` for `bool`.
-#' @param shape (`integer()`)\cr
-#'   Shape of the output array.
-#' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
+#' @param shape (`integer()` | `"auto"`)\cr
+#'   Shape of the output array, e.g. `shp(2, 3)`. For `nv_fill_like()`,
+#'   `"auto"` (the default) uses `shape(like)`.
+#' @param dtype (`NULL` | `character(1)` | [`DataType`][xlamisc::DataType])\cr
 #'   Data type of the result.
 #'   The default (`NULL`) uses the [default data type][default_dtypes] for `nv_fill` and
 #'   `dtype(like)` for `nv_fill_like`.
@@ -63,19 +64,17 @@ broadcast_shapes <- function(shape_lhs, shape_rhs) {
   } else if (identical(shape_lhs, shape_rhs)) {
     return(shape_lhs)
   }
-  shape_out <- shape_lhs
-  for (i in seq_along(shape_lhs)) {
-    d_lhs <- shape_lhs[i]
-    d_rhs <- shape_rhs[i]
-    if (d_lhs != d_rhs && d_lhs != 1L && d_rhs != 1L) {
-      cli_abort(c(
-        "Shapes {shape_repr(given_lhs)} and {shape_repr(given_rhs)} are not broadcastable.", # nolint
-        x = "Sizes {d_lhs} and {d_rhs} meet, and neither is 1."
-      ))
-    }
-    shape_out[i] <- max(d_lhs, d_rhs)
+  clash <- which(shape_lhs != shape_rhs & shape_lhs != 1L & shape_rhs != 1L)
+  if (length(clash)) {
+    size_lhs <- shape_lhs[clash[[1L]]]
+    size_rhs <- shape_rhs[clash[[1L]]]
+    cli_abort(c(
+      "Shapes {shape_repr(given_lhs)} and {shape_repr(given_rhs)} are not broadcastable.", # nolint
+      x = "Sizes {size_lhs} and {size_rhs} meet, and neither is 1."
+    ))
   }
-  shape_out
+  # Not `pmax()`: a size-1 axis meeting a size-0 one broadcasts to 0.
+  ifelse(shape_lhs == 1L, shape_rhs, shape_lhs)
 }
 
 #' @title Broadcast Scalars to Common Shape
@@ -110,7 +109,7 @@ nv_broadcast_scalars <- jit(function(...) {
   }
 
   lapply(args, \(x) {
-    if (length(shape(x)) == 0L) {
+    if (naxes(x) == 0L) {
       nv_broadcast_to(x, target_shape)
     } else {
       x
@@ -532,17 +531,23 @@ bind_reshape <- function(arg, stack_axis, target_shape) {
   }
 }
 
+# Concatenate the already promoted `args` of `nv_rbind()` / `nv_cbind()` along
+# `stack_axis`, after bringing scalars and vectors to the other inputs' rank.
+bind_along <- function(args, stack_axis, fn_name) {
+  target_shape <- bind_target_shape(args, stack_axis = stack_axis, fn_name = fn_name)
+  args <- lapply(args, bind_reshape, stack_axis = stack_axis, target_shape = target_shape)
+  rlang::exec(nv_concatenate, !!!args, axis = stack_axis)
+}
+
 #' @rdname nv_bind
 #' @export
 nv_rbind <- jit(function(...) {
   assert_some_arrays(...)
-  # Promoted here rather than in `nv_concatenate()` below: an R value has to be
+  # Promoted here rather than in `nv_concatenate()`: an R value has to be
   # built at the common dtype directly, where materializing it first would round
   # it through its default on the way there.
   args <- as_anvl_arrays(..., .promote = promotion_common())
-  target_shape <- bind_target_shape(args, stack_axis = 1L, fn_name = "nv_rbind")
-  args <- lapply(args, bind_reshape, stack_axis = 1L, target_shape = target_shape)
-  rlang::exec(nv_concatenate, !!!args, axis = 1L)
+  bind_along(args, stack_axis = 1L, fn_name = "nv_rbind")
 })
 
 #' @rdname nv_bind
@@ -550,9 +555,7 @@ nv_rbind <- jit(function(...) {
 nv_cbind <- jit(function(...) {
   assert_some_arrays(...)
   args <- as_anvl_arrays(..., .promote = promotion_common())
-  target_shape <- bind_target_shape(args, stack_axis = 2L, fn_name = "nv_cbind")
-  args <- lapply(args, bind_reshape, stack_axis = 2L, target_shape = target_shape)
-  rlang::exec(nv_concatenate, !!!args, axis = 2L)
+  bind_along(args, stack_axis = 2L, fn_name = "nv_cbind")
 })
 
 #' @title Static Slice
@@ -589,6 +592,7 @@ nv_static_slice <- prim_static_slice
 #' @template param_unary_x
 #' @return ([`arrayish`])\cr
 #'   Returns the input unchanged, data type and shape included.
+#' @template section_print_order
 #' @seealso [prim_print()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the value is printed and handed back unchanged
@@ -599,6 +603,61 @@ nv_static_slice <- prim_static_slice
 #' @export
 nv_print <- prim_print
 
+#' @title Optimization Barrier
+#' @description
+#' Returns the input arrays unchanged, converting any R values to arrays, and
+#' prevents the compiler from moving computations across the barrier.
+#' Operations that produce the input arrays must complete before operations that
+#' use the returned arrays.
+#'
+#' A barrier prevents fusion between these operations. This can improve
+#' performance when fusion would prevent vectorization or repeat an expensive
+#' computation. It can also increase memory traffic, so benchmark the result
+#' before using a barrier for performance.
+#'
+#' [prim_optimization_barrier()] takes a flat list of arrays. This function also
+#' accepts a single array or a nested list, and returns it with the same
+#' structure and names. All arrays share a single barrier.
+#' @param x ([`arrayish`] | `list`)\cr
+#'   An array or a list of arrays, nested to any depth (see
+#'   [`RTree`][pjrt::build_tree]). The arrays may have different data types and
+#'   shapes. R values are materialized at their
+#'   [default data type][default_dtypes].
+#' @return ([`arrayish`] | `list`)\cr
+#'   An array or nested list of arrays with the same structure and names as
+#'   `x`. Existing arrays retain their values, data types and shapes; R values
+#'   are materialized as described above. A list without any elements to pass
+#'   through, such as `list()` or `list(a = list())`, is returned unchanged.
+#' @section Gradients:
+#' [gradient()] passes the gradients through unchanged, with a separate
+#' barrier in the backward pass. See [prim_optimization_barrier()].
+#' @seealso [prim_optimization_barrier()] for the underlying primitive.
+#' @examplesIf pjrt::plugins_downloaded()
+#' # Prevent fusion of the square root and multiplication with the addition.
+#' f <- jit(function(x) {
+#'   out <- nv_optimization_barrier(list(a = sqrt(x), b = x * 2))
+#'   out$a + out$b
+#' })
+#' f(nv_array(c(1, 4, 9)))
+#'
+#' # A single array is returned as an array.
+#' nv_optimization_barrier(nv_array(1:3))
+#' @export
+nv_optimization_barrier <- function(x) {
+  # Reject random states: the barrier would pass a state's internal values
+  # through as arrays and rebuild the state from them, giving a copy that cannot
+  # be used to draw random values.
+  abort_if_side_effects(x, "x", hint = "A random state is not an array; pass the arrays drawn from it instead.")
+  x <- map_tree(x, as_anvl_array)
+  leaves <- flatten(x)
+  # Skip the barrier when there are no arrays; the primitive requires at
+  # least one operand.
+  if (!length(leaves)) {
+    return(x)
+  }
+  unflatten(build_tree(x), prim_optimization_barrier(leaves))
+}
+
 #' @title Conditional Element Selection
 #' @description
 #' Selects elements from `yes` or `no` based on `test`, mirroring R's
@@ -606,6 +665,16 @@ nv_print <- prim_print
 #'
 #' [`nv_if()`] is the other conditional: it mirrors R's `if` construct and
 #' branches between two *functions*, evaluating only the selected one.
+#' @section Gradients:
+#' Both `yes` and `no` are computed everywhere, and the gradient flows through
+#' both: the one not selected receives a zero cotangent, which its own
+#' derivative multiplies. Where that derivative is infinite, the gradient is
+#' `NaN`, e.g. for `nv_ifelse(x > 0, sqrt(x), 0)` at `x = 0`. To guard
+#' against this, also mask the input of the branch, so that it sees a value of
+#' no consequence where it is not selected:
+#' `nv_ifelse(x > 0, sqrt(nv_ifelse(x > 0, x, 0)), 0)`. The reverse rule
+#' of `nv_ifelse()` then hands the `NaN` to the constant instead of `x`, at
+#' any order of differentiation.
 #' @param test ([`arrayish`])\cr
 #'   Predicate array. Must be a boolean or an R logical, and scalar or the same
 #'   shape as the non-scalar arguments.
@@ -634,14 +703,13 @@ nv_ifelse <- jit(function(test, yes, no) {
     no = no,
     .promote = promotion_common(on = c("yes", "no"))
   )
-  args <- nv_broadcast_scalars(args$test, args$yes, args$no)
-  prim_ifelse(args[[1L]], args[[2L]], args[[3L]])
+  prim_ifelse(args$test, args$yes, args$no)
 })
 
 ## Binary ops ------------------------------------------------------------------
 
-# Jitted here rather than at each `nv_*`, because promotion and broadcasting
-# make this more than one operation -- unlike `make_float_unary()`, which is a
+# Jitted here rather than at each `nv_*`, because promotion makes this more
+# than one operation -- unlike `make_float_unary()`, which is a
 # thin wrapper around a single primitive and stays eager.
 #
 # `operands` names the two arguments, as in `make_binary_op()`.
@@ -650,9 +718,7 @@ make_do_binary <- function(f, operands = c("lhs", "rhs")) {
   jit(rlang::new_function(
     rlang::set_names(rep(list(rlang::missing_arg()), 2L), operands),
     rlang::expr({
-      args <- nv_promote_to_common(!!!rlang::syms(operands))
-      args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
-      do.call(f, args)
+      do.call(f, nv_promote_to_common(!!!rlang::syms(operands)))
     })
   ))
 }
@@ -755,7 +821,6 @@ nv_div <- jit(function(lhs, rhs) {
   if (!is_dtype_float(peek_dtype(args[[1L]]))) {
     args <- lapply(args, nv_convert, dtype = default_float())
   }
-  args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
   prim_div(args[[1L]], args[[2L]])
 })
 
@@ -990,7 +1055,6 @@ nv_remainder <- make_do_binary(prim_remainder, c("x", "y"))
 #' @export
 nv_mod <- jit(function(lhs, rhs) {
   args <- nv_promote_to_common(lhs, rhs)
-  args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
   lhs <- args[[1L]]
   rhs <- args[[2L]]
   rest <- nv_remainder(lhs, rhs)
@@ -1025,7 +1089,6 @@ nv_mod <- jit(function(lhs, rhs) {
 #' @export
 nv_floor_div <- jit(function(lhs, rhs) {
   args <- nv_promote_to_common(lhs, rhs)
-  args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
   lhs <- args[[1L]]
   rhs <- args[[2L]]
   dt <- peek_dtype(lhs)
@@ -1111,9 +1174,7 @@ nv_xor <- make_do_binary(prim_xor, c("x", "y"))
 # brought to `x`'s data type rather than meeting it at a common one.
 make_shift <- function(f) {
   jit(function(x, shift) {
-    args <- as_anvl_arrays(x = x, shift = shift, .promote = promotion_like("x"))
-    args <- nv_broadcast_scalars(args$x, args$shift)
-    do.call(f, args)
+    do.call(f, as_anvl_arrays(x = x, shift = shift, .promote = promotion_like("x")))
   })
 }
 
@@ -1190,7 +1251,7 @@ nv_shift_right_arithmetic <- make_shift(prim_shift_right_arithmetic)
 #'   converted to the default float data type (see [`default_dtypes()`]) where
 #'   it is not a float already, so the result is always a float. Scalars are
 #'   broadcast. An R value assumes the other operand's data type within its
-#'   [data type category][dtypes], and settles on the default float when
+#'   [data type category][dtype_categories], and settles on the default float when
 #'   neither operand has one.
 #' @return ([`arrayish`])\cr
 #'   Has the inputs' broadcast shape, and their common data type -- or the
@@ -1210,8 +1271,7 @@ nv_shift_right_arithmetic <- make_shift(prim_shift_right_arithmetic)
 #' @export
 nv_atan2 <- jit(function(y, x) {
   args <- promote_to_common_float(y = y, x = x)
-  args <- nv_broadcast_scalars(args$y, args$x)
-  prim_atan2(args[[1L]], args[[2L]])
+  prim_atan2(args$y, args$x)
 })
 
 
@@ -1453,7 +1513,8 @@ nv_cospi <- jit(function(x) {
 nv_tanpi <- jit(function(x) {
   x <- as_anvl_array(int_to_float(x))
   denominator <- nv_cospi(x)
-  # Otherwise we get (+-)inf depending on which side we land, which is bad
+  # Where the cosine is exactly 0 the quotient would be +-Inf, its sign depending
+  # on the rounding; the tangent is undefined there, so return NaN.
   nv_ifelse(denominator == 0L, NaN, nv_sinpi(x) / denominator)
 })
 
@@ -1822,7 +1883,7 @@ nv_gamma <- jit(function(x) {
 #'   that is then converted to the default float data type (see
 #'   [`default_dtypes()`]) where it is not a float already, since a float is
 #'   all [prim_psigamma()] takes. An R value assumes the other operand's data
-#'   type within its [data type category][dtypes], and settles on the default
+#'   type within its [data type category][dtype_categories], and settles on the default
 #'   float when neither has one.
 #'   Scalars are [broadcast][nv_broadcast_scalars()] to the shape of the other,
 #'   so `nv_psigamma(x, 1)` works for any float `x`.
@@ -1838,9 +1899,7 @@ nv_gamma <- jit(function(x) {
 #' nv_psigamma(x, 1) # trigamma
 #' @export
 nv_psigamma <- jit(function(x, deriv = 0L) {
-  args <- promote_to_common_float(x = x, deriv = deriv)
-  args <- nv_broadcast_scalars(args$x, args$deriv)
-  do.call(prim_psigamma, args)
+  do.call(prim_psigamma, promote_to_common_float(x = x, deriv = deriv))
 })
 
 #' @title Error Function
@@ -1939,7 +1998,8 @@ nv_popcnt <- prim_popcnt
 #' @description
 #' Element-wise clamp: `min(max(min, x), max)`.
 #' @param min,max ([`arrayish`])\cr
-#'   Lower and upper bound, each scalar or the same shape as `x`. They are
+#'   Lower and upper bound. The operands that are not scalars, `x` among them,
+#'   have the same shape, and a scalar is broadcast to it. The bounds are
 #'   brought to `x`'s data type: an R value is built at it when its category can
 #'   reach it (`0L` serves an integer and a float `x` alike, `0` only a float
 #'   one), and a value that already has a data type is converted unless that
@@ -1948,7 +2008,7 @@ nv_popcnt <- prim_popcnt
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @return ([`arrayish`])\cr
-#'   Has `x`'s shape and data type.
+#'   Has the operands' broadcast shape and `x`'s data type.
 #' @seealso [prim_clamp()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the bounds are brought to `x`'s data type
@@ -2004,17 +2064,19 @@ nv_rev <- function(x, axes = NULL) {
 #' `device` default to those of `like`.
 #' @param axis (`integer(1)`)\cr
 #'   Axis along which values increase.
-#'   Negative values count from the end of `shape`, i.e. `-1` refers to the
+#'   Negative values count from the end of `shape`, i.e. `-1L` refers to the
 #'   last axis.
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_iota_like()`).
-#' @template param_shape
+#' @param shape (`integer()` | `"auto"`)\cr
+#'   Shape of the result. For `nv_iota_like()`, `"auto"` (the default) uses
+#'   `shape(like)`.
 #' @param dtype (`character(1)` | [`DataType`])\cr
 #'   Data type of the result, required here. Can be any numeric data type.
 #'   For `nv_iota_like()` it may be `NULL`, which uses `dtype(like)`.
 #' @param start (`integer(1)`)\cr
-#'   Starting value (default 1). Built at `dtype`, as the increments are.
+#'   Starting value (default 1).
 #' @template param_device
 #' @return ([`arrayish`])\cr
 #'   Has the given `dtype` and `shape`.
@@ -2083,7 +2145,7 @@ nv_seq <- jit(
     assert_int(to)
     by <- by %||% if (from > to) -1L else 1L
     assert_int(by)
-    if (by == 0) {
+    if (by == 0L) {
       cli_abort("{.arg by} must not be 0.")
     }
     if (from != to && sign(by) != sign(to - from)) {
@@ -2093,12 +2155,16 @@ nv_seq <- jit(
       ))
     }
     n <- as.integer((to - from) %/% by) + 1L
-    if (by == 1) {
+    if (by == 1L) {
       return(nv_iota(shape = n, dtype = dtype, axis = 1L, start = from, device = device))
     }
     # prim_iota has no step, so scale a 0-based iota; the literals are integers so
-    # that they take the data type of the array instead of promoting it to float
+    # that they take the data type of the array instead of promoting it to float.
+    # A descending sequence subtracts |by|, so an unsigned type never sees a negative.
     indices <- nv_iota(shape = n, dtype = dtype, axis = 1L, start = 0L, device = device)
+    if (by < 0) {
+      return(as.integer(from) - indices * as.integer(-by))
+    }
     indices * as.integer(by) + as.integer(from)
   },
   static = 1:5
@@ -2132,7 +2198,7 @@ nv_seq <- jit(
 #' @return ([`arrayish`])\cr
 #'   Has `dtype` and shape `length_out`.
 #' @seealso [nv_seq()] for consecutive integers, [nv_iota()] for values
-#'   increasing along an axis of any shape, [`dtypes`] for the data type
+#'   increasing along an axis of any shape, [`dtype_categories`] for the data type
 #'   categories.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_linspace(0, 1, length_out = 5L)
@@ -2201,15 +2267,10 @@ nv_linspace <- jit(
 nv_pad <- function(x, value, low, high, interior = NULL) {
   # `promotion_like("x")` rather than the primitive's own rule: crossing a
   # category is the `nv_*` layer's job, so `nv_pad(x_f32, 0L)` works here the
-  # way `nv_clamp(0L, x_f32, 1L)` does, while `prim_pad()` stays strict.
+  # way `nv_clamp(x_f32, 0L, 1L)` does, while `prim_pad()` stays strict.
   args <- as_anvl_arrays(x = x, value = value, .promote = promotion_like("x"))
-  x <- args$x
-  value <- args$value
-  rank <- naxes(x)
-  if (is.null(interior)) {
-    interior <- rep(0L, rank)
-  }
-  prim_pad(x, value, low, high, interior)
+  interior <- interior %||% rep(0L, naxes(args$x))
+  prim_pad(args$x, args$value, low, high, interior)
 }
 
 #' @title Round
@@ -2236,11 +2297,13 @@ nv_round <- function(x, method = "nearest_even") {
 #' @title Matrix Multiplication
 #' @description
 #' Matrix multiplication of two arrays. You can also use the `%*%` operator.
-#' Supports batched matrix multiplication when inputs have more than 2 axes.
+#' Supports batched matrix multiplication: above rank 2, the first two axes
+#' are the matrix and the trailing ones are batch axes, which both operands
+#' must share.
 #' @section Shapes:
-#' - `x`: `(b1, ..., bk, m, n)`
-#' - `y`: `(b1, ..., bk, n, p)`
-#' - output: `(b1, ..., bk, m, p)`
+#' - `x`: `(m, n, b1, ..., bk)`
+#' - `y`: `(n, p, b1, ..., bk)`
+#' - output: `(m, p, b1, ..., bk)`
 #' @param x,y ([`arrayish`])\cr
 #'   Numeric arrays with at least 2 axes. Can be any numeric data type; the two are
 #'   [promoted to a common data type][nv_promote_to_common()]. An R value
@@ -2258,6 +2321,10 @@ nv_round <- function(x, method = "nearest_even") {
 #' x <- nv_matrix(1:6, nrow = 2)
 #' y <- nv_matrix(1:6, nrow = 3)
 #' nv_matmul(x, y)
+#' x %*% y
+#' # a batch of three such products along the trailing axis
+#' x <- nv_array(1:18, shape = c(2, 3, 3))
+#' y <- nv_array(1:18, shape = c(3, 2, 3))
 #' x %*% y
 #' @export
 nv_matmul <- jit(
@@ -2280,28 +2347,28 @@ nv_matmul <- jit(
         x = "{.arg x} is {shape_repr(shape(x))} and {.arg y} is {shape_repr(shape(y))}." # nolint
       ))
     }
-    inner_x <- shape(x)[naxes(x)]
-    inner_y <- shape(y)[naxes(y) - 1L]
+    inner_x <- shape(x)[2L]
+    inner_y <- shape(y)[1L]
     if (inner_x != inner_y) {
       cli_abort(c(
         "{.arg x} and {.arg y} are not conformable.",
-        x = "The last axis of {.arg x} has size {inner_x}, but the second-to-last axis of {.arg y} has size {inner_y}." # nolint
+        x = "Axis 2 of {.arg x} has size {inner_x}, but axis 1 of {.arg y} has size {inner_y}."
       ))
     }
-    nbatch <- naxes(x) - 2L
-    batch_x <- shape(x)[seq_len(nbatch)]
-    batch_y <- shape(y)[seq_len(nbatch)]
+    batch_axes <- seq_len(naxes(x) - 2L) + 2L
+    batch_x <- shape(x)[batch_axes]
+    batch_y <- shape(y)[batch_axes]
     if (!identical(batch_x, batch_y)) {
       cli_abort(c(
-        "{.arg x} and {.arg y} must have the same batch axes -- the axes before the last two.",
+        "{.arg x} and {.arg y} must have the same batch axes -- the axes after the first two.",
         x = "{.arg x} has {shape_repr(batch_x)} and {.arg y} has {shape_repr(batch_y)}." # nolint
       ))
     }
     prim_dot_general(
       x,
       y,
-      contracting_axes = list(naxes(x), naxes(y) - 1L),
-      batching_axes = list(seq_len(nbatch), seq_len(nbatch)),
+      contracting_axes = list(2L, 1L),
+      batching_axes = list(batch_axes, batch_axes),
       precision = precision
     )
   },
@@ -2311,11 +2378,9 @@ nv_matmul <- jit(
 #' @title Cholesky Decomposition
 #' @description
 #' Computes the Cholesky decomposition of a symmetric positive-definite matrix.
-#' Supports batched inputs: axes before the last two are batch axes.
-#' @details
-#' Differentiation is only implemented for a single matrix: a [gradient()] of a
-#' batched decomposition errors.
-#' @templateVar shapes a symmetric positive-definite matrix with at least 2 axes, the last two forming the square matrix and any leading ones batch axes
+#' Supports batched inputs: the first two axes form the square matrix and any
+#' trailing ones are batch axes.
+#' @templateVar shapes a symmetric positive-definite matrix with at least 2 axes, the first two forming the square matrix and any trailing ones batch axes
 #' @template param_unary_x_tofloat
 #' @param lower (`logical(1)`)\cr
 #'   If `FALSE` (default, matching base R's [base::chol()]), compute the
@@ -2326,7 +2391,8 @@ nv_matmul <- jit(
 #'   Triangular matrix with the input's shape, and its data type -- or the
 #'   default float data type (see [`default_dtypes()`]) where the input was an
 #'   integer one. The values in the triangle not selected by `lower` are
-#'   implementation-defined.
+#'   implementation-defined. A matrix that is not positive definite factors
+#'   to `NaN`.
 #' @seealso [nv_solve()], [prim_chol()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the factor has the matrix's shape and data type
@@ -2347,7 +2413,8 @@ nv_chol <- jit(
 #' @description
 #' Solves the linear system `a %*% x = b` for `x`. Uses LU decomposition
 #' with partial pivoting internally, so `a` need only be square and
-#' non-singular.
+#' non-singular. Unlike [base::solve()], a singular `a` is not an error: the
+#' result then holds non-finite values.
 #' @details
 #' \deqn{A x = b}
 #' \deqn{P A = L U}
@@ -2366,7 +2433,7 @@ nv_chol <- jit(
 #'   converted to the default float data type (see [`default_dtypes()`]) where
 #'   it is not a float already, since the decomposition is a float one. An R
 #'   value assumes the other operand's data type within its
-#'   [data type category][dtypes], and settles on the default float when
+#'   [data type category][dtype_categories], and settles on the default float when
 #'   neither has one.
 #' @param b ([`arrayish`])\cr
 #'   Right-hand side, vector of length `n` or matrix with `n` rows. Promoted
@@ -2424,34 +2491,31 @@ nv_solve <- jit(function(a, b) {
 #' depending on `transpose`.
 #' @details
 #' As a convenience, `b` may have one fewer axis than `a` (a single
-#' right-hand side per batch, shape `(B..., n)` for `a` of shape
-#' `(B..., n, n)`). It is reshaped internally to a column (`left =
+#' right-hand side per batch, shape `(n, b1, ..., bk)` for `a` of shape
+#' `(n, n, b1, ..., bk)`). It is reshaped internally to a column (`left =
 #' TRUE`) or row (`left = FALSE`) and reshaped back on the way out.
 #' Because we don't broadcast, this is not ambiguous (as it would be for NumPy).
-#'
-#' Differentiation is only implemented for a single system: a [gradient()] of a
-#' batched solve errors.
 #' @param a ([`arrayish`])\cr
-#'   Triangular coefficient matrix with at least 2 axes. The last two
-#'   axes must be equal; any leading axes are batch axes. Can be any numeric
-#'   data type: `a` and `b` are
+#'   Triangular coefficient matrix with at least 2 axes. The first two
+#'   axes must be of equal size; any trailing axes are batch axes. Can be any
+#'   numeric data type: `a` and `b` are
 #'   [promoted to a common data type][nv_promote_to_common()] and that is then
 #'   converted to the default float data type (see [`default_dtypes()`]) where
 #'   it is not a float already, since the solve is a float one. An R value
 #'   assumes the other operand's data type within its
-#'   [data type category][dtypes], and settles on the default float when
+#'   [data type category][dtype_categories], and settles on the default float when
 #'   neither has one.
 #' @param b ([`arrayish`])\cr
-#'   Right-hand side. For `a` of shape `(B..., n, n)`, `b` may be either:
-#'   * full rank — shape `(B..., n, k)` when `left = TRUE`, or
-#'     `(B..., k, n)` when `left = FALSE`;
-#'   * one rank less, shape `(B..., n)`, meaning a single column
+#'   Right-hand side. For `a` of shape `(n, n, b1, ..., bk)`, `b` may be either:
+#'   * full rank — shape `(n, m, b1, ..., bk)` when `left = TRUE`, or
+#'     `(m, n, b1, ..., bk)` when `left = FALSE`;
+#'   * one rank less, shape `(n, b1, ..., bk)`, meaning a single column
 #'     (`left = TRUE`) or row (`left = FALSE`) per batch — it
 #'     is reshaped internally and the reshape is undone on the result so
 #'     the output rank matches `b`.
 #'
-#'   `b`'s batch axes (`B...`) must match `a`'s exactly. It is promoted
-#'   together with `a` -- see `a`.
+#'   `b`'s trailing batch axes (`b1, ..., bk`) must match `a`'s exactly. It is
+#'   promoted together with `a` -- see `a`.
 #' @param left (`logical(1)`)\cr
 #'   If `TRUE` (default), solve `op(a) %*% x = b`; if `FALSE`,
 #'   solve `x %*% op(a) = b`.
@@ -2500,22 +2564,18 @@ nv_triangular_solve <- jit(
     }
 
     # Convenience: accept a `b` whose rank is one less than `a`'s. The
-    # primitive requires rank(b) == rank(a); for left = TRUE we append
-    # a trailing 1 (column vector per batch), for left = FALSE we
-    # insert a 1 before the last axis (row vector per batch). The shape is
-    # restored on the way out. Nothing is ambiguous about the broadcast since
-    # we require exact shape match for the batch axes.
+    # primitive requires rank(b) == rank(a); for left = TRUE we insert a 1
+    # after the first axis (a column per batch), for left = FALSE we prepend
+    # a 1 (a row per batch). The shape is restored on the way out. Nothing is
+    # ambiguous about the broadcast since we require exact shape match for the
+    # batch axes.
     b_is_vector <- rank_b == rank_a - 1L
     if (b_is_vector) {
-      n <- if (left) a_shape[rank_a - 1L] else a_shape[rank_a]
-      if (b_shape[length(b_shape)] != n) {
-        cli_abort("{.arg b} must have size {n} in its last axis to match {.arg a}")
+      n <- a_shape[[if (left) 1L else 2L]]
+      if (b_shape[[1L]] != n) {
+        cli_abort("{.arg b} must have size {n} in its first axis to match {.arg a}")
       }
-      b <- if (left) {
-        prim_reshape(b, shape = c(b_shape, 1L))
-      } else {
-        prim_reshape(b, shape = c(b_shape[-length(b_shape)], 1L, n))
-      }
+      b <- prim_reshape(b, shape = if (left) c(n, 1L, b_shape[-1L]) else c(1L, b_shape))
     }
 
     x <- prim_triangular_solve(
@@ -2535,9 +2595,9 @@ nv_triangular_solve <- jit(
   static = 3:6
 )
 
-# If we took a logarithm in nv_determinant(), the pivot sign is only part of the story
-# and we also have to compute the sign from taking the absolute values before the log
-# Every proper swap flips the sign
+# Sign of the row permutation that the LU `pivots` record: every pivot that
+# swaps a row with a different one flips it. `nv_determinant()` combines it with
+# the sign of the diagonal of U.
 lu_pivot_sign <- function(pivots, n, dt) {
   iota <- nv_seq_like(pivots, 1L, n)
   # Should be simpler after: https://github.com/r-xla/anvl/issues/343
@@ -2548,6 +2608,7 @@ lu_pivot_sign <- function(pivots, n, dt) {
 #' @title Determinant
 #' @description
 #' Computes the determinant of a square matrix via [`nv_determinant()`].
+#' A singular matrix has determinant `0`.
 #' @templateVar shapes a square matrix with exactly 2 axes
 #' @template param_unary_x_tofloat
 #' @return ([`arrayish`])\cr
@@ -2579,6 +2640,10 @@ nv_det <- jit(function(x) {
 #' Matching base R's `det_ge_real`, the magnitude is computed in log
 #' space when `logarithm = TRUE` (\eqn{\sum_i \log|U_{ii}|}) and as a
 #' direct product when `logarithm = FALSE` (\eqn{\prod_i |U_{ii}|}).
+#'
+#' A singular matrix has determinant `0`: `modulus` is `-Inf` (with
+#' `logarithm = TRUE`) or `0` (with `logarithm = FALSE`), and `sign` is `0`.
+#' This deviates from [base::determinant()], which reports `sign` `1`.
 #' @templateVar shapes a square matrix with exactly 2 axes
 #' @template param_unary_x_tofloat
 #' @param logarithm (`logical(1)`)\cr
@@ -2600,7 +2665,7 @@ nv_det <- jit(function(x) {
 nv_determinant <- jit(
   function(x, logarithm = TRUE) {
     x <- as_anvl_array(int_to_float(x))
-    # Adopted from: https://github.com/wch/r-source/blob/ed837b19e0a90df72cedb007583dd4d7604aea2d/src/modules/lapack/Lapack.c#L1408-L1464
+    # Adapted from: https://github.com/wch/r-source/blob/ed837b19e0a90df72cedb007583dd4d7604aea2d/src/modules/lapack/Lapack.c#L1408-L1464
     shp <- shape(x)
     if (length(shp) != 2L || shp[[1L]] != shp[[2L]]) {
       cli_abort("{.arg x} must be a square 2-D matrix")
@@ -2642,7 +2707,8 @@ nv_determinant <- jit(
 #' @title Matrix Inverse
 #' @description
 #' Computes `x^-1`, the inverse of a square non-singular matrix `x`, by
-#' solving `x %*% y = I` for `y`.
+#' solving `x %*% y = I` for `y`. Unlike [base::solve()], a singular `x` is
+#' not an error: the result then holds non-finite values.
 #'
 #' For most use cases prefer [nv_solve()] directly: forming the explicit
 #' inverse is both slower and less numerically stable than solving against
@@ -2677,11 +2743,11 @@ nv_inv <- jit(function(x) {
 
 #' @title QR Decomposition
 #' @inherit prim_qr description details
-#' @templateVar shapes with exactly 2 axes
+#' @templateVar shapes with at least 2 axes, the first two forming the matrix; any trailing axes are batch axes
 #' @template param_unary_x_tofloat
 #' @return (named `list` of two [`arrayish`])\cr
-#'   Elements `Q` (shape `(m, k)`) and `R` (shape `(k, n)`), where
-#'   `(m, n) = shape(x)` and `k = min(m, n)`. Both have the input's data type
+#'   Elements `Q` (shape `(m, k, ...)`) and `R` (shape `(k, n, ...)`), where
+#'   `(m, n, ...) = shape(x)` and `k = min(m, n)`. Both have the input's data type
 #'   -- or the default float data type (see [`default_dtypes()`]) where the
 #'   input was an integer one.
 #' @seealso [prim_qr()]
@@ -2730,6 +2796,10 @@ nv_qr <- jit(function(x) {
 #' @export
 nv_lu <- jit(function(x) {
   x <- as_anvl_array(int_to_float(x))
+  # `prim_lu()` takes a batch, but `L` and `U` are cut from a single matrix.
+  if (naxes(x) != 2L) {
+    cli_abort(c("{.arg x} must be a 2-D matrix.", x = "Got shape {shape_repr(shape(x))}."))
+  }
   out <- prim_lu(x)
   LU <- out$LU
   shp <- shape(LU)
@@ -2764,12 +2834,13 @@ nv_lu <- jit(function(x) {
 
 #' @title Singular Value Decomposition
 #' @inherit prim_svd description details
-#' @templateVar shapes with exactly 2 axes
+#' @templateVar shapes with at least 2 axes, the first two forming the matrix; any trailing axes are batch axes
 #' @template param_unary_x_tofloat
 #' @return (named `list` of three [`arrayish`])\cr
-#'   Elements `d` (length `k`), `u` (shape `(m, k)`), and `vt` (shape
-#'   `(k, n)`). All have the input's data type -- or the default float data
-#'   type (see [`default_dtypes()`]) where the input was an integer one.
+#'   Elements `d` (shape `(k, ...)`), `u` (shape `(m, k, ...)`), and `vt`
+#'   (shape `(k, n, ...)`), where `(m, n, ...) = shape(x)`. All have the
+#'   input's data type -- or the default float data type (see
+#'   [`default_dtypes()`]) where the input was an integer one.
 #' @seealso [prim_svd()], [base::svd()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # all three outputs have the input's data type
@@ -2782,12 +2853,13 @@ nv_svd <- jit(function(x) {
 
 #' @title Symmetric Eigendecomposition
 #' @inherit prim_eigh description details
-#' @templateVar shapes a symmetric square matrix with exactly 2 axes
+#' @templateVar shapes with at least 2 axes, the first two forming a symmetric square matrix; any trailing axes are batch axes
 #' @template param_unary_x_tofloat
 #' @return (named `list` of two [`arrayish`])\cr
-#'   Elements `values` (length `n`) and `vectors` (shape `(n, n)`). Both have
-#'   the input's data type -- or the default float data type (see
-#'   [`default_dtypes()`]) where the input was an integer one.
+#'   Elements `values` (shape `(n, ...)`) and `vectors` (shape `(n, n, ...)`),
+#'   where `(n, n, ...) = shape(x)`. Both have the input's data type -- or the
+#'   default float data type (see [`default_dtypes()`]) where the input was an
+#'   integer one.
 #' @seealso [prim_eigh()], [base::eigen()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # values and vectors both have the input's data type
@@ -2824,11 +2896,9 @@ nv_diag <- jit(function(x) {
   }
   n <- shape(x)[1L]
   zeros <- nv_fill_like(x, 0L, shape = c(n, n))
-  idx <- prim_reshape(nv_iota_like(x, axis = 1L, shape = n, dtype = "i32"), shape = c(n, 1L))
-  indices <- nv_concatenate(idx, idx, axis = 2L)
   prim_scatter(
     zeros,
-    indices,
+    diag_indices(x, n),
     x,
     update_window_axes = integer(0L),
     inserted_window_axes = c(1L, 2L),
@@ -2839,6 +2909,13 @@ nv_diag <- jit(function(x) {
     unique_indices = TRUE
   )
 })
+
+# The `(n, 2)` index matrix whose row `i` is `c(i, i)`, addressing the first `n`
+# diagonal elements of a matrix; placed on the device of `x`.
+diag_indices <- function(x, n) {
+  idx <- prim_reshape(nv_iota_like(x, axis = 1L, shape = n, dtype = "i32"), shape = c(n, 1L))
+  nv_concatenate(idx, idx, axis = 2L)
+}
 
 #' @title Identity Matrix
 #' @description
@@ -2891,22 +2968,32 @@ nv_eye <- jit(
   if (is_dtype_bool(peek_dtype(x))) nv_convert(x, default_int()) else x
 }
 
-# Gather `axes` into a single trailing axis, so an operation that only ever
-# handles one axis -- a sort, an arg-reduction -- can reduce several at once by
-# ranking their elements together. `axes` must already be resolved and sorted.
-# The reshape is column-major, so a position along the merged axis is the
-# column-major linear index within the block of `axes`, like `which.max()`
-# reports for a whole array. Returns the reshaped array along with the shape
-# its kept axes take afterwards, which `drop = FALSE` restores the reduced axes
-# into at size 1.
+# The `nan_rm = TRUE` treatment of a reduction: replace NaN by `value`, the
+# reduction's identity. A non-float array holds no NaN and is returned as is.
+# Callers assign the result before passing it to the primitive: an argument
+# promise forced inside the primitive's body would run these operations there,
+# and an error the primitive then raises would no longer be attributed to it.
+.replace_nan <- function(x, value, nan_rm) {
+  if (nan_rm && is_dtype_float(peek_dtype(x))) nv_ifelse(nv_is_nan(x), value, x) else x
+}
+
+# Gather `axes` into a single leading axis, so an operation that only ever
+# handles one axis -- a top-k, a sort, an arg-reduction -- can reduce several at
+# once by ranking their elements together. Axis 1 is the contiguous axis, the
+# one `prim_top_k()` works along, so reducing leading axes moves nothing.
+# `axes` must already be resolved and sorted. The reshape is column-major, so a
+# position along the merged axis is the column-major linear index within the
+# block of `axes`, like `which.max()` reports for a whole array. Returns the
+# reshaped array along with the shape its kept axes take afterwards, which
+# `drop = FALSE` restores the reduced axes into at size 1.
 .flatten_reduce_axes <- function(x, axes, drop) {
   x_shape <- shape(x)
   keep <- setdiff(seq_along(x_shape), axes)
-  perm <- c(keep, axes)
+  perm <- c(axes, keep)
   if (!identical(perm, seq_along(x_shape))) {
     x <- prim_transpose(x, perm = perm)
   }
-  flat_shape <- c(x_shape[keep], as.integer(prod(x_shape[axes])))
+  flat_shape <- c(as.integer(prod(x_shape[axes])), x_shape[keep])
   if (!identical(shape(x), flat_shape)) {
     x <- prim_reshape(x, flat_shape)
   }
@@ -2962,9 +3049,7 @@ nv_sum <- jit(
     assert_flag(nan_rm)
     x <- .count_bool(as_anvl_array(x))
     axes <- .resolve_reduce_axes(x, axes)
-    if (nan_rm && is_dtype_float(peek_dtype(x))) {
-      x <- nv_ifelse(nv_is_nan(x), 0L, x)
-    }
+    x <- .replace_nan(x, 0L, nan_rm)
     prim_sum(x, axes = axes, drop = drop)
   },
   static = 2:4
@@ -3003,7 +3088,11 @@ nv_mean <- jit(
     assert_flag(nan_rm)
     x <- as_anvl_array(x)
     axes <- .resolve_reduce_axes(x, axes)
-    if (nan_rm && is_dtype_float(peek_dtype(x))) {
+    if (!is_dtype_float(peek_dtype(x))) {
+      # Summed at the result's float data type, as an integer sum can overflow.
+      x <- nv_convert(x, default_float())
+    }
+    if (nan_rm) {
       is_nan <- nv_is_nan(x)
       total <- prim_sum(nv_ifelse(is_nan, 0L, x), axes = axes, drop = drop)
       count <- prim_sum(nv_convert(!is_nan, "i32"), axes = axes, drop = drop)
@@ -3048,9 +3137,7 @@ nv_prod <- jit(
     assert_flag(nan_rm)
     x <- .count_bool(as_anvl_array(x))
     axes <- .resolve_reduce_axes(x, axes)
-    if (nan_rm && is_dtype_float(peek_dtype(x))) {
-      x <- nv_ifelse(nv_is_nan(x), 1L, x)
-    }
+    x <- .replace_nan(x, 1L, nan_rm)
     prim_prod(x, axes = axes, drop = drop)
   },
   static = 2:4
@@ -3264,12 +3351,8 @@ nv_cumsum <- jit(
   function(x, axis = NULL, nan_rm = FALSE) {
     assert_flag(nan_rm)
     cum <- .resolve_cum_input(.count_bool(as_anvl_array(x)), axis)
-    x <- cum$x
-    axis <- cum$axis
-    if (nan_rm && is_dtype_float(peek_dtype(x))) {
-      x <- nv_ifelse(nv_is_nan(x), 0L, x)
-    }
-    prim_cumsum(x, axis = axis)
+    x <- .replace_nan(cum$x, 0L, nan_rm)
+    prim_cumsum(x, axis = cum$axis)
   },
   static = 2:3
 )
@@ -3296,12 +3379,8 @@ nv_cumprod <- jit(
   function(x, axis = NULL, nan_rm = FALSE) {
     assert_flag(nan_rm)
     cum <- .resolve_cum_input(.count_bool(as_anvl_array(x)), axis)
-    x <- cum$x
-    axis <- cum$axis
-    if (nan_rm && is_dtype_float(peek_dtype(x))) {
-      x <- nv_ifelse(nv_is_nan(x), 1L, x)
-    }
-    prim_cumprod(x, axis = axis)
+    x <- .replace_nan(cum$x, 1L, nan_rm)
+    prim_cumprod(x, axis = cum$axis)
   },
   static = 2:3
 )
@@ -3366,17 +3445,13 @@ nv_cummin <- jit(
   static = 2:4
 )
 
-# NaN propagation for the default `nan_rm = FALSE` path is now handled in
-# `prim_cummax` / `prim_cummin`'s lowering directly. Here we only need to
-# sanitize NaN → identity for `nan_rm = TRUE`.
+# Shared cummax/cummin. `prim_cummax()` / `prim_cummin()` propagate NaN
+# themselves, so only `nan_rm = TRUE` needs handling here: NaN is replaced by
+# the reduction's identity.
 .nv_cum_extreme <- function(x, axis, indices, nan_rm, identity_val, prim_cum) {
   cum <- .resolve_cum_input(as_anvl_array(x), axis)
-  x <- cum$x
-  axis <- cum$axis
-  if (nan_rm && is_dtype_float(peek_dtype(x))) {
-    x <- nv_ifelse(nv_is_nan(x), identity_val, x)
-  }
-  out <- prim_cum(x, axis = axis)
+  x <- .replace_nan(cum$x, identity_val, nan_rm)
+  out <- prim_cum(x, axis = cum$axis)
   if (indices) out else out$values
 }
 
@@ -3400,11 +3475,19 @@ nv_cummin <- jit(
 #'   Result of the executed branch: an array, or a tree of them in the sense
 #'   of pjrt's [`RTree`][pjrt::build_tree] -- a `list`, nested arbitrarily -- with
 #'   the structure, data types and shapes both branches share.
+#' @section Gradients:
+#' [gradient()] differentiates through the branch the predicate selects, including
+#' the values the branches close over; a value only the other branch uses gets a
+#' zero. See [prim_if()].
 #' @seealso [prim_if()] for the underlying primitive, [nv_ifelse()] for
 #'   element-wise selection.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # both branches must return the same structure, data types and shapes
 #' nv_if(nv_scalar(TRUE), \() nv_scalar(1), \() nv_scalar(2))
+#'
+#' # the gradient flows through the branch that is taken
+#' f <- function(p, x) nv_if(p, \() sum(x * x), \() sum(x))
+#' jit(gradient(f, wrt = "x"))(nv_scalar(TRUE), nv_array(c(1, 2, 3)))
 #' @export
 nv_if <- prim_if
 
@@ -3424,6 +3507,11 @@ nv_if <- prim_if
 #'   A tree of the loop-carried arrays -- see [`RTree`][pjrt::build_tree] -- in its
 #'   final state after the loop terminates, with `init`'s structure, data
 #'   types and shapes.
+#' @section Gradients:
+#' [gradient()] cannot differentiate a while loop: its trip count is only known
+#' at run time, so there is no static size for the per-iteration states the
+#' backward pass needs. [nv_scan()], whose number of steps is static, is
+#' differentiable.
 #' @seealso [prim_while()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the loop state is a named list, and each member keeps its data type
@@ -3438,38 +3526,40 @@ nv_if <- prim_if
 #' @export
 nv_while <- prim_while
 
-#' @title Scan (Loop With Per-Step Outputs)
+#' @title Scan (Loop with Per-Step Outputs)
 #' @description
 #' Runs a fixed-length loop that threads a carry through `body` while
 #' stacking each step's output into preallocated buffers.
 #'
 #' At step `t`, `body` receives the current carry and the step's slice of
-#' `xs` (taken along axis 1, with that unit axis dropped; a 1-D leaf
+#' `xs` (taken along the last axis, with that axis dropped; a 1-D leaf
 #' yields a scalar), and must return
 #' `list(carry = <same structure as init>, out = <arrays to stack>)`.
-#' The stacked `out` buffers gain a new leading axis of size `steps`.
+#' The stacked `out` buffers gain a new trailing axis of size `steps`. Like a
+#' batch axis, the step axis trails, so each step is a contiguous block of
+#' memory.
 #'
 #' The whole loop, written out in R:
 #'
 #' ```r
 #' carry <- init
-#' out <- <empty, `steps` rows>
+#' out <- <empty, of size `steps` along a new last axis>
 #' order <- if (reverse) rev(seq_len(steps)) else seq_len(steps)
 #' for (t in order) {
-#'   step <- body(carry, xs[t, ...])  # `x` is NULL when `xs` is empty
+#'   step <- body(carry, xs[..., t])  # `x` is NULL when `xs` is empty
 #'   carry <- step$carry
-#'   out[t, ...] <- step$out          # position t, not the loop's position
+#'   out[..., t] <- step$out          # position t, not the loop's position
 #' }
 #' list(carry = carry, out = out)
 #' ```
 #'
 #' @param init ([`arrayish`] | `list()`)\cr
 #'   Initial carry: a single array or a (possibly nested) named list.
-#'   Every slot must keep a fixed shape and dtype across steps.
+#'   Every slot must keep a fixed shape and dtype across steps
 #' @param xs ([`arrayish`] | `list()` | `NULL`)\cr
-#'   Per-step inputs, sliced along axis 1. All leaves must agree on
-#'   the size of axis 1. `NULL` or a list with no leaves runs a counted
-#'   loop over `steps` steps instead.
+#'   Per-step inputs, sliced along their last axis. All leaves must agree
+#'   on the size of the last axis. `NULL` or a list with no leaves runs a
+#'   counted loop over `steps` steps instead.
 #' @param body (`function`)\cr
 #'   Step function `function(carry, x)` returning
 #'   `list(carry = , out = )`. `out` may be a single array, a (nested)
@@ -3477,26 +3567,48 @@ nv_while <- prim_while
 #'   must be identical at every step. `x` is `NULL` when `xs` is empty.
 #' @param steps (`integer(1)` | `NULL`)\cr
 #'   Static trip count. Required when `xs` is empty; otherwise inferred
-#'   from (and checked against) axis 1 of `xs`. A trip count of `0` runs
-#'   no step.
+#'   from (and checked against) the last axis of `xs`. A trip count of `0`
+#'   runs no step.
 #' @param reverse (`logical(1)`)\cr
 #'   If `TRUE`, steps run `t = steps, ..., 1`; each step still reads
 #'   `xs` at position `t` and writes its output at position `t`, so a
 #'   reverse scan consumes and produces arrays in the original order.
 #' @return `list(carry = , out = )`: the final carry (same structure as
 #'   `init`) and the stacked outputs (structure of `body`'s `out`, each
-#'   leaf gaining a leading axis of size `steps`).
+#'   leaf gaining a trailing axis of size `steps`).
+#' @section Gradients:
+#' Unlike [nv_while()], a scan is differentiable with [gradient()], with
+#' respect to `init`, `xs` and the arrays `body` closes over. The forward pass
+#' keeps what the backward pass needs of each step, so the memory a gradient
+#' takes grows linearly with `steps`.
 #' @seealso [prim_scan()], [nv_while()], [nv_cumsum()] for fixed associative scans.
 #' @examplesIf pjrt::plugins_downloaded()
-#' # cumulative sum along axis 1
+#' # cumulative sum
 #' x <- nv_array(c(1, 2, 3, 4))
 #' nv_scan(
 #'   init = nv_scalar(0),
 #'   xs = x,
 #'   body = function(carry, x) list(carry = carry + x, out = carry + x)
 #' )$out
+#'
+#' # running sums of the columns of a matrix: each step reads a column
+#' m <- nv_array(matrix(c(1, 2, 3, 4, 5, 6), nrow = 2L))
+#' nv_scan(
+#'   init = nv_array(c(0, 0)),
+#'   xs = m,
+#'   body = function(carry, x) list(carry = carry + x, out = carry + x)
+#' )$out
+#'
+#' # a scan is differentiable: the gradient of a cumulative product
+#' f <- function(x) {
+#'   nv_scan(nv_scalar(1), x, function(carry, x) list(carry = carry * x, out = NULL))$carry
+#' }
+#' jit(gradient(f))(nv_array(c(1, 2, 3)))
 #' @export
 nv_scan <- function(init, xs = NULL, body, steps = NULL, reverse = FALSE) {
+  # before `as_anvl_array()` meets a random state among them
+  abort_if_side_effects(init, "init")
+  abort_if_side_effects(xs, "xs")
   init <- map_tree(init, as_anvl_array)
   xs <- if (is.null(xs)) list() else map_tree(xs, as_anvl_array)
 
@@ -3509,13 +3621,13 @@ nv_scan <- function(init, xs = NULL, body, steps = NULL, reverse = FALSE) {
     if (!length(xs_flat)) {
       cli_abort("{.arg steps} is required when {.arg xs} is empty")
     }
-    # Reading axis 1 needs there to be one; the other leaves are checked
-    # against the count that comes out of this one.
+    # Reading the last axis needs there to be one; the other leaves are
+    # checked against the count that comes out of this one.
     s <- shape(xs_flat[[1L]])
     if (!length(s)) {
       cli_abort("every array in {.arg xs} must have at least one axis.")
     }
-    steps <- as.integer(s[[1L]])
+    steps <- as.integer(s[[length(s)]])
   }
 
   prim_scan(init, xs, body, steps = steps, reverse = reverse)
@@ -3737,12 +3849,12 @@ nv_squeeze <- function(x, axes = NULL) {
     new_shape <- shp[shp != 1L]
   } else {
     axes <- resolve_axes(axes, length(shp), unique = TRUE)
-    for (d in axes) {
-      if (shp[d] != 1L) {
-        cli_abort("Cannot squeeze axis {d}: its size is {shp[d]}, but must be 1")
-      }
+    not_one <- axes[shp[axes] != 1L]
+    if (length(not_one)) {
+      axis <- not_one[[1L]]
+      cli_abort("Cannot squeeze axis {axis}: its size is {shp[axis]}, but must be 1")
     }
-    new_shape <- shp[-axes]
+    new_shape <- shp[setdiff(seq_along(shp), axes)]
   }
   if (length(new_shape) == 0L) {
     new_shape <- integer(0L)
@@ -3839,13 +3951,13 @@ nv_extract_diag <- jit(function(x) {
   if (naxes(x) != 2L) {
     cli_abort("{.arg x} must be a 2-D array")
   }
-  shp <- shape(x)
-  n <- min(shp)
-  idx <- prim_reshape(nv_iota_like(x, axis = 1L, shape = n, dtype = "i32"), shape = c(n, 1L))
-  indices <- nv_concatenate(idx, idx, axis = 2L)
+  n <- min(shape(x))
+  if (n == 0L) {
+    return(prim_reshape(x, shape = 0L))
+  }
   prim_gather(
     x,
-    start_indices = indices,
+    start_indices = diag_indices(x, n),
     offset_axes = integer(0L),
     collapsed_slice_axes = c(1L, 2L),
     x_batching_axes = integer(0L),
@@ -3900,8 +4012,9 @@ assert_tri_args <- function(shape, diagonal) {
 #' Returns a boolean matrix that is `TRUE` on and below the given diagonal,
 #' mirroring base R's `lower.tri()`. Use [nv_tril()] to zero out the other
 #' triangle of an existing array instead.
-#' @param shape (`integer()`)\cr
+#' @param shape (`integer()` | `"auto"`)\cr
 #'   Shape of the result: exactly two axis sizes, since the result is a matrix.
+#'   For `nv_lower_tri_like()`, `"auto"` (the default) uses `shape(like)`.
 #' @param diagonal (`integer(1)`)\cr
 #'   Diagonal offset, with the same meaning as in [nv_tril()]. The default
 #'   `-1` excludes the main diagonal, matching `lower.tri()`; use `0` to
@@ -3935,8 +4048,9 @@ nv_lower_tri <- jit(
 #' Returns a boolean matrix that is `TRUE` on and above the given diagonal,
 #' mirroring base R's `upper.tri()`. Use [nv_triu()] to zero out the other
 #' triangle of an existing array instead.
-#' @param shape (`integer()`)\cr
+#' @param shape (`integer()` | `"auto"`)\cr
 #'   Shape of the result: exactly two axis sizes, since the result is a matrix.
+#'   For `nv_upper_tri_like()`, `"auto"` (the default) uses `shape(like)`.
 #' @param diagonal (`integer(1)`)\cr
 #'   Diagonal offset, with the same meaning as in [nv_triu()]. The default
 #'   `1` excludes the main diagonal, matching `upper.tri()`; use `0` to
@@ -4028,8 +4142,8 @@ nv_triu <- jit(
 #' @title Cross Product (Matrix)
 #' @description
 #' Computes `t(x) %*% y`. If `y` is missing, computes `t(x) %*% x`.
-#' Above rank 2 the last two axes are the matrix and the leading ones are batch
-#' axes, as in [nv_matmul()]: only the matrix is transposed.
+#' Above rank 2 the first two axes are the matrix and the trailing ones are
+#' batch axes, as in [nv_matmul()]: only the matrix is transposed.
 #' @param x ([`arrayish`])\cr
 #'   An array with at least 2 axes, as for [base::crossprod()]. Can be any numeric
 #'   data type; `x` and `y` are
@@ -4045,22 +4159,15 @@ nv_triu <- jit(
 #' nv_crossprod(x)
 #' @export
 nv_crossprod <- jit(function(x, y = NULL) {
-  if (is.null(y)) {
-    x <- as_anvl_array(x)
-    y <- x
-  } else {
-    args <- as_anvl_arrays(x, y, .promote = promotion_common())
-    x <- args[[1L]]
-    y <- args[[2L]]
-  }
-  nv_matmul(transpose_matrix_axes(x), y)
+  args <- crossprod_operands(x, y)
+  nv_matmul(transpose_matrix_axes(args[[1L]]), args[[2L]])
 })
 
 #' @title Transpose Cross Product (Matrix)
 #' @description
 #' Computes `x %*% t(y)`. If `y` is missing, computes `x %*% t(x)`.
-#' Above rank 2 the last two axes are the matrix and the leading ones are batch
-#' axes, as in [nv_matmul()]: only the matrix is transposed.
+#' Above rank 2 the first two axes are the matrix and the trailing ones are
+#' batch axes, as in [nv_matmul()]: only the matrix is transposed.
 #' @param x ([`arrayish`])\cr
 #'   An array with at least 2 axes, as for [base::tcrossprod()]. Can be any numeric
 #'   data type; `x` and `y` are
@@ -4076,16 +4183,19 @@ nv_crossprod <- jit(function(x, y = NULL) {
 #' nv_tcrossprod(x)
 #' @export
 nv_tcrossprod <- jit(function(x, y = NULL) {
+  args <- crossprod_operands(x, y)
+  nv_matmul(args[[1L]], transpose_matrix_axes(args[[2L]]))
+})
+
+# The two operands of `nv_crossprod()` / `nv_tcrossprod()`: `x` twice when `y`
+# is `NULL`, and otherwise both at their common data type.
+crossprod_operands <- function(x, y) {
   if (is.null(y)) {
     x <- as_anvl_array(x)
-    y <- x
-  } else {
-    args <- as_anvl_arrays(x, y, .promote = promotion_common())
-    x <- args[[1L]]
-    y <- args[[2L]]
+    return(list(x, x))
   }
-  nv_matmul(x, transpose_matrix_axes(y))
-})
+  as_anvl_arrays(x, y, .promote = promotion_common())
+}
 
 # Sorting and searching --------------------------------------------------------
 
@@ -4161,6 +4271,21 @@ nv_select <- function(x, axis, index) {
   )
 }
 
+# Resolve the `axis` of `nv_sort()` / `nv_order()`. `NULL` sorts the flattened
+# array, so, like `.resolve_cum_input()`, this hands back the array as well as
+# the axis.
+.resolve_sort_input <- function(x, axis, call = rlang::caller_env()) {
+  x <- as_anvl_array(x)
+  if (naxes(x) == 0L) {
+    cli_abort("{.arg x} must have at least one axis to sort along, but it is a scalar.", call = call)
+  }
+  if (is.null(axis)) {
+    list(x = nv_flatten(x), axis = 1L)
+  } else {
+    list(x = x, axis = axis)
+  }
+}
+
 #' @title Sort
 #' @name nv_sort
 #' @description
@@ -4209,15 +4334,8 @@ nv_select <- function(x, axis, index) {
 #' @export
 nv_sort <- jit(
   function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
-    x <- as_anvl_array(x)
-    if (naxes(x) == 0L) {
-      cli_abort("{.arg x} must have at least one axis to sort along, but it is a scalar.")
-    }
-    if (is.null(axis)) {
-      x <- nv_flatten(x)
-      axis <- 1L
-    }
-    prim_sort(list(x), axis = axis, decreasing = decreasing, stable = stable)[[1L]]
+    input <- .resolve_sort_input(x, axis)
+    prim_sort(list(input$x), axis = input$axis, decreasing = decreasing, stable = stable)[[1L]]
   },
   static = 2:4
 )
@@ -4260,16 +4378,9 @@ nv_sort <- jit(
 #' @export
 nv_order <- jit(
   function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
-    x <- as_anvl_array(x)
-    if (naxes(x) == 0L) {
-      cli_abort("{.arg x} must have at least one axis to sort along, but it is a scalar.")
-    }
-    if (is.null(axis)) {
-      x <- nv_flatten(x)
-      axis <- 1L
-    }
-    idx <- nv_iota_like(x, axis = axis, dtype = default_int())
-    prim_sort(list(x, idx), axis = axis, decreasing = decreasing, stable = stable)[[2L]]
+    input <- .resolve_sort_input(x, axis)
+    idx <- nv_iota_like(input$x, axis = input$axis, dtype = default_int())
+    prim_sort(list(input$x, idx), axis = input$axis, decreasing = decreasing, stable = stable)[[2L]]
   },
   static = 2:4
 )
@@ -4339,17 +4450,17 @@ nv_top_k <- jit(
     }
     k <- as.integer(k)
 
-    # `prim_top_k` reads the last axis only, so several axes are gathered into
-    # one first -- which is what makes the indices index their column-major
-    # flattening -- and the `k` axis is moved back to where the first of them
-    # was.
+    # `prim_top_k` reads axis 1 only, so several axes are gathered into one
+    # leading axis first -- which is what makes the indices index their
+    # column-major flattening -- and the `k` axis is moved back to where the
+    # first of them was.
     flat <- .flatten_reduce_axes(x, axes, drop = TRUE)
     out <- prim_top_k(flat$x, k = k, indices = indices)
     keep <- setdiff(seq_len(rank), axes)
     out_rank <- length(keep) + 1L
     perm <- append(
-      seq_len(out_rank - 1L),
-      out_rank,
+      seq_len(out_rank - 1L) + 1L,
+      1L,
       after = sum(keep < axes[[1L]])
     )
     restore <- function(v) {
@@ -4385,6 +4496,9 @@ nv_top_k <- jit(
 #'
 #' A quantile generally falls between two elements, so a non-float `x` is
 #' computed (and returned) at the default float data type.
+#'
+#' Reducing over an axis of size 0 is an error: there is no element to take a
+#' quantile of.
 #' @section Interpolation modes:
 #' For `n` reduced elements and a probability `q`, let
 #' `h = 1 + (n - 1) * q` be the position `q` falls at in the sorted values,
@@ -4464,17 +4578,30 @@ nv_quantile <- jit(
     # The sort below only ever orders one axis, so reducing several means
     # ranking their elements together in one flattened axis.
     axes <- sort(.resolve_reduce_axes(x, axes))
+    empty <- axes[shape(x)[axes] == 0L]
+    if (length(empty) > 0L) {
+      cli_abort(c(
+        "{.arg x} must have at least one element along the reduced axes.",
+        x = "{.arg x} has size 0 along {cli::qty(length(empty))}ax{?is/es} {empty}."
+      ))
+    }
     flat <- .flatten_reduce_axes(x, axes, drop)
     x <- flat$x
 
     rank <- naxes(x)
-    axis <- rank
+    axis <- 1L
     shp <- shape(x)
     K <- length(probs)
     probs <- as.numeric(probs)
     shp_kd <- replace(shp, axis, 1L)
     shp_K <- replace(shp, axis, K)
     out_dtype <- dtype(x)
+
+    # A kept axis of size 0 leaves no slice to take a quantile of, and the
+    # gathers below have nothing to index into.
+    if (prod(shp) == 0L) {
+      return(nv_empty_like(x, shape = if (is_probs_array) c(K, flat$keep_shape) else flat$keep_shape))
+    }
 
     # Selection instead of a full sort when every requested order statistic lies
     # in one end of the axis. Ascending position j of a slice's n_valid sorted
@@ -4512,9 +4639,9 @@ nv_quantile <- jit(
     budget <- ceiling(n_axis / 2L) + 1L
     k_lo <- as.integer(ceiling((n_axis - 1L) * max(probs)) + 1L)
     k_hi <- as.integer(n_axis - floor((n_axis - 1L) * min(probs)))
-    path <- if (n_axis > 0L && k_lo <= budget) {
+    path <- if (k_lo <= budget) {
       "low"
-    } else if (n_axis > 0L && k_hi <= budget) {
+    } else if (k_hi <= budget) {
       "high"
     } else {
       "sort"
@@ -4593,15 +4720,10 @@ nv_quantile <- jit(
     bad <- if (nan_rm) n_valid_kd == 0L else prim_any(nan_mask, axes = axis, drop = FALSE)
     out <- nv_ifelse(nv_broadcast_to(bad, shp_K), NaN, out)
 
-    # Unpack the trailing axis the reduced ones were gathered into: dropped, or
-    # restored at size 1 in their original positions. For array `probs`, the K
-    # axis moves from the back, where it is now, to the front.
-    if (is_probs_array) {
-      out <- prim_transpose(out, perm = c(axis, seq_len(rank - 1L)))
-      prim_reshape(out, c(K, flat$keep_shape))
-    } else {
-      prim_reshape(out, flat$keep_shape)
-    }
+    # Unpack the leading axis the reduced ones were gathered into: dropped, or
+    # restored at size 1 in their original positions. For array `probs`, it
+    # holds the K quantiles and stays in front.
+    prim_reshape(out, if (is_probs_array) c(K, flat$keep_shape) else flat$keep_shape)
   },
   static = 2:6
 )
@@ -4615,7 +4737,7 @@ nv_quantile <- jit(
 #' reduced elements with the default `"linear"` interpolation, the average of
 #' the two middle values is returned, matching base R's `median()`.
 #'
-#' You can also use `median()` directly on an [`AnvlArray`] or [`AnvlBox`];
+#' You can also use `median()` directly on an [`AnvlArray`] or [`GraphBox`];
 #' extra arguments (e.g. `method`) are forwarded via `...`.
 #' @section The `median()` generic:
 #' [stats::median()] reduces every axis of a multi-axis array, and so does
@@ -4754,40 +4876,56 @@ nv_which_min <- jit(
 # NaN in an integer, so we surface "a NaN was here" by returning the first NaN's
 # index instead.
 .nv_arg_extreme <- function(x, axes, drop, nan_rm, prim_arg) {
-  flat <- .flatten_reduce_axes(x, sort(.resolve_reduce_axes(x, axes)), drop)
-  x <- flat$x
-  axis <- naxes(x)
-  result <- prim_arg(x, axis = axis)
+  axes <- sort(.resolve_reduce_axes(x, axes))
+  # A single axis is reduced where it is; several are merged into one first.
+  if (length(axes) == 1L) {
+    axis <- axes
+    keep_shape <- NULL
+  } else {
+    flat <- .flatten_reduce_axes(x, axes, drop)
+    x <- flat$x
+    axis <- 1L
+    keep_shape <- flat$keep_shape
+    drop <- TRUE
+  }
+  result <- prim_arg(x, axis = axis, drop = drop)
   if (!nan_rm && is_dtype_float(peek_dtype(x))) {
     # argmax on the bool mask returns the index of the first TRUE (tie-break:
     # smallest index) — exactly the first NaN's position — or 1 if no NaN
     # exists. `any_nan` disambiguates those two cases.
     nan_mask <- nv_is_nan(x)
-    any_nan <- prim_any(nan_mask, axes = axis)
-    first_nan_idx <- prim_which_max(nan_mask, axis = axis)
+    any_nan <- prim_any(nan_mask, axes = axis, drop = drop)
+    first_nan_idx <- prim_which_max(nan_mask, axis = axis, drop = drop)
     result <- nv_ifelse(any_nan, first_nan_idx, result)
   }
-  prim_reshape(result, flat$keep_shape)
+  if (is.null(keep_shape)) result else prim_reshape(result, keep_shape)
 }
 
-# Build the NCHW/NC(D)HW axis numbers (1-based) for nv_conv*.
+# The axis numbers (1-based) of the layouts of nv_conv*: the spatial axes
+# first, then the channels (the kernel's input channels), and last the batch
+# (the kernel's output channels). The spatial axes go to `prim_convolution()`
+# last to first, which lists them in XLA's dimension order, so the lowering
+# builds the convolution of XLA's NC(D)HW layout. The per-spatial-axis
+# parameters pair with them by position and have to be reversed to match.
 .nv_conv_axis_numbers <- function(n_spatial) {
-  spatial <- 3:(2L + n_spatial)
+  spatial <- rev(seq_len(n_spatial))
+  channel <- n_spatial + 1L
+  last <- n_spatial + 2L
   list(
-    x_batch_axis = 1L,
-    x_feature_axis = 2L,
+    x_batch_axis = last,
+    x_feature_axis = channel,
     x_spatial_axes = spatial,
-    kernel_output_feature_axis = 1L,
-    kernel_input_feature_axis = 2L,
+    kernel_output_feature_axis = last,
+    kernel_input_feature_axis = channel,
     kernel_spatial_axes = spatial,
-    output_batch_axis = 1L,
-    output_feature_axis = 2L,
+    output_batch_axis = last,
+    output_feature_axis = channel,
     output_spatial_axes = spatial
   )
 }
 
 # Normalize a stride/dilation/padding arg to length n_spatial.
-.nv_conv_vec <- function(x, n, name) {
+.nv_conv_vec <- function(x, n, name, lower = NULL) {
   x <- as.integer(x)
   if (length(x) == 1L) {
     x <- rep(x, n)
@@ -4795,32 +4933,44 @@ nv_which_min <- jit(
   if (length(x) != n) {
     cli_abort("{.arg {name}} must have length 1 or {n}.")
   }
+  if (!is.null(lower) && any(x < lower)) {
+    cli_abort("{.arg {name}} must be at least {lower} along every spatial axis, not {x}.")
+  }
   x
 }
 
 #' @title 1D Convolution
 #' @description
-#' Torch-style 1D convolution in NCW layout: `x` is
-#' `[batch, in_channels, width]`, `kernel` is
-#' `[out_channels, in_channels / groups, kW]`, output is
-#' `[batch, out_channels, out_w]`. Symmetric zero padding.
-#' @param x ([`arrayish`])\cr `[N, C_in, W]`. Can be any data type; `x` and
-#'   `kernel` are [promoted to a common data type][nv_promote_to_common()]. An
-#'   R value assumes the other operand's data type, and materializes at its
+#' 1D convolution like torch's `nnf_conv1d()`, but with the axes in reverse
+#' order: width, channels, batch.
+#' @section Shapes:
+#' - `x`: `(W, C_in, N)`
+#' - `kernel`: `(kW, C_in / groups, C_out)`
+#' - output: `(W_out, C_out, N)`, where
+#'   `W_out = floor((W + 2 * padding - dilation * (kW - 1) - 1) / stride) + 1`
+#' @param x ([`arrayish`])\cr Input with the shape given under Shapes. Can be
+#'   any data type; `x` and `kernel` are
+#'   [promoted to a common data type][nv_promote_to_common()]. An R value
+#'   assumes the other operand's data type, and materializes at its
 #'   [default data type][default_dtypes] when that has none either.
-#' @param kernel ([`arrayish`])\cr `[C_out, C_in / groups, kW]`.
+#' @param kernel ([`arrayish`])\cr Kernel with the shape given under Shapes.
 #'   Promoted together with `x` -- see `x`.
-#' @param stride,padding,dilation (`integer()`)\cr Length 1.
-#' @param groups (`integer(1)`)\cr Grouped/depthwise convolution.
+#' @param stride (`integer(1)`)\cr Step between neighbouring window positions.
+#' @param padding (`integer(1)`)\cr Number of zeros added on each side of the
+#'   spatial axis.
+#' @param dilation (`integer(1)`)\cr Spacing between the kernel's elements.
+#' @param groups (`integer(1)`)\cr Number of groups the channels are split into:
+#'   the `g`-th block of input channels is convolved with the `g`-th block of
+#'   output channels only. It must divide `C_in` and `C_out`, and
+#'   `groups = C_in` is a depthwise convolution.
 #' @param precision (`character(1)`)\cr `"highest"`, `"high"` or `"default"`.
 #' @return ([`arrayish`])\cr
-#'   Has the operands' common data type, and shape
-#'   `[N, C_out, out_W]`.
+#'   Has the operands' common data type and the shape given under Shapes.
 #' @seealso [nv_conv2d()], [nv_conv3d()], [prim_convolution()].
 #' @examplesIf pjrt::plugins_downloaded()
-#' # one batch, one channel, width 5, convolved with a width-3 kernel
-#' x <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f32")
-#' kernel <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
+#' # width 5, one channel, a batch of one, convolved with a width-3 kernel
+#' x <- nv_array(1:5, shape = c(5, 1, 1), dtype = "f32")
+#' kernel <- nv_array(c(1, 0, -1), shape = c(3, 1, 1), dtype = "f32")
 #' nv_conv1d(x, kernel)
 #'
 #' # `padding = 1` keeps the input width, `stride = 2` visits every other
@@ -4834,34 +4984,35 @@ nv_conv1d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, group
 
 #' @title 2D Convolution
 #' @description
-#' Torch-style 2D convolution in NCHW layout: `x` is
-#' `[batch, in_channels, height, width]`, `kernel` is
-#' `[out_channels, in_channels / groups, kh, kw]`, output is
-#' `[batch, out_channels, out_h, out_w]`. Symmetric zero padding.
-#' @param x ([`arrayish`])\cr `[N, C_in, H, W]`. Can be any data type; `x` and
-#'   `kernel` are [promoted to a common data type][nv_promote_to_common()]. An
-#'   R value assumes the other operand's data type, and materializes at its
-#'   [default data type][default_dtypes] when that has none either.
-#' @param kernel ([`arrayish`])\cr `[C_out, C_in / groups, kH, kW]`.
-#'   Promoted together with `x` -- see `x`.
-#' @param stride (`integer()`)\cr Length 1 or 2.
-#' @param padding (`integer()`)\cr Symmetric padding, length 1 or 2.
-#' @param dilation (`integer()`)\cr Kernel dilation, length 1 or 2.
-#' @param groups (`integer(1)`)\cr Grouped/depthwise convolution.
-#' @param precision (`character(1)`)\cr `"highest"`, `"high"` or `"default"`.
+#' 2D convolution like torch's `nnf_conv2d()`, but with the axes in reverse
+#' order: width, height, channels, batch.
+#' @section Shapes:
+#' - `x`: `(W, H, C_in, N)`
+#' - `kernel`: `(kW, kH, C_in / groups, C_out)`
+#' - output: `(W_out, H_out, C_out, N)`, with each spatial axis as in
+#'   [nv_conv1d()]
+#' @inheritParams nv_conv1d
+#' @param stride (`integer()`)\cr Step between neighbouring window positions,
+#'   as `(W, H)` or one value for both spatial axes.
+#' @param padding (`integer()`)\cr Number of zeros added on each side of each
+#'   spatial axis, as `(W, H)` or one value for both.
+#' @param dilation (`integer()`)\cr Spacing between the kernel's elements, as
+#'   `(W, H)` or one value for both.
 #' @return ([`arrayish`])\cr
-#'   Has the operands' common data type, and shape
-#'   `[N, C_out, out_H, out_W]`.
+#'   Has the operands' common data type and the shape given under Shapes.
 #' @seealso [nv_conv1d()], [nv_conv3d()], [prim_convolution()].
 #' @examplesIf pjrt::plugins_downloaded()
-#' # one batch, one channel, 4x4, convolved with a 3x3 kernel
-#' x <- nv_array(1:16, shape = c(1, 1, 4, 4), dtype = "f32")
-#' kernel <- nv_fill(1, shape = c(1, 1, 3, 3), dtype = "f32")
+#' # a 4x4 image with one channel, in a batch of one, convolved with a 3x3
+#' # kernel
+#' x <- nv_array(1:16, shape = c(4, 4, 1, 1), dtype = "f32")
+#' kernel <- nv_fill(1, shape = c(3, 3, 1, 1), dtype = "f32")
 #' nv_conv2d(x, kernel)
 #'
-#' # two output channels give a result with two channels
-#' kernel2 <- nv_fill(1, shape = c(2, 1, 3, 3), dtype = "f32")
-#' shape(nv_conv2d(x, kernel2))
+#' # a batch of two 6x4 images with three channels, and a kernel with two
+#' # output channels; the stride is 2 along the width and 1 along the height
+#' x <- nv_fill(1, shape = c(6, 4, 3, 2), dtype = "f32")
+#' kernel <- nv_fill(1, shape = c(3, 3, 3, 2), dtype = "f32")
+#' shape(nv_conv2d(x, kernel, stride = c(2L, 1L)))
 #' @export
 nv_conv2d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
   .nv_convnd(x, kernel, 2L, stride, padding, dilation, groups, precision)
@@ -4869,27 +5020,28 @@ nv_conv2d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, group
 
 #' @title 3D Convolution
 #' @description
-#' Torch-style 3D convolution in NCDHW layout. `x` is
-#' `[batch, in_channels, depth, height, width]`, `kernel` is
-#' `[out_channels, in_channels / groups, kD, kH, kW]`. Asymmetric
-#' padding (e.g. causal temporal padding) is available via
-#' [prim_convolution()].
-#' @param x ([`arrayish`])\cr `[N, C_in, D, H, W]`. Can be any data type; `x` and
-#'   `kernel` are [promoted to a common data type][nv_promote_to_common()]. An
-#'   R value assumes the other operand's data type, and materializes at its
-#'   [default data type][default_dtypes] when that has none either.
-#' @param kernel ([`arrayish`])\cr `[C_out, C_in / groups, kD, kH, kW]`.
-#'   Promoted together with `x` -- see `x`.
-#' @inheritParams nv_conv2d
-#' @param stride,padding,dilation (`integer()`)\cr Length 1 or 3.
+#' 3D convolution like torch's `nnf_conv3d()`, but with the axes in reverse
+#' order: width, height, depth, channels, batch.
+#' @section Shapes:
+#' - `x`: `(W, H, D, C_in, N)`
+#' - `kernel`: `(kW, kH, kD, C_in / groups, C_out)`
+#' - output: `(W_out, H_out, D_out, C_out, N)`, with each spatial axis as in
+#'   [nv_conv1d()]
+#' @inheritParams nv_conv1d
+#' @param stride (`integer()`)\cr Step between neighbouring window positions,
+#'   as `(W, H, D)` or one value for all three spatial axes.
+#' @param padding (`integer()`)\cr Number of zeros added on each side of each
+#'   spatial axis, as `(W, H, D)` or one value for all three.
+#' @param dilation (`integer()`)\cr Spacing between the kernel's elements, as
+#'   `(W, H, D)` or one value for all three.
 #' @return ([`arrayish`])\cr
-#'   Has the operands' common data type, and shape
-#'   `[N, C_out, out_D, out_H, out_W]`.
+#'   Has the operands' common data type and the shape given under Shapes.
 #' @seealso [nv_conv1d()], [nv_conv2d()], [prim_convolution()].
 #' @examplesIf pjrt::plugins_downloaded()
-#' # one batch, one channel, 2x3x3, convolved with a 1x2x2 kernel
-#' x <- nv_array(1:18, shape = c(1, 1, 2, 3, 3), dtype = "f32")
-#' kernel <- nv_fill(1, shape = c(1, 1, 1, 2, 2), dtype = "f32")
+#' # a 3x3x2 volume with one channel, in a batch of one, convolved with a
+#' # 2x2x1 kernel
+#' x <- nv_array(1:18, shape = c(3, 3, 2, 1, 1), dtype = "f32")
+#' kernel <- nv_fill(1, shape = c(2, 2, 1, 1, 1), dtype = "f32")
 #' shape(nv_conv3d(x, kernel))
 #' @export
 nv_conv3d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
@@ -4906,7 +5058,7 @@ nv_conv3d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, group
   # Checked here so that the errors name this function's arguments, not
   # `prim_convolution()`'s axis parameters.
   for (nm in c("x", "kernel")) {
-    value <- get(nm)
+    value <- args[[nm]]
     if (naxes(value) != n + 2L) {
       cli_abort(c(
         "{.arg {nm}} must have {n + 2L} axes for a {n}-D convolution.",
@@ -4914,28 +5066,44 @@ nv_conv3d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, group
       ))
     }
   }
-  in_channels <- shape(x)[2L]
+  in_channels <- shape(x)[n + 1L]
+  out_channels <- shape(kernel)[n + 2L]
   if (in_channels %% groups != 0L) {
     cli_abort(c(
       "{.arg groups} must divide the number of input channels of {.arg x}.",
       x = "{.arg x} has {in_channels} input channel{?s}, and {.arg groups} is {groups}."
     ))
   }
-  if (shape(kernel)[2L] != in_channels / groups) {
+  if (shape(kernel)[n + 1L] != in_channels / groups) {
     cli_abort(c(
-      "{.arg kernel}'s second axis must be {.arg x}'s input channels divided by {.arg groups}.",
+      "{.arg kernel}'s second-to-last axis must be {.arg x}'s input channels divided by {.arg groups}.",
       x = "Expected {in_channels / groups}, but {.arg kernel} is {shape_repr(shape(kernel))}."
     ))
   }
-  if (shape(kernel)[1L] %% groups != 0L) {
+  if (out_channels %% groups != 0L) {
     cli_abort(c(
       "{.arg groups} must divide the number of output channels of {.arg kernel}.",
-      x = "{.arg kernel} has {shape(kernel)[1L]} output channel{?s}, and {.arg groups} is {groups}."
+      x = "{.arg kernel} has {out_channels} output channel{?s}, and {.arg groups} is {groups}."
     ))
   }
-  stride <- .nv_conv_vec(stride, n, "stride")
+  stride <- .nv_conv_vec(stride, n, "stride", lower = 1L)
   pad <- .nv_conv_vec(padding, n, "padding")
-  dilation <- .nv_conv_vec(dilation, n, "dilation")
+  dilation <- .nv_conv_vec(dilation, n, "dilation", lower = 1L)
+  # Checked here, in the user's axis order, as the inference rule sees the
+  # vectors reversed below.
+  padded <- shape(x)[seq_len(n)] + 2L * pad
+  emptied <- which(padded < 0L)
+  if (length(emptied)) {
+    i <- emptied[[1L]]
+    cli_abort(c(
+      "Negative {.arg padding} must not remove more than spatial axis {i} of {.arg x} holds.",
+      x = "Axis {i} of {.arg x} has size {shape(x)[[i]]}, and padding {pad[[i]]} on both sides leaves {padded[[i]]}."
+    ))
+  }
+  # Reversed to pair with the spatial axes of `.nv_conv_axis_numbers()`.
+  stride <- rev(stride)
+  pad <- rev(pad)
+  dilation <- rev(dilation)
   do.call(
     prim_convolution,
     c(
@@ -4956,12 +5124,17 @@ nv_conv3d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, group
 
 #' @title Call an XLA FFI Handler
 #' @description
+#' `r lifecycle::badge("experimental")`
+#'
 #' Calls a handler registered with [`pjrt::pjrt_register_custom_call()`],
 #' the way [`prim_custom_call()`] does, but taking the operands through `...`
 #' and unwrapping a single result.
 #'
 #' This is anvl's escape hatch for operations StableHLO cannot express, or
-#' cannot express efficiently.
+#' cannot express efficiently. How to write, register and call a handler is
+#' shown in `r roxy_article("custom_calls")`; XLA documents custom calls, and
+#' the FFI API a handler is written against, in its
+#' [custom call guide](https://openxla.org/xla/custom_call).
 #'
 #' Custom calls are a `"pjrt"` backend feature: the handler is registered
 #' with the PJRT runtime and invoked by the XLA-compiled program, so there
@@ -4977,7 +5150,7 @@ nv_conv3d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, group
 #'
 #' The call is also opaque to XLA and therefore to [`gradient()`]: to
 #' differentiate through a handler, wrap it in a primitive of your own with
-#' a reverse rule -- see `vignette("extending_primitive")`.
+#' a pullback rule -- see `r roxy_article("extending_primitive")`.
 #' @param target_name (`character(1)`)\cr
 #'   The name the handler was registered under.
 #' @param ... ([`arrayish`])\cr
@@ -4988,15 +5161,14 @@ nv_conv3d <- function(x, kernel, stride = 1L, padding = 0L, dilation = 1L, group
 #'   when a side-effect only call has a single operand), otherwise a list.
 #' @seealso [prim_custom_call()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # "eigh" is one of the handlers {pjrt} registers on load; it wants
-#' # column-major buffers and returns (eigenvectors, eigenvalues)
+#' # "eigh" is one of the handlers {pjrt} registers on load. It returns
+#' # (eigenvectors, eigenvalues) and, being LAPACK, wants column-major
+#' # buffers -- R's own order, which is the default layout.
 #' x <- nv_matrix(c(2, 1, 1, 2), nrow = 2, dtype = "f64")
 #' nv_custom_call(
 #'   "eigh",
 #'   x,
-#'   output_types = list(vt("f64", c(2, 2)), vt("f64", 2)),
-#'   operand_layouts = list(c(0L, 1L)),
-#'   result_layouts = list(c(0L, 1L), 0L)
+#'   output_types = list(AbstractArray("f64", c(2, 2)), AbstractArray("f64", 2))
 #' )
 #' @export
 nv_custom_call <- function(
@@ -5010,10 +5182,9 @@ nv_custom_call <- function(
   aliases = NULL,
   device = NULL
 ) {
-  single <- inherits(output_types, "ValueType")
-  operands <- list(...)
+  single <- is_abstract_array(output_types)
   out <- prim_custom_call(
-    operands,
+    list(...),
     target_name = target_name,
     output_types = output_types,
     attrs = attrs,

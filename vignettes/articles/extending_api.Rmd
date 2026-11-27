@@ -135,12 +135,11 @@ Don't convert it to an `AnvlArray` before checking its value.
 Later in the function, it will actually be converted, but from XLA's point of view, it will just be a constant within the compiled program and not a dynamic input.
 
 ```{r}
-nv_rbernoulli <- jit(function(state, p) {
+nv_rbernoulli <- jit(function(p) {
   stopifnot((p >= 0) && (p <= 1))
-  out <- nv_runif(1L, state)
-  list(state = out$state, values = nv_convert(out$values <= p, default_int()))
+  nv_convert(nv_runif(1L) <= p, default_int())
 }, static = "p")
-nv_rbernoulli(nv_rng_state(1L), 0.2)$values
+nv_rbernoulli(0.2)
 ```
 
 Each distinct value of `p` compiles its own program, which is the price of checking it.

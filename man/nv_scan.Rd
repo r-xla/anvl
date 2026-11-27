@@ -2,19 +2,19 @@
 % Please edit documentation in R/api.R
 \name{nv_scan}
 \alias{nv_scan}
-\title{Scan (Loop With Per-Step Outputs)}
+\title{Scan (Loop with Per-Step Outputs)}
 \usage{
 nv_scan(init, xs = NULL, body, steps = NULL, reverse = FALSE)
 }
 \arguments{
 \item{init}{(\code{\link{arrayish}} | \code{list()})\cr
 Initial carry: a single array or a (possibly nested) named list.
-Every slot must keep a fixed shape and dtype across steps.}
+Every slot must keep a fixed shape and dtype across steps}
 
 \item{xs}{(\code{\link{arrayish}} | \code{list()} | \code{NULL})\cr
-Per-step inputs, sliced along axis 1. All leaves must agree on
-the size of axis 1. \code{NULL} or a list with no leaves runs a counted
-loop over \code{steps} steps instead.}
+Per-step inputs, sliced along their last axis. All leaves must agree
+on the size of the last axis. \code{NULL} or a list with no leaves runs a
+counted loop over \code{steps} steps instead.}
 
 \item{body}{(\code{function})\cr
 Step function \verb{function(carry, x)} returning
@@ -24,8 +24,8 @@ must be identical at every step. \code{x} is \code{NULL} when \code{xs} is empty
 
 \item{steps}{(\code{integer(1)} | \code{NULL})\cr
 Static trip count. Required when \code{xs} is empty; otherwise inferred
-from (and checked against) axis 1 of \code{xs}. A trip count of \code{0} runs
-no step.}
+from (and checked against) the last axis of \code{xs}. A trip count of \code{0}
+runs no step.}
 
 \item{reverse}{(\code{logical(1)})\cr
 If \code{TRUE}, steps run \verb{t = steps, ..., 1}; each step still reads
@@ -35,40 +35,64 @@ reverse scan consumes and produces arrays in the original order.}
 \value{
 \code{list(carry = , out = )}: the final carry (same structure as
 \code{init}) and the stacked outputs (structure of \code{body}'s \code{out}, each
-leaf gaining a leading axis of size \code{steps}).
+leaf gaining a trailing axis of size \code{steps}).
 }
 \description{
 Runs a fixed-length loop that threads a carry through \code{body} while
 stacking each step's output into preallocated buffers.
 
 At step \code{t}, \code{body} receives the current carry and the step's slice of
-\code{xs} (taken along axis 1, with that unit axis dropped; a 1-D leaf
+\code{xs} (taken along the last axis, with that axis dropped; a 1-D leaf
 yields a scalar), and must return
 \verb{list(carry = <same structure as init>, out = <arrays to stack>)}.
-The stacked \code{out} buffers gain a new leading axis of size \code{steps}.
+The stacked \code{out} buffers gain a new trailing axis of size \code{steps}. Like a
+batch axis, the step axis trails, so each step is a contiguous block of
+memory.
 
 The whole loop, written out in R:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{carry <- init
-out <- <empty, `steps` rows>
+out <- <empty, of size `steps` along a new last axis>
 order <- if (reverse) rev(seq_len(steps)) else seq_len(steps)
 for (t in order) \{
-  step <- body(carry, xs[t, ...])  # `x` is NULL when `xs` is empty
+  step <- body(carry, xs[..., t])  # `x` is NULL when `xs` is empty
   carry <- step$carry
-  out[t, ...] <- step$out          # position t, not the loop's position
+  out[..., t] <- step$out          # position t, not the loop's position
 \}
 list(carry = carry, out = out)
 }\if{html}{\out{</div>}}
 }
+\section{Gradients}{
+
+Unlike \code{\link[=nv_while]{nv_while()}}, a scan is differentiable with \code{\link[=gradient]{gradient()}}, with
+respect to \code{init}, \code{xs} and the arrays \code{body} closes over. The forward pass
+keeps what the backward pass needs of each step, so the memory a gradient
+takes grows linearly with \code{steps}.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# cumulative sum along axis 1
+# cumulative sum
 x <- nv_array(c(1, 2, 3, 4))
 nv_scan(
   init = nv_scalar(0),
   xs = x,
   body = function(carry, x) list(carry = carry + x, out = carry + x)
 )$out
+
+# running sums of the columns of a matrix: each step reads a column
+m <- nv_array(matrix(c(1, 2, 3, 4, 5, 6), nrow = 2L))
+nv_scan(
+  init = nv_array(c(0, 0)),
+  xs = m,
+  body = function(carry, x) list(carry = carry + x, out = carry + x)
+)$out
+
+# a scan is differentiable: the gradient of a cumulative product
+f <- function(x) {
+  nv_scan(nv_scalar(1), x, function(carry, x) list(carry = carry * x, out = NULL))$carry
+}
+jit(gradient(f))(nv_array(c(1, 2, 3)))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

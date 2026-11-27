@@ -1,3 +1,13 @@
+# Runs `register()` now if the namespace `pkg` is loaded, and again each time it
+# is loaded later, as a namespace unloaded and reloaded forgets what was
+# registered in it.
+on_namespace_load <- function(pkg, register) {
+  if (isNamespaceLoaded(pkg)) {
+    register()
+  }
+  setHook(packageEvent(pkg, "onLoad"), function(...) register(), action = "append")
+}
+
 # shamelessly copied from: https://github.com/tidyverse/readr/blob/e529cb2775f1b52a0dfa30dabc9f8e0014aa77e6/R/zzz.R
 register_s3_method <- function(pkg, generic, class, fun = NULL) {
   if (is.null(fun)) {
@@ -5,19 +15,7 @@ register_s3_method <- function(pkg, generic, class, fun = NULL) {
   } else {
     stopifnot(is.function(fun))
   }
-
-  if (pkg %in% loadedNamespaces()) {
-    registerS3method(generic, class, fun, envir = asNamespace(pkg))
-  }
-
-  # Always register hook in case package is later unloaded & reloaded
-  setHook(
-    packageEvent(pkg, "onLoad"),
-    function(...) {
-      registerS3method(generic, class, fun, envir = asNamespace(pkg))
-    },
-    action = "append"
-  )
+  on_namespace_load(pkg, function() registerS3method(generic, class, fun, envir = asNamespace(pkg)))
 }
 
 .onLoad <- function(libname, pkgname) {
@@ -37,13 +35,30 @@ register_s3_method <- function(pkg, generic, class, fun = NULL) {
   register_s3_method("waldo", "compare_proxy", "AnvlArray")
 
   read_env_defaults()
+  register_rng_state_node()
+
+  # Arrays read with readRDS() and friends load onto anvl's default device:
+  # pjrt uploads an unserialized buffer to the device this entry returns.
+  pjrt_the <- getFromNamespace("the", "pjrt")
+  pjrt_the[["unserialize_device"]] <- function() default_device("pjrt")
+
+  # Lets `safetensors::safe_load_file(framework = "anvl")` read arrays.
+  on_namespace_load("safetensors", function() {
+    frameworks <- getFromNamespace("safetensors_frameworks", "safetensors")
+    frameworks[["anvl"]] <- list(constructor = safetensors_constructor, packages = "anvl")
+  })
+}
+
+.onUnload <- function(libpath) {
+  # Otherwise devtools::document() fails if run twice in the same session.
+  pjrt::unregister_tree_node("AnvlRngState")
 }
 
 # Read `ANVL_DEFAULT_DTYPES` / `ANVL_DEFAULT_DEVICE`, the fallbacks of the
 # `anvl.default_dtypes` / `anvl.default_device` options.
 read_env_defaults <- function() {
   dtypes <- Sys.getenv("ANVL_DEFAULT_DTYPES")
-  globals[["ENV_DEFAULT_DTYPES"]] <- if (nzchar(dtypes)) parse_default_dtypes_env(dtypes)
+  globals[["env_default_dtypes"]] <- if (nzchar(dtypes)) parse_default_dtypes_env(dtypes)
   device <- Sys.getenv("ANVL_DEFAULT_DEVICE")
-  globals[["ENV_DEFAULT_DEVICE"]] <- if (nzchar(device)) device
+  globals[["env_default_device"]] <- if (nzchar(device)) device
 }

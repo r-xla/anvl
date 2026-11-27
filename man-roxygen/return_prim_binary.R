@@ -1,2 +1,2 @@
 #' @return ([`arrayish`])\cr
-#'   Has the inputs' shape and data type.
+#'   Has the inputs' broadcast shape and data type.

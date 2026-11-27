@@ -39,6 +39,7 @@ each iteration; it is the only thing carried from one iteration to the next.
 \itemize{
 \item \code{stablehlo}
 \item \code{quickr}
+\item \code{vectorize}
 }
 }
 

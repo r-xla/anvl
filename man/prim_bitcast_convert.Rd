@@ -11,7 +11,7 @@ prim_bitcast_convert(x, dtype)
 One input. Can be any data type except \code{bool}.
 An R value materializes at its \link[=default_dtypes]{default data type}.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+\item{dtype}{(\code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 Any target data type except \code{bool}.
 One of the same bit width as the input's leaves the shape unchanged; a
 narrower one adds a \emph{leading} axis holding the pieces; a wider one consumes
@@ -32,7 +32,8 @@ modifying the underlying data.
 
 \itemize{
 \item \code{stablehlo}
-\item \code{reverse}
+\item \code{pullback}
+\item \code{vectorize}
 }
 }
 
@@ -40,9 +41,8 @@ modifying the underlying data.
 
 Lowers to \code{\link[stablehlo:hlo_bitcast_convert]{hlo_bitcast_convert()}}, specified under
 \href{https://openxla.org/stablehlo/spec#bitcast_convert}{bitcast_convert}.
-StableHLO puts the lane axis last, so a width-changing conversion is
-lowered with one \code{\link[stablehlo:hlo_transpose]{hlo_transpose()}} that rotates it to the front, or off the
-front, depending on the direction.
+StableHLO puts the lane axis last; the lowering represents an array by the
+reversed shape, so that is the leading R axis.
 }
 
 \examples{

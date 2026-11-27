@@ -150,7 +150,7 @@ describe("resolve_upload_dtype", {
     expect_equal(graph_input_dtypes(graph), c(NA, NA, "f32"))
     expect_equal(repr(graph$inputs[[3L]]$aval), "f32[]")
     expect_equal(graph$rdata_types, c(NA_character_, NA_character_, "double"))
-    converts <- Filter(function(call) call$primitive$name == "convert", graph$calls)
+    converts <- Filter(function(call) call$primitive$name == "convert", graph$statements)
     expect_length(converts, 2L)
     expect_setequal(
       vapply(converts, function(call) as.character(call$outputs[[1L]]$aval$dtype), character(1L)),
@@ -267,6 +267,7 @@ describe("an R value at its use site", {
     expect_equal(jit(function(x) x * 2L)(nv_scalar(1, dtype = "i16")), nv_scalar(2L, dtype = "i16"))
     expect_equal(jit(function(x) 2 + x)(nv_scalar(1)), nv_scalar(3))
     expect_equal(jit(function(x) nv_mul(2, x))(nv_scalar(3, dtype = "f64")), nv_scalar(6, dtype = "f64")) # nolint
+    # jarl-ignore redundant_equals: the test is about the literal meeting `==`
     expect_equal(jit(function(x) x == TRUE)(nv_scalar(FALSE)), nv_scalar(FALSE))
   })
 
@@ -296,6 +297,15 @@ describe("an R value at its use site", {
       nv_while(list(i = x), function(i) i < nv_add(x, a), function(i) list(i = nv_add(i, a)))
     })
     expect_identical(as_array(g(3L, nv_scalar(2, dtype = "f64"))$i), 5)
+  })
+
+  it("materializes at its default where a sub-graph returns it as it is", {
+    # Nothing in the branch meets the value, so it reaches the branch's outputs
+    # still open, and is captured there at the default of its category.
+    f <- jit(function(p, b) nv_if(p, function() b, function() b))
+    out <- f(nv_scalar(TRUE), 2)
+    expect_dtype(out, default_float())
+    expect_equal(as_array(out), 2)
   })
 
   it("is built straight at a narrow or unsigned data type", {
@@ -628,20 +638,19 @@ describe("an R value in an nv_* function", {
   })
 
   it("names no data type for nv_rnorm(), which falls back to the default float", {
-    state <- nv_rng_state(42L)
     # Bare R values have no data type, so the sample falls back to the default
     # float rather than to whatever R stores its numbers as.
-    expect_dtype(nv_rnorm(4L, state, mean = 0, sd = 1)[[2L]], default_float())
+    expect_dtype(nv_rnorm(4L, mean = 0, sd = 1), default_float())
     # A real array names it.
-    expect_dtype(nv_rnorm(4L, state, mean = nv_scalar(0, dtype = "f64"))[[2L]], "f64")
-    expect_dtype(nv_rnorm(4L, state, sd = nv_scalar(1, dtype = "f64"))[[2L]], "f64")
+    expect_dtype(nv_rnorm(4L, mean = nv_scalar(0, dtype = "f64")), "f64")
+    expect_dtype(nv_rnorm(4L, sd = nv_scalar(1, dtype = "f64")), "f64")
     # An integer array cannot name one, so the default float stands.
-    expect_dtype(nv_rnorm(4L, state, mean = nv_scalar(0L))[[2L]], default_float())
+    expect_dtype(nv_rnorm(4L, mean = nv_scalar(0L)), default_float())
     # ... and an explicit `dtype` still wins.
-    expect_dtype(nv_rnorm(4L, state, dtype = "f64", mean = 0)[[2L]], "f64")
+    expect_dtype(nv_rnorm(4L, dtype = "f64", mean = 0), "f64")
     # An f64 mean cannot be narrowed to an f32 sample.
     expect_error(
-      nv_rnorm(4L, state, dtype = "f32", mean = nv_scalar(0, dtype = "f64")),
+      nv_rnorm(4L, dtype = "f32", mean = nv_scalar(0, dtype = "f64")),
       "not promotable"
     )
   })
@@ -679,7 +688,7 @@ describe("staging an R value out of its own category", {
     # conversion in the program at all, so the trace records no call.
     calls <- function(r_type, dtype) {
       graph <- trace_fn(function(x) prim_convert(x, dtype), list(x = nv_aval(r_type, integer())))
-      length(graph$calls)
+      length(graph$statements)
     }
     expect_equal(calls("double", "f32"), 0L)
     expect_equal(calls("integer", "i64"), 0L)
@@ -732,5 +741,71 @@ describe("the default integer", {
     expect_dtype(jit(function() 1L)(), "i64")
     expect_dtype(jit(function(x) x)(1L), "i64")
     expect_dtype(jit(function() nv_seq(1, 3))(), "i64")
+  })
+})
+
+describe("a missing value in an R value", {
+  # The data type each case takes is named by the typed array it meets, so the
+  # tests hold whatever the default data types are.
+  add <- jit(function(x, y) x + y)
+
+  it("is a valid argument of a jitted function", {
+    out <- jit(function(x) x + 1)(NA_real_)
+    expect_true(is.na(as_array(out)))
+    expect_true(is.na(as_array(add(NA_real_, nv_scalar(1, dtype = "f64")))))
+    expect_true(is.nan(as_array(add(NaN, nv_scalar(1, dtype = "f64")))))
+    expect_true(is.nan(as_array(add(NA_real_, nv_scalar(1, dtype = "f32")))))
+  })
+
+  it("warns where i32 keeps it, naming the argument", {
+    expect_snapshot(invisible(add(NA_integer_, nv_scalar(1L, dtype = "i32"))))
+    # INT_MIN is an ordinary number on the device.
+    out <- suppressWarnings(add(NA_integer_, nv_scalar(1L, dtype = "i32")))
+    expect_identical(as_array(out), -2147483647L)
+  })
+
+  it("is an error where the data type has no missing value", {
+    expect_error(add(NA_integer_, nv_scalar(1L, dtype = "i64")), "cannot be converted to \"i64\"")
+    expect_error(add(NA_integer_, nv_scalar(1L, dtype = "i16")), "cannot be converted to \"i16\"")
+    expect_error(jit(function(x) !x)(NA), "cannot be converted to \"bool\"")
+  })
+
+  it("in an R array passed to a jitted function follows the same rules", {
+    sub <- jit(function(x, y) x - y)
+    expect_warning(
+      out <- sub(matrix(c(1L, NA), 1L), nv_scalar(1L, dtype = "i32")),
+      "Input `x` contains at least one"
+    )
+    expect_identical(as_array(out), matrix(c(0L, 2147483647L), 1L))
+    out <- add(matrix(c(1, NA), 1L), nv_scalar(0, dtype = "f32"))
+    expect_true(is.nan(as_array(out)[1L, 2L]))
+    expect_error(
+      jit(function(x) !x)(matrix(c(TRUE, NA), 1L)),
+      "cannot be converted to \"bool\""
+    )
+  })
+
+  it("is a valid operand of an operation", {
+    expect_true(is.nan(as_array(NA_real_ + nv_scalar(1, dtype = "f32"))))
+    expect_warning(NA_integer_ + nv_scalar(1L, dtype = "i32"), "-2147483648")
+    expect_error(nv_scalar(TRUE) & NA, "cannot be converted to \"bool\"")
+  })
+
+  it("written in a traced body is built as nv_array() builds it", {
+    for (dt in c("f32", "f64")) {
+      out <- jit(function(x) x + NA_real_)(nv_scalar(1, dtype = dt))
+      expect_dtype(out, dt)
+      expect_true(is.na(as_array(out)))
+    }
+    expect_warning(
+      out <- jit(function(x) x + NA_integer_)(nv_scalar(1L, dtype = "i32")),
+      "-2147483648"
+    )
+    expect_identical(as_array(out), -2147483647L)
+    expect_error(
+      jit(function(x) x + NA_integer_)(nv_scalar(1L, dtype = "i16")),
+      "cannot be converted to \"i16\""
+    )
+    expect_error(jit(function(x) x & NA)(nv_scalar(TRUE)), "cannot be converted to \"bool\"")
   })
 })

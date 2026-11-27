@@ -8,15 +8,15 @@ prim_atan2(y, x)
 }
 \arguments{
 \item{y, x}{(\code{\link{arrayish}})\cr
-Ordinate and abscissa of the point, of the same shape. Can be any float
-data type.
+Ordinate and abscissa of the point, of the same shape, except that a
+scalar is broadcast to the shape of the other. Can be any float data type.
 \code{y} and \code{x} must have the same data type. An R value among them assumes
-the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
-of them has one.}
+the data type of the others when it is in its \link[=dtype_categories]{data type category}, and its \link[=default_dtypes]{default data type}
+when none of them has one.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the inputs' shape and data type.
+Has the inputs' broadcast shape and data type.
 }
 \description{
 Element-wise atan2 operation: the angle (in radians) between the positive
@@ -29,7 +29,8 @@ The operands are named \code{y} and \code{x}, in that order, after
 
 \itemize{
 \item \code{stablehlo}
-\item \code{reverse}
+\item \code{pullback}
+\item \code{vectorize}
 }
 }
 

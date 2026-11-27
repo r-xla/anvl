@@ -1,0 +1,831 @@
+test_that("basic reverse test", {
+  f <- function(x, y) {
+    prim_add(x, y)
+  }
+  f_grad <- jit(gradient(f))
+  out <- f_grad(nv_scalar(1.0), nv_scalar(2.0))
+  expect_equal(out[[1L]], nv_scalar(1.0))
+  expect_equal(out[[2L]], nv_scalar(1.0))
+})
+
+test_that("simple function works (scalar)", {
+  f_grad <- jit(gradient(prim_mul))
+
+  out <- f_grad(
+    nv_scalar(1.0),
+    nv_scalar(2.0)
+  )
+
+  expect_equal(out[[1L]], nv_scalar(2.0))
+  expect_equal(out[[2L]], nv_scalar(1.0))
+})
+
+test_that("chain rule works (scalar)", {
+  f <- function(x, y) {
+    prim_add(prim_mul(x, y), x)
+  }
+
+  f_grad <- jit(gradient(f))
+
+  out <- f_grad(
+    nv_scalar(1.0),
+    nv_scalar(2.0)
+  )
+
+  expect_equal(out[[1L]], nv_scalar(3.0))
+  expect_equal(out[[2L]], nv_scalar(1.0))
+})
+
+test_that("gradient does not have to depend on input", {
+  # This is special, because the input has no influence
+  # on the gradient, because the gradient is constant
+  f <- function(x, y) {
+    prim_add(x, y)
+  }
+
+  f_grad <- jit(gradient(f))
+
+  out <- f_grad(
+    nv_scalar(1.0),
+    nv_scalar(2.0)
+  )
+
+  expect_equal(out[[1L]], nv_scalar(1.0))
+  expect_equal(out[[2L]], nv_scalar(1.0))
+})
+
+test_that("nested inputs", {
+  f <- jit(gradient(function(x) {
+    prim_mul(x[[1]][[1]], x[[1]][[1]])
+  }))
+  expect_equal(
+    f(list(list(nv_scalar(1)))),
+    list(x = list(list(nv_scalar(2))))
+  )
+})
+
+test_that("no nested outpus", {
+  # we expect a scalar output
+  # -> check for good error message
+})
+
+test_that("constants work (scalar)", {
+  f <- jit(gradient(function(x) {
+    prim_mul(x, nv_scalar(2))
+  }))
+  expect_equal(f(nv_scalar(1)), list(x = nv_scalar(2.0)))
+})
+
+test_that("broadcasting works", {
+  # A scalar operand auto-broadcasts against a non-scalar in elementwise ops.
+  # The reverse pass must reduce the broadcasted cotangent back to the scalar's
+  # shape.
+  f <- function(a, b) sum(nv_mul(a, b))
+  g <- jit(gradient(f))
+  res <- g(nv_scalar(2), nv_array(c(1, 2, 3), dtype = "f32"))
+  # d/da sum(a * b) = sum(b) = 6, reduced back to a scalar
+  expect_equal(res$a, nv_scalar(6))
+  expect_shape(res$a, integer())
+  # d/db sum(a * b) = a broadcast over b's shape
+  expect_equal(res$b, nv_array(c(2, 2, 2), dtype = "f32"))
+})
+
+test_that("second order gradient (scalar)", {
+  # this works only for scalar functions, so this is primarily a stress
+  # test for out transformation implementation, not because it's useful in itself.
+  f <- function(x) {
+    prim_mul(x, x)
+  }
+  fg2 <- jit(gradient(\(x) gradient(f)(x)[[1L]]))
+  expect_equal(
+    fg2(nv_scalar(1)),
+    list(x = nv_scalar(2.0))
+  )
+})
+
+test_that("neg works", {
+  g <- jit(gradient(prim_negate))
+  expect_equal(g(nv_scalar(1))[[1L]], nv_scalar(-1))
+})
+
+test_that("names for grad: primitive", {
+  g <- jit(gradient(`*`))
+  expect_equal(formalArgs2(g), c("e1", "e2"))
+  expect_equal(
+    g(nv_scalar(2), nv_scalar(1)),
+    list(e1 = nv_scalar(1.0), e2 = nv_scalar(2.0))
+  )
+})
+
+test_that("names for grad: function", {
+  f <- function(e1, e2) {
+    e1 * e2
+  }
+  g <- jit(gradient(f))
+  expect_equal(formals(g), formals(f))
+  result <- g(nv_scalar(2), nv_scalar(1))
+  expect_equal(result, list(e1 = nv_scalar(1.0), e2 = nv_scalar(2.0)))
+})
+
+# New tests for selective gradients (wrt)
+
+test_that("partial gradient simple", {
+  f <- function(lhs, rhs) {
+    prim_add(lhs, rhs)
+  }
+  g <- jit(gradient(f, wrt = "lhs"))
+  out <- g(nv_scalar(1.0), nv_scalar(2.0))[[1L]]
+  expect_equal(out, nv_scalar(1.0))
+})
+
+test_that("gradient accepts integer positions for wrt", {
+  f <- function(lhs, rhs) {
+    prim_add(lhs, rhs)
+  }
+  g <- jit(gradient(f, wrt = 1L))
+  out <- g(nv_scalar(1.0), nv_scalar(2.0))[[1L]]
+  expect_equal(out, nv_scalar(1.0))
+
+  # value_and_gradient also accepts integer positions.
+  vg <- jit(value_and_gradient(f, wrt = 2L))
+  res <- vg(nv_scalar(3.0), nv_scalar(4.0))
+  expect_equal(res$value, nv_scalar(7.0))
+  expect_equal(res$grad[[1L]], nv_scalar(1.0))
+
+  # Out-of-range indices are rejected.
+  expect_error(gradient(f, wrt = 3L), "out of range")
+  expect_error(value_and_gradient(f, wrt = 0L), "out of range")
+})
+
+describe("value_and_gradient", {
+  it("rejects an f that is not a function", {
+    expect_error(value_and_gradient(1), "function")
+  })
+
+  it("differentiates with respect to no argument for an empty wrt", {
+    vg <- jit(value_and_gradient(function(x, y) nv_sum(x * y), wrt = character(0)))
+    res <- vg(nv_array(c(1, 2)), nv_array(c(3, 4)))
+    expect_equal(as.numeric(res$value), 11)
+    expect_length(res$grad, 0L)
+  })
+})
+
+test_that("wrt cannot be '...'", {
+  f <- function(x, ...) x
+  expect_error(gradient(f, wrt = "..."), "must not contain")
+  expect_error(value_and_gradient(f, wrt = 2L), "must not contain")
+})
+
+#test_that("partial gradient: y = a * (x * b) wrt x", {
+#  f <- function(a, x, b) {
+#    a * (x * b)
+#  }
+#  g <- gradient(f, wrt = "x")
+#  a <- nv_scalar(2.0)
+#  x <- nv_scalar(3.0)
+#  b <- nv_scalar(5.0)
+#  out <- g(a, x, b)
+#  expect_null(out[[1L]])
+#  expect_equal(out[[2L]], nv_scalar(10.0))
+#  expect_null(out[[3L]])
+#})
+#
+
+describe("pullback", {
+  x <- nv_array(c(1, 2, 3), dtype = "f64")
+  y <- nv_array(c(4, 5, 6), dtype = "f64")
+  ct <- nv_array(c(1, 0, -2), dtype = "f64")
+
+  it("pulls a cotangent back to every argument", {
+    g <- jit(function(x, y, ct) pullback(function(x, y) x * y, x, y)(ct))
+    res <- g(x, y, ct)
+    expect_equal(as.numeric(res$x), c(4, 0, -12))
+    expect_equal(as.numeric(res$y), c(1, 0, -6))
+  })
+
+  it("matches the arguments to the formals of f as in a call", {
+    g <- jit(function(x, y, ct) pullback(function(x, y) x / y, y = y, x)(ct))
+    res <- g(x, y, ct)
+    expect_named(res, c("x", "y"))
+    expect_equal(as.numeric(res$x), c(1, 0, -2) / c(4, 5, 6))
+  })
+
+  it("takes an argument of f named f by name", {
+    g <- jit(function(x, y, ct) pullback(function(f, y) f * y, f = x, y = y)(ct))
+    expect_equal(as.numeric(g(x, y, ct)$f), c(4, 0, -12))
+  })
+
+  it("names the cotangent of an argument f takes through its ... as it was passed", {
+    g <- jit(function(x, y, ct) pullback(function(x, ...) x * ..1, x, b = y)(ct))
+    res <- g(x, y, ct)
+    expect_named(res, c("x", "b"))
+    expect_equal(as.numeric(res$b), c(1, 0, -6))
+  })
+
+  it("evaluates its arguments in the trace it is called in", {
+    g <- jit(function(x, ct) pullback(\(z) z * z, x * 2)(ct))
+    expect_equal(as.numeric(g(x, ct)$z), c(4, 0, -24))
+  })
+
+  it("differentiates a base R function", {
+    g <- jit(function(x, ct) pullback(sin, x)(ct))
+    expect_equal(as.numeric(g(x, ct)$x), cos(c(1, 2, 3)) * c(1, 0, -2))
+  })
+
+  it("agrees with gradient() for a scalar result", {
+    f <- function(x, y) nv_sum(nv_exp(x) * y)
+    from_pullback <- jit(function(x, y) pullback(f, x, y)(nv_scalar(1, "f64")))(x, y)
+    expect_equal(from_pullback, jit(gradient(f))(x, y))
+  })
+
+  it("takes NULL for a part of the value, and an R value at the data type of its array", {
+    f <- function(x) list(total = nv_sum(x), parts = list(sq = x * x, cube = x * x * x))
+    g <- jit(function(x) {
+      pull <- pullback(f, x)
+      list(
+        total = pull(list(total = 2, parts = NULL))$x,
+        sq = pull(list(total = NULL, parts = list(sq = ct, cube = NULL)))$x,
+        none = pull(NULL)$x
+      )
+    })
+    res <- g(x)
+    expect_equal(as.numeric(res$total), c(2, 2, 2))
+    expect_equal(as.numeric(res$sq), c(2, 0, -12))
+    expect_equal(dtype(res$none), as_dtype("f64"))
+    expect_equal(as.numeric(res$none), c(0, 0, 0))
+  })
+
+  it("returns zeros for an argument no cotangent reaches", {
+    g <- jit(function(x, y) pullback(function(x, y) x * 2, x, y)(ct)$y)
+    expect_equal(as.numeric(g(x, y)), c(0, 0, 0))
+  })
+
+  it("holds an argument that is not a float array fixed, and returns NULL for it", {
+    f <- function(x, n, s, p) x * nv_convert(n, "f64") * s + p$w * nv_convert(p$k, "f64")
+    g <- jit(function(x, n, p) pullback(f, x, n, 2, p)(ct))
+    res <- g(x, nv_array(c(1L, 2L, 3L)), list(w = y, k = nv_array(c(1L, 1L, 2L))))
+    expect_named(res, c("x", "n", "s", "p"))
+    expect_equal(as.numeric(res$x), c(2, 0, -12))
+    expect_null(res$n)
+    expect_null(res$s)
+    expect_named(res$p, c("w", "k"))
+    expect_equal(as.numeric(res$p$w), c(1, 0, -4))
+    expect_null(res$p$k)
+  })
+
+  it("passes static arguments through", {
+    g <- jit(function(x, p, ct) pullback(function(x, p) x^p, x, p)(ct), static = "p")
+    res <- g(x, 3L, ct)
+    expect_equal(as.numeric(res$x), 3 * c(1, 2, 3)^2 * c(1, 0, -2))
+    expect_null(res$p)
+  })
+
+  it("can be called more than once, e.g. for the rows of a Jacobian", {
+    jacobian <- jit(function(x) {
+      pull <- pullback(\(x) nv_sin(x) * nv_sum(x), x)
+      eye <- nv_eye(3L, dtype = "f64")
+      rows <- lapply(1:3, \(i) nv_reshape(pull(eye[i, ])$x, c(1L, 3L)))
+      do.call(nv_concatenate, c(rows, list(axis = 1L)))
+    })
+    xs <- c(1, 2, 3)
+    expected <- diag(cos(xs) * sum(xs)) + outer(sin(xs), rep(1, 3L))
+    expect_equal(as_array(jacobian(x)), expected)
+  })
+
+  it("can be called in a function traced inside the one it was made in", {
+    g <- jit(function(x, p) {
+      pull <- pullback(\(x) x * x, x)
+      nv_if(p, \() pull(ct)$x, \() x)
+    })
+    expect_equal(as.numeric(g(x, nv_scalar(TRUE))), c(2, 0, -12))
+  })
+
+  it("can be differentiated", {
+    # d/dx sum(ct * 3 x^2) = 6 x ct
+    f <- function(x) nv_sum(pullback(\(x) x * x * x, x)(ct)$x)
+    expect_equal(as.numeric(jit(gradient(f))(x)$x), c(6, 0, -36))
+  })
+
+  it("refuses to be called outside jit()", {
+    expect_error(pullback(\(x) x, x), "can only be called inside")
+  })
+
+  it("refuses a pullback called outside the function pullback() was called in", {
+    stash <- NULL
+    jit(function(x) {
+      stash <<- pullback(\(x) x * x, x)
+      x
+    })(x)
+    expect_error(jit(function(x) stash(x)$x)(x), "can only be called in the function")
+  })
+
+  it("refuses a cotangent for a result that is not a float", {
+    f <- function(x) list(a = x, n = nv_convert(x, "i32"))
+    expect_error(
+      jit(function(x) pullback(f, x)(list(a = x, n = 1L))$x)(x),
+      "no cotangent at `n`"
+    )
+    f <- function(x) list(`a{b}` = nv_convert(x, "i32"))
+    expect_error(
+      jit(function(x) pullback(f, x)(list(`a{b}` = 1L))$x)(x),
+      "no cotangent at `a{b}`",
+      fixed = TRUE
+    )
+  })
+
+  it("refuses a cotangent of another shape, data type or structure", {
+    pull <- function(f, ct) jit(function(x) pullback(f, x)(ct)$x)(x)
+    expect_error(pull(\(x) x, nv_array(c(1, 2), dtype = "f64")), "data type and shape")
+    expect_error(pull(\(x) x, nv_array(c(1, 2, 3), dtype = "f32")), "data type and shape")
+    expect_error(pull(\(x) list(a = x), list(b = x)), "structured like")
+  })
+})
+
+describe("value_and_pullback", {
+  it("returns the value of the function together with its pullback", {
+    x <- nv_array(c(1, 2, 3), dtype = "f64")
+    g <- jit(function(x) {
+      out <- value_and_pullback(function(x) list(sq = x * x, total = nv_sum(x)), x)
+      list(value = out$value, x = out$pullback(list(sq = NULL, total = nv_scalar(2, "f64")))$x)
+    })
+    res <- g(x)
+    expect_equal(res$value, list(sq = x * x, total = nv_scalar(6, "f64")))
+    expect_equal(as.numeric(res$x), c(2, 2, 2))
+  })
+})
+
+test_that("gradients are present even if they don't influence the output", {
+  g <- jit(gradient(function(x, y) x, wrt = "y"))
+  expect_equal(
+    g(nv_scalar(1), nv_scalar(1)),
+    list(y = nv_scalar(0))
+  )
+
+  g2 <- jit(gradient(function(x, y) {
+    z <- nv_mul(x, x)
+    return(y)
+  }))
+  expect_equal(
+    g2(nv_scalar(1), nv_scalar(1)),
+    list(x = nv_scalar(0.0), y = nv_scalar(1.0))
+  )
+})
+
+test_that("wrt non-existent argument", {
+  f <- function(x) {
+    nv_pow(x, nv_scalar(1))
+  }
+  expect_error(
+    jit(gradient(f, wrt = "y"))(nv_scalar(2)),
+    "must be a subset of the formal arguments"
+  )
+})
+
+test_that("gradient: simple example", {
+  f <- function(x, y) {
+    prim_mul(x, y)
+  }
+  g <- jit(gradient(f))
+  out <- g(nv_scalar(1.0), nv_scalar(2.0))
+  expect_equal(out[[1L]], nv_scalar(2.0))
+  expect_equal(out[[2L]], nv_scalar(1.0))
+})
+
+test_that("gradient: does not depend on input", {
+  f <- function(x, y) {
+    prim_add(x, y)
+  }
+  g <- jit(gradient(f))
+  out <- g(nv_scalar(1.0), nv_scalar(2.0))
+  expect_equal(out[[1L]], nv_scalar(1.0))
+  expect_equal(out[[2L]], nv_scalar(1.0))
+})
+
+test_that("wrt for non-array input: gradient", {
+  expect_snapshot(error = TRUE, {
+    g <- gradient(nv_round, wrt = "method")
+    g(nv_scalar(1), method = "nearest_even")
+  })
+})
+
+test_that("wrt for non-array input: value_and_gradient", {
+  expect_snapshot(error = TRUE, {
+    g <- value_and_gradient(nv_round, wrt = "method")
+    g(nv_scalar(1), method = "nearest_even")
+  })
+})
+
+test_that("wrt for nested non-array input: gradient", {
+  local_registered_default_dtypes()
+  f <- function(x) {
+    prim_mul(x[[1]], x[[2]])
+  }
+  expect_snapshot(error = TRUE, {
+    g <- gradient(f, wrt = "x")
+    g(x = list(nv_scalar(1), 2L))
+  })
+})
+
+test_that("wrt for nested non-array input: value_and_gradient", {
+  local_registered_default_dtypes()
+  f <- function(x) {
+    prim_mul(x[[1]], x[[2]])
+  }
+  expect_snapshot(error = TRUE, {
+    g <- value_and_gradient(f, wrt = "x")
+    g(x = list(nv_scalar(1), 2L))
+  })
+})
+
+test_that("can only compute gradient w.r.t. float arrays", {
+  local_registered_default_dtypes()
+  expect_snapshot(error = TRUE, {
+    gradient(nv_floor, wrt = "x")(nv_scalar(1L))
+  })
+})
+
+test_that("wrt arg passed as plain R literal errors clearly", {
+  expect_snapshot(error = TRUE, {
+    jit(function() gradient(nv_log, wrt = "x")(1))()
+  })
+  expect_snapshot(error = TRUE, {
+    jit(function() gradient(function(x, y) prim_add(x, y))(1, 2))()
+  })
+})
+
+test_that("can differentiate through integer/bool functions", {
+  f <- function(x) {
+    x1 <- nv_convert(x, "i32")
+    x2 <- prim_popcnt(x1)
+    x3 <- nv_convert(x2, "f32")
+    mean(x3)
+  }
+  g <- jit(gradient(f))
+  expect_equal(
+    g(nv_array(c(1, 2))),
+    list(x = nv_array(c(0, 0)))
+  )
+})
+
+test_that("gradient with static (non-array) argument", {
+  f <- function(x, y) {
+    if (x) y * y else y * 7
+  }
+  g <- jit(gradient(f, wrt = "y"), static = "x")
+
+  # x=TRUE -> y*y -> dy/dy = 2*y = 6
+  out_true <- g(TRUE, nv_scalar(3.0))
+  expect_equal(out_true[[1L]], nv_scalar(6.0))
+
+  # x=FALSE -> y*7 -> dy/dy = 7
+  out_false <- g(FALSE, nv_scalar(3.0))
+  expect_equal(out_false[[1L]], nv_scalar(7.0))
+})
+
+test_that("value_and_gradient with static (non-array) argument", {
+  f <- function(x, y) {
+    if (x) y * y else y * 7
+  }
+  vg <- jit(value_and_gradient(f, wrt = "y"), static = "x")
+
+  # x=TRUE -> y*y = 9, dy/dy = 6
+  result_true <- vg(TRUE, nv_scalar(3.0))
+  expect_equal(result_true$value, nv_scalar(9.0))
+  expect_equal(result_true$grad[[1L]], nv_scalar(6.0))
+
+  # x=FALSE -> y*7 = 21, dy/dy = 7
+  result_false <- vg(FALSE, nv_scalar(3.0))
+  expect_equal(result_false$value, nv_scalar(21.0))
+  expect_equal(result_false$grad[[1L]], nv_scalar(7.0))
+})
+
+test_that("Can propagate float32 through integer/bool functions", {
+  f <- function(x) {
+    x1 <- nv_convert(x, "i32")
+    x2 <- nv_convert(x1, "bool")
+    x3 <- prim_not(x1)
+    x4 <- nv_convert(x3, "f32")
+    mean(x4)
+  }
+  grad <- jit(gradient(f))
+  out <- grad(nv_scalar(1))
+  # the path runs entirely through integer/bool conversions, so no gradient
+  # flows back to the float input.
+  expect_equal(out$x, nv_scalar(0))
+})
+
+test_that("trace_fn matches args with formals", {
+  graph1 <- trace_fn(prim_add, list(nv_aval("f32", shp()), nv_aval("f32", shp())))
+  graph2 <- trace_fn(prim_add, list(lhs = nv_aval("f32", shp()), rhs = nv_aval("f32", shp())))
+  expect_true(pjrt::tree_equal(graph1$in_tree, graph2$in_tree))
+  expect_equal(pjrt::tree_child_names(graph1$in_tree), c("lhs", "rhs"))
+})
+
+test_that("gradient works through graph with primitives that have no pullback rule", {
+  # `prim_fill` has no pullback rule; the call should be skipped during the
+  # backward pass because its inputs (all static params) don't require grad.
+  f <- function(x) {
+    y <- prim_fill(2, dtype = "f64", shape = c(3L))
+    sum(prim_mul(x, y))
+  }
+  g <- jit(gradient(f))
+  out <- g(nv_array(c(1, 2, 3), dtype = "f64"))
+  expect_equal(out[[1L]], nv_array(c(2, 2, 2), dtype = "f64"))
+})
+
+test_that("rule_pullback(forward = ...) emits multiple primitives and captures an intermediate", {
+  infer <- function(x) list(x)
+  my_exp <- new_primitive(
+    "my_exp_test",
+    function(x) graph_desc_add(self, list(x = x), infer_fn = infer)[[1L]],
+    register = FALSE
+  )
+
+  my_exp[["pullback"]] <- rule_pullback(forward = function(inputs, params, required) {
+    x <- inputs[[1L]]
+    y <- prim_exp(x)
+    neg_y <- prim_negate(y)
+    list(
+      outputs = list(y),
+      backward = function(inputs, outputs, grads, params, required) {
+        list(if (required[[1L]]) prim_negate(prim_mul(grads[[1L]], neg_y)))
+      }
+    )
+  })
+
+  f <- function(x) sum(my_exp(x))
+  g <- jit(gradient(f))
+  out <- g(nv_array(c(0, 1), dtype = "f64"))
+  expect_equal(out[[1L]], nv_array(c(exp(0), exp(1)), dtype = "f64"))
+})
+
+test_that("a pullback rule that returns a gradient of the wrong shape is refused", {
+  infer <- function(x) list(AbstractArray(dtype = dtype(x), shape = integer()))
+  my_sum <- new_primitive(
+    "my_sum_test",
+    function(x) graph_desc_add(self, list(x = x), infer_fn = infer)[[1L]],
+    register = FALSE
+  )
+  # The cotangent of the scalar sum is handed back without broadcasting it to
+  # the shape of `x`.
+  my_sum[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+    list(if (required[[1L]]) grads[[1L]])
+  })
+  expect_error(
+    jit(gradient(\(x) my_sum(x)))(nv_array(c(1, 2, 3), dtype = "f32")),
+    "pullback rule of primitive .*my_sum_test.* returned a gradient of the wrong shape for input 1"
+  )
+})
+
+describe("rdata", {
+  # A value with no data type of its own cannot be differentiated with respect
+  # to: the gradient would come back at whatever data type the forward pass
+  # settled the value at, so the answer would depend on how the body used it
+  # rather than on what the caller passed. Everywhere *else* in a gradient an R
+  # value stays open exactly as it does under plain jit() -- as an argument
+  # outside `wrt`, and as a literal in the differentiated body.
+
+  it("refuses a value with no data type as the differentiated argument", {
+    expect_error(
+      jit(gradient(function(v) nv_mean(v * 2)))(array(c(1, 2, 3))),
+      "no data type"
+    )
+    # ... however it reaches the gradient: as the jitted call's own argument,
+    expect_error(jit(function(x) gradient(identity)(x))(1), "no data type")
+    # or as a literal written where the gradient is taken.
+    expect_error(jit(function() gradient(identity)(1))(), "no data type")
+  })
+
+  it("takes an argument that has one, at either width", {
+    expect_equal(as_array(jit(gradient(function(v) v * v))(nv_scalar(2))[[1L]]), 4)
+    expect_equal(
+      as_array(jit(gradient(function(v) v * v))(nv_scalar(2, dtype = "f64"))[[1L]]),
+      4
+    )
+    expect_equal(
+      jit(gradient(function(x) x * 2, wrt = "x"))(nv_scalar(1)),
+      list(x = nv_scalar(2))
+    )
+  })
+
+  it("keeps a bare R value outside wrt open", {
+    # n is an R integer used out of its category: it is supplied at i32 and the
+    # program converts, like everywhere else.
+    f <- jit(gradient(function(x, n) x * nv_convert(n, dtype = "f64"), wrt = "x"))
+    expect_identical(as_array(f(nv_scalar(2, dtype = "f64"), 3L)$x), 3)
+  })
+
+  it("keeps a bare R value outside wrt exact through the traced function", {
+    # `k` is an R double used at f64. sqrt(2) is not representable at f32, so a
+    # materialize at the default would show up in the gradient.
+    f <- jit(gradient(function(v, k) v * k, wrt = "v"))
+    r <- f(nv_scalar(1, dtype = "f64"), sqrt(2))
+    expect_dtype(r$v, "f64")
+    expect_identical(as_array(r$v), sqrt(2))
+  })
+
+  it("gives an unused bare R argument an input slot at its default", {
+    f <- jit(gradient(function(a, b) nv_scalar(1, dtype = "f64") * a * a, wrt = "a"))
+    r <- f(nv_scalar(sqrt(2), dtype = "f64"), pi)
+    expect_identical(as_array(r$a), 2 * sqrt(2))
+  })
+
+  it("does not bake a bare R argument into the compiled gradient", {
+    f <- jit(gradient(function(a, b) nv_scalar(1, dtype = "f64") * a * a, wrt = "a"))
+    expect_identical(as_array(f(nv_scalar(sqrt(2), dtype = "f64"), pi)$a), 2 * sqrt(2))
+    # same key, so this is a cache hit -- and it must return its own gradient
+    expect_identical(as_array(f(nv_scalar(pi, dtype = "f64"), 7)$a), 2 * pi)
+  })
+
+  it("takes an R value written in the enclosing body exactly", {
+    # The literal is not an input of any graph: it crosses the gradient boundary
+    # and the differentiated body builds it at the data type it meets there.
+    f <- jit(function(x) gradient(function(a, b) a * b, wrt = "a")(x, sqrt(2))$a)
+    r <- f(nv_scalar(1, dtype = "f64"))
+    expect_dtype(r, "f64")
+    expect_identical(as_array(r), sqrt(2))
+  })
+
+  it("keeps an f64 argument exact through a nested gradient", {
+    # d/da (2a * a) = 4a, with the inner 2a itself a gradient
+    f <- jit(function(v) {
+      gradient(function(a) {
+        gradient(function(b) nv_scalar(1, dtype = "f64") * b * b)(a)[[1L]] * a
+      })(v)[[1L]]
+    })
+    r <- f(nv_scalar(sqrt(2), dtype = "f64"))
+    expect_dtype(r, "f64")
+    expect_identical(as_array(r), 4 * sqrt(2))
+  })
+
+  it("shares an argument's value with the enclosing body", {
+    q <- function(u) nv_scalar(1, dtype = "f64") * u * u
+    # the enclosing trace uses v before the gradient call ...
+    f <- jit(function(v) {
+      w <- v * nv_scalar(1, dtype = "f64")
+      w + gradient(q)(v)[[1L]]
+    })
+    v <- nv_scalar(sqrt(2), dtype = "f64")
+    expect_identical(as_array(f(v)), sqrt(2) + 2 * sqrt(2))
+    # ... and after it
+    g <- jit(function(v) gradient(q)(v)[[1L]] + v * nv_scalar(1, dtype = "f64"))
+    expect_identical(as_array(g(v)), 2 * sqrt(2) + sqrt(2))
+  })
+
+  it("agrees between two gradient calls on the same argument", {
+    q <- function(u) nv_scalar(1, dtype = "f64") * u * u
+    f <- jit(function(v) gradient(q)(v)[[1L]] + gradient(q)(v)[[1L]])
+    expect_identical(as_array(f(nv_scalar(sqrt(2), dtype = "f64"))), 4 * sqrt(2))
+  })
+})
+
+describe("a scoped override inside a differentiated body", {
+  # `gradient()` traces the reverse pass into its own descriptor, which inherits
+  # the active defaults where it is opened. A cotangent belongs to the primal
+  # it is with respect to, so it takes *that* array's data type whatever the
+  # literals inside the body materialized at. Upstream JAX does not support a
+  # scoped dtype override inside a traced body at all (jax-ml/jax#5982), so
+  # this is worth pinning rather than assuming.
+  x32 <- nv_array(c(1, 2, 3), dtype = "f32")
+
+  it("leaves the cotangent at the data type of the primal", {
+    f <- function(x) with_default_dtypes(c(float = "f64"), nv_sum(x * 2 + 0.5))
+    out <- jit(gradient(f))(x32)
+    expect_dtype(out[[1L]], "f32")
+    expect_equal(as.numeric(as_array(out[[1L]])), c(2, 2, 2))
+  })
+
+  it("holds when the override covers only part of the body", {
+    g <- function(x) {
+      a <- x * 2
+      nv_sum(with_default_dtypes(c(float = "f64"), a + 0.5))
+    }
+    out <- jit(gradient(g))(x32)
+    expect_dtype(out[[1L]], "f32")
+    expect_equal(as.numeric(as_array(out[[1L]])), c(2, 2, 2))
+  })
+
+  it("does not narrow a wider primal", {
+    # The scope makes the body's literals `f32`; the primal is `f64` and the
+    # cotangent stays there rather than following the scope down.
+    x64 <- nv_array(c(1, 2, 3), dtype = "f64")
+    h <- function(x) with_default_dtypes(c(float = "f32"), nv_sum(x * 2 + 0.5))
+    out <- jit(gradient(h))(x64)
+    expect_dtype(out[[1L]], "f64")
+    expect_equal(as.numeric(as_array(out[[1L]])), c(2, 2, 2))
+  })
+
+  it("agrees with the same override set outside the body", {
+    k <- function(x) nv_sum(x * 2 + 0.5)
+    scoped <- jit(gradient(function(x) with_default_dtypes(c(float = "f64"), k(x))))(x32)
+    outside <- with_default_dtypes(c(float = "f64"), jit(gradient(k))(x32))
+    expect_dtype(scoped[[1L]], dtype(outside[[1L]]))
+    expect_equal(as_array(scoped[[1L]]), as_array(outside[[1L]]))
+  })
+})
+
+describe("the float category", {
+  it("differentiates a function returning a narrower float", {
+    g <- jit(gradient(function(x) nv_convert(nv_sum(x), "f32")))
+    out <- g(nv_array(c(1, 2), dtype = "f64"))
+    expect_dtype(out[[1L]], "f64")
+    expect_equal(as.double(out[[1L]]), c(1, 1))
+  })
+
+  it("refuses a function returning a 16-bit float", {
+    g <- jit(gradient(function(x) nv_convert(nv_sum(x), "bf16")))
+    expect_error(g(nv_array(c(1, 2), dtype = "f32")), "returns a \"bf16\" array")
+  })
+
+  it("still refuses a non-float return", {
+    g <- jit(gradient(function(x) nv_convert(nv_sum(x), "i32")))
+    expect_error(g(nv_array(c(1, 2), dtype = "f32")), "return float scalar")
+  })
+})
+
+describe("gradients through prim_while", {
+  # A while loop's trip count is only known at run time, so there is no static
+  # size for the tape a backward pass would need.
+  x <- nv_array(c(1, 2, 3), dtype = "f64")
+  accumulate <- function(x) {
+    prim_while(
+      init = list(i = nv_scalar(0L), acc = nv_scalar(0, "f64")),
+      cond = function(i, acc) i < nv_scalar(2L),
+      body = function(i, acc) list(i = i + 1L, acc = acc + prim_sum(x, axes = 1L))
+    )$acc
+  }
+
+  it("refuses one that closes over a value wrt depends on, rather than returning zero", {
+    # What the body closes over is an operand of the call, so the backward
+    # pass sees that the loop reads `x`.
+    expect_error(jit(gradient(accumulate))(x), "No pullback rule for primitive .*while")
+  })
+
+  it("refuses such a loop inside a branch of prim_if() too", {
+    f <- function(p, x) nv_if(p, function() accumulate(x), function() nv_scalar(0, "f64"))
+    expect_error(jit(gradient(f, wrt = "x"))(nv_scalar(TRUE), x), "No pullback rule for primitive .*while")
+  })
+
+  it("leaves one alone whose outputs are integers", {
+    # The loop only counts, so it contributes no gradient even though its
+    # condition reads `x`: 0.25 + 2.25 + 4 = 6.5, so it runs 7 times.
+    x <- nv_array(c(0.5, 1.5, -2), dtype = "f64")
+    f <- function(x) {
+      n <- nv_while(list(i = 0L), \(i) nv_convert(i, "f64") < nv_sum(x * x), \(i) list(i = i + 1L))$i
+      nv_sum(x) * nv_convert(n, "f64")
+    }
+    expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(7, 7, 7))
+  })
+
+  it("leaves one that does not depend on wrt alone", {
+    f <- function(x, y) accumulate(x) * y
+    expect_equal(as.numeric(jit(gradient(f, wrt = "y"))(x, nv_scalar(1, "f64"))$y), 12)
+  })
+})
+
+test_that("gradient() inside a sub-graph takes an R argument at the data type its body uses", {
+  # `b` belongs to the outermost trace, two levels up; the product settles it
+  # at f64, so it is uploaded at f64 rather than at its default and converted.
+  f <- jit(function(a, b) {
+    nv_if(TRUE, function() gradient(function(p, q) p * q, wrt = "p")(a, b)$p, function() a)
+  })
+  expect_identical(as.numeric(f(nv_scalar(1, "f64"), 0.1)), 0.1)
+})
+
+describe("graph_apply", {
+  graph <- trace_fn(function(x) nv_exp(x) * x, list(x = nv_aval("f64", integer())))
+
+  it("can apply the same graph twice in one trace", {
+    # Applied to its own result: were the second application's gvals those of
+    # the first, its input would be its own output.
+    f <- function(x) {
+      once <- graph_apply(graph, list(x))
+      graph_apply(graph, once)[[1L]]
+    }
+    traced <- trace_fn(f, list(x = nv_aval("f64", integer())))
+    defined <- unlist(lapply(traced$statements, \(call) call$outputs))
+    expect_false(anyDuplicated(vapply(defined, rlang::obj_address, character(1L))) > 0L)
+    once <- exp(2) * 2
+    expect_equal(as.numeric(jit(f)(nv_scalar(2, "f64"))), exp(once) * once)
+  })
+
+  it("refuses to read an input passed as NULL", {
+    f <- function(x) graph_apply(graph, list(NULL))[[1L]]
+    expect_error(trace_fn(f, list(x = nv_aval("f64", integer()))), "passed as `NULL`")
+  })
+})
+
+describe("graph_gradient", {
+  it("differentiates with respect to no input for an empty wrt", {
+    graph <- trace_fn(prim_mul, list(nv_aval("f32", integer()), nv_aval("f32", integer())))
+    expect_length(graph_gradient(graph, character(0))$outputs, 0L)
+  })
+
+  it("keeps the side effects of the graph it differentiates", {
+    graph <- trace_fn(function(x) x * nv_runif(integer()), list(x = nv_aval("f32", integer())))
+    grad <- graph_gradient(graph, "x")
+    expect_true(identical(grad$side_effects[[1L]]$effect, graph$side_effects[[1L]]$effect))
+    expect_length(grad$side_effects, 1L)
+    expect_identical(grad$side_effects[[1L]]$n, 1)
+  })
+})

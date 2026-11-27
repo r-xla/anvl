@@ -11,9 +11,9 @@
 #' to decide what they meet at.
 #'
 #' See `r roxy_article("type-promotion")` for more information.
-#' @param lhs_dtype,rhs_dtype ([`tengen::DataType`])\cr
+#' @param lhs_dtype,rhs_dtype ([`xlamisc::DataType`])\cr
 #'   The two data types.
-#' @return ([`tengen::DataType`])\cr
+#' @return ([`xlamisc::DataType`])\cr
 #'   The narrowest common data type.
 #' @examples
 #' common_dtype("i32", "f32")
@@ -50,7 +50,7 @@ NULL
 #' ([`common_dtype()`]).
 #' An R value takes the data type the arrays meet at when that is in its own or
 #' a higher category, and otherwise contributes its default data type.
-#' @param fallback (`NULL` | [`tengen::DataType`] | `character(1)`)\cr
+#' @param fallback (`NULL` | [`xlamisc::DataType`] | `character(1)`)\cr
 #'   The data type to settle on when *every* input is a bare R value, in place
 #'   of the default those would materialize at on their own. `NULL` (default)
 #'   leaves them their default.
@@ -109,7 +109,7 @@ promotion_like <- function(arg, on = NULL, coerce = FALSE) {
 
 #' @description
 #' `promotion_dtype()` brings the inputs to the specified data type.
-#' @param dtype ([`tengen::DataType`] | `character(1)`)\cr
+#' @param dtype ([`xlamisc::DataType`] | `character(1)`)\cr
 #'   The data type to bring the inputs to.
 #' @rdname promotion_rule
 #' @export
@@ -153,7 +153,8 @@ promotion_rdata_common <- function(on = NULL) {
 }
 
 #' @description
-#' `promotion_grouped()` applies several rules to disjoint subsets.
+#' `promotion_grouped()` applies several rules to disjoint subsets. The rules
+#' must all refer to arguments by name, or all by position.
 #' @param ... For `promotion_grouped()`: ([`PromotionRule`][promotion_rule])\cr
 #'   The rules to apply to disjoint argument subsets.
 #'
@@ -198,9 +199,6 @@ rules_coverage <- function(rules) {
   if (any(vapply(covered, is.null, logical(1L)))) {
     return(NULL)
   }
-  if (length(unique(vapply(covered, function(x) is.character(x), logical(1L)))) > 1L) {
-    return(NULL)
-  }
   unlist(covered)
 }
 
@@ -217,16 +215,23 @@ assert_disjoint_rules <- function(rules) {
   if (any(undeclared)) {
     return(invisible(NULL))
   }
-  for (kind in c("character", "numeric")) {
-    refs <- unlist(Filter(function(x) is(x, kind), covered))
-    clashing <- unique(refs[duplicated(refs)])
-    if (length(clashing)) {
-      cli_abort(c(
-        "More than one rule in this {.fn promotion_grouped} covers the same argument.",
-        x = "{cli::qty(length(clashing))}Argument{?s} {.val {clashing}} {?is/are} named by more than one rule.",
-        i = "An argument can only be brought to one data type, so the groups must be disjoint."
-      ))
-    }
+  by_name <- vapply(covered, is.character, logical(1L))
+  if (any(by_name) && !all(by_name)) {
+    cli_abort(c(
+      "The rules in a {.fn promotion_grouped} must all refer to arguments by name, or all by position.",
+      x = "By name: {cli::qty(sum(by_name))}rule{?s} {.val {which(by_name)}}.",
+      x = "By position: {cli::qty(sum(!by_name))}rule{?s} {.val {which(!by_name)}}.",
+      i = "Whether a name and a position mean the same argument depends on the call, so the rules could not be checked to be disjoint." # nolint
+    ))
+  }
+  refs <- unlist(covered)
+  clashing <- unique(refs[duplicated(refs)])
+  if (length(clashing)) {
+    cli_abort(c(
+      "More than one rule in this {.fn promotion_grouped} covers the same argument.",
+      x = "{cli::qty(length(clashing))}Argument{?s} {.val {clashing}} {?is/are} named by more than one rule.",
+      i = "An argument can only be brought to one data type, so the groups must be disjoint."
+    ))
   }
   invisible(NULL)
 }
@@ -246,7 +251,7 @@ assert_disjoint_rules <- function(rules) {
 #'   function(args) {
 #'     widths <- vapply(args, function(a) {
 #'       dt <- peek_dtype(to_abstract(a))
-#'       if (tengen::is_dtype_float(dt)) tengen::dtype_width(dt) else 0L
+#'       if (xlamisc::is_dtype_float(dt)) xlamisc::dtype_width(dt) else 0L
 #'     }, integer(1))
 #'     rep(list(as_dtype(paste0("f", max(c(32L, widths))))), length(args))
 #'   },
@@ -311,7 +316,7 @@ format.PromotionRule <- function(x, ...) {
 }
 
 format_rule <- function(x) {
-  if (inherits(x, "PromotionRule")) format(x) else "<promotion rule>"
+  if (is_promotion_rule(x)) format(x) else "<promotion rule>"
 }
 
 format_arg_ref <- function(x) {
@@ -608,28 +613,18 @@ common_dtype_of <- function(..., .fallback = NULL) {
   if (length(args) == 0L) {
     cli_abort("No arguments provided")
   }
-  cdt <- NULL
-  cdt_is_rdata <- TRUE
-  for (arg in args) {
-    aval <- to_abstract(arg)
-    arg_is_rdata <- is_rdata(aval)
-    dt <- peek_dtype(aval)
-    if (is.null(cdt)) {
-      cdt <- dt
-      cdt_is_rdata <- arg_is_rdata
-      next
-    }
-    if (cdt_is_rdata && arg_is_rdata) {
-      cdt <- promote_dt_known(cdt, dt)
-    } else if (cdt_is_rdata) {
-      cdt <- promote_dt_rdata(cdt, dt)
-      cdt_is_rdata <- FALSE
-    } else if (arg_is_rdata) {
-      cdt <- promote_dt_rdata(dt, cdt)
-    } else {
-      cdt <- promote_dt_known(cdt, dt)
-    }
+  avals <- lapply(args, to_abstract)
+  is_r <- vapply(avals, is_rdata, logical(1L))
+  dts <- lapply(avals, peek_dtype)
+  # The arrays agree among themselves first, so that the R values meet the
+  # data type of all of them rather than of whichever came before.
+  if (all(is_r)) {
+    cdt <- Reduce(promote_dt_known, dts)
+  } else {
+    cdt <- Reduce(promote_dt_known, dts[!is_r])
+    cdt <- Reduce(function(acc, dt) promote_dt_rdata(dt, acc), dts[is_r], cdt)
   }
+  cdt_is_rdata <- all(is_r)
   # `.fallback` is the data type the R values materialize at when nothing in the
   # call has one of its own to give them -- it replaces the default they would
   # otherwise take, and is ignored the moment any argument brings a real data
@@ -643,7 +638,7 @@ common_dtype_of <- function(..., .fallback = NULL) {
 
 
 #' @title Data Type Categories
-#' @name dtypes
+#' @name dtype_categories
 #' @description
 #' For promotion, every data type belongs to one of three categories, ordered
 #' boolean < integer < float:
@@ -654,30 +649,38 @@ common_dtype_of <- function(..., .fallback = NULL) {
 #' * **float** -- `f32` and `f64`.
 #'
 #' These are the categories promotion works in, where signed and unsigned
-#' integers count as one. [`tengen::dtype_category()`] reports a finer split
+#' integers count as one. [`xlamisc::dtype_category()`] reports a finer split
 #' that names `int` and `uint` separately.
 #'
 #' @template section_dtype_words
-#' @section Where a Data Type Comes From:
-#' An R value has no data type of its own. Where nothing in the program says
-#' which one it should take, it materializes at the default of its category, which
+#' @section Data Types for R Values:
+#' An R value has no data type of its own. Within its own category, it takes the
+#' data type of the array it meets, and is built at it directly rather than
+#' converted to it, which is what keeps `nv_scalar(1, "f64") / sqrt(2)` exact.
+#' Where it meets nothing, it settles on the default of its category, which
 #' [`default_dtypes()`] reports and the `anvl.default_dtypes` option
-#' configures. [`peek_dtype()`] reports the default a given R value would
-#' materialize at.
+#' configures. [`peek_dtype()`] reports the data type a given R value would
+#' take.
 #'
-#' The same defaults settle the data type of a result anvl chooses on its own,
-#' where no R value is involved at all: an index (`nv_which_max()`,
-#' `nv_order()`, `nv_top_k()`, the cumulative extrema, `nv_lu()`'s pivots),
-#' the accumulator a boolean input is counted at (`nv_sum()`,
-#' `nv_prod()`, `nv_cumsum()`, `nv_cumprod()`, `nv_trace()`), and the
-#' float a non-float input is averaged or interpolated at (`nv_mean()`,
-#' `nv_var()`, `nv_sd()`, `nv_median()`, `nv_quantile()`).
+#' The same defaults are used wherever a function needs a data type that its
+#' inputs do not give it. `nv_exp()` computes an integer input at the default
+#' float, and `nv_add()` of an integer array and a double R value promotes to
+#' the default float.
 #'
-#' Within its own category an R value assumes the data type it meets instead,
-#' and is built at it directly rather than converted to it, which is what keeps
-#' `nv_scalar(1, "f64") / sqrt(2)` exact. The primitives require operands that
-#' have a data type to agree on it; the `nv_*` functions promote them to a
-#' common one.
+#' The primitives require operands that have a data type to agree on it; the
+#' `nv_*` functions promote them to a common one.
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(1:3, dtype = "i16")
+#' # an R value takes the data type of the array it meets
+#' dtype(x + 1L)
+#' # and settles on the default of its category when it meets nothing
+#' dtype(nv_add(1L, 2L))
+#' peek_dtype(1)
+#' # a double meeting an integer array promotes to the default float
+#' dtype(x + 0.5)
+#' # an integer input to a float function computes at the default float
+#' dtype(nv_exp(x))
+#' with_default_dtypes(c(float = "f64"), dtype(nv_exp(x)))
 #' @seealso [`default_dtypes()`], [`common_dtype()`],
 #'   [`nv_promote_to_common()`], [`nv_convert()`],
 #'   `r roxy_article("type-promotion")`
@@ -731,11 +734,9 @@ promote_dt_known_or_null <- function(dt1, dt2) {
     }
     return(promote_dt_int_uint(dt1, dt2))
   }
+  # `dt1` is unsigned from here on.
   if (is_dtype_int(dt2)) {
-    if (is_dtype_uint(dt1)) {
-      return(promote_dt_int_uint(dt2, dt1))
-    }
-    cli_abort("internal error")
+    return(promote_dt_int_uint(dt2, dt1))
   }
   # both are unsigned
   as_dtype(paste0("ui", max(dtype_width(dt1), dtype_width(dt2))))

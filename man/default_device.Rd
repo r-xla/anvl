@@ -2,7 +2,7 @@
 % Please edit documentation in R/device.R
 \name{default_device}
 \alias{default_device}
-\title{Get the default device}
+\title{Get the Default Device}
 \usage{
 default_device(backend = NULL)
 }

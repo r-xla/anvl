@@ -20,9 +20,6 @@ jobs:
     # A `labeled` event only matters when it is `full-test` going on.
     if: ${{ github.event.action != 'labeled' || contains(github.event.pull_request.labels.*.name, 'full-test') }}
 
-<<<<<<< HEAD
-    name: ${{ matrix.config.os }} - ${{ matrix.config.platform }} (${{ matrix.config.r }})${{ matrix.config.torch && ' – with torch' || '' }}${{ matrix.config.ffi && ' + ffi' || '' }}
-=======
     runs-on: ubuntu-latest
     name: setup
     outputs:
@@ -60,42 +57,17 @@ jobs:
     runs-on: ${{ matrix.config.runner }}
 
     name: ${{ matrix.config.os }} - ${{ matrix.config.device }} (${{ matrix.config.r }})${{ matrix.config.torch && ' – with torch' || '' }}
->>>>>>> main
 
     strategy:
       fail-fast: false
       matrix:
-<<<<<<< HEAD
-        config:
-          - { os: "macos", r: "release", platform: "cpu" }
-          - { os: "ubuntu", r: "release", platform: "cpu" }
-          - { os: "ubuntu", r: "release", platform: "cpu", torch: true, ffi: true }
-          - { os: "windows", r: "release", platform: "cpu"}
-          - { os: "ubuntu", r: "oldrel-1", platform: "cpu" }
-          - { os: "ubuntu", r: "oldrel-2", platform: "cpu" }
-
-        include:
-          - config: {os: "ubuntu", platform: "cpu"}
-            runner: 'ubuntu-latest'
-          - config: {os: "macos", platform: "cpu"}
-            runner: 'macos-latest'
-            setup: |
-              brew install protobuf@21
-              brew link protobuf@21 --force --overwrite
-          - config: {os: "windows", platform: "cpu"}
-            runner: 'windows-latest'
-=======
         config: ${{ fromJSON(needs.setup.outputs.config) }}
->>>>>>> main
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
       ANVL_DEFAULT_DEVICE: ${{ matrix.config.device }}
       ANVL_TEST: "1"
-      # The custom-call tests compile an FFI handler against {pjrt}'s headers,
-      # which we want covered once rather than on every platform.
-      ANVL_TEST_FFI: ${{ matrix.config.ffi && '1' || '' }}
       PJRT_INSTALL: "1"
 
     steps:
@@ -118,9 +90,6 @@ jobs:
         with:
           install-torch: ${{ matrix.config.torch == true }}
           as-cran: ${{ matrix.config.torch == true && 'false' || 'true' }}
-          # Rcpp is not a package dependency; the ffi job needs it only to
-          # compile the custom-call handler with Rcpp::sourceCpp().
-          needs: ${{ matrix.config.ffi && 'check, ffi' || 'check' }}
 
   # Disabled: the self-hosted GPU runner is currently unavailable.
   # R-CMD-check-cuda:

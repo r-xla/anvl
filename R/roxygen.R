@@ -32,6 +32,9 @@ roxy_wrap <- function(x, width = 74L) {
 article_titles <- c(
   anvl = "Get Started",
   autodiff = "Automatic Differentiation",
+  custom_calls = "Custom Calls",
+  custom_calls_cuda = "Custom Calls on CUDA",
+  `depending-on-anvl` = "Depending on anvl",
   efficiency = "Efficiency",
   extending_api = "Extending the API",
   extending_primitive = "Adding a Primitive",
@@ -47,7 +50,8 @@ article_titles <- c(
   `random-numbers` = "Random Number Generation",
   static_shapes = "Static Shape Restriction",
   subsetting = "Subsetting",
-  `type-promotion` = "Data Types and Promotion Rules"
+  `type-promotion` = "Data Types and Promotion Rules",
+  vectorize = "Vectorization"
 )
 
 # URL of a pkgdown article, e.g. `article_url("subsetting")`. The articles are
@@ -83,7 +87,7 @@ roxy_agree <- function(...) {
   roxy_wrap(paste0(
     listed,
     " must have the same data type. An R value among them assumes the data type",
-    " of the others when it is in its [data type category][dtypes], and its",
+    " of the others when it is in its [data type category][dtype_categories], and its",
     " [default data type][default_dtypes] when none of them has one."
   ))
 }

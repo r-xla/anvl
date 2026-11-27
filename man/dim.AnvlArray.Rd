@@ -15,7 +15,7 @@ Input array.}
 }
 \description{
 The shape of an array, i.e. its axis sizes -- the generic \code{\link[base:dim]{base::dim()}} on an
-anvl array, and the same thing as \link[tengen:shape]{shape()}.
+anvl array, and the same thing as \link[xlamisc:shape]{shape()}.
 
 Unlike base R, it also has a value for an array with a single axis, where
 \code{dim()} on an R vector is \code{NULL}.
@@ -27,5 +27,5 @@ dim(nv_array(1:3))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\link[=length.AnvlArray]{length()}, \link[tengen:shape]{shape()}
+\link[=length.AnvlArray]{length()}, \link[xlamisc:shape]{shape()}
 }

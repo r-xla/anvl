@@ -135,7 +135,7 @@ test_that("evaluates each argument exactly once, also under S3 dispatch", {
   double_it <- jit(function(x) prim_add(x, x))
   nv_double <- function(x) UseMethod("nv_double")
   nv_double.AnvlArray <- double_it
-  nv_double.AnvlBox <- double_it
+  nv_double.GraphBox <- double_it
 
   n <- 0L
   expect_equal(nv_double(count(nv_scalar(1))), nv_scalar(2))
@@ -151,6 +151,33 @@ test_that("evaluates each argument exactly once, also under S3 dispatch", {
   traced <- jit(function(x) nv_double(nv_double(count(x))))
   expect_equal(traced(nv_scalar(1)), nv_scalar(4))
   expect_equal(n, 1L)
+})
+
+describe("a jitted function called in a trace", {
+  # `note(name)` records `name` in `seen$names` when it is evaluated.
+  seen <- new.env()
+  note <- function(name) {
+    seen$names <- c(seen$names, name)
+    nv_scalar(1)
+  }
+
+  it("evaluates its arguments before its body, in the order an eager call does", {
+    # the body reads the arguments in reverse
+    g <- jit(function(a, b, ...) ..1 + b + a)
+    seen$names <- character()
+    g(note("a"), note("b"), note("dots"))
+    expect_identical(seen$names, c("a", "b", "dots"))
+    seen$names <- character()
+    jit(function() g(note("a"), note("b"), note("dots")))()
+    expect_identical(seen$names, c("a", "b", "dots"))
+  })
+
+  it("evaluates an argument it does not use, as an eager call does", {
+    g <- jit(function(x, unused) x)
+    seen$names <- character()
+    jit(function() g(nv_scalar(1), note("unused")))()
+    expect_identical(seen$names, "unused")
+  })
 })
 
 test_that("jitted function has class JitFunction", {

@@ -1,107 +1,179 @@
-#' @title AnvlPrimitive
+#' @title Primitive Definition
 #' @description
-#' Metadata object of a primitive: its name, sub-graph parameters and
-#' interpretation rules.
+#' The definition of a primitive: its name, sub-graph parameters and
+#' interpretation rules. It is not callable; the function a primitive is
+#' called through is an [`AnvlPrimitive`], which carries
+#' its `AnvlPrimitiveDef` as `attr(<fn>, "definition")`. The graph records the
+#' `AnvlPrimitiveDef` in each [`GraphStatement`].
 #' Note that `[[` and `[[<-` access the interpretation rules.
-#' To access other fields, use `$` and `$<-`.
+#' To access other fields, use `$` and `$<-`. [`new_primitive()`] stores the
+#' `AnvlPrimitive` in the field `fn`, so a rule can call the primitive it
+#' belongs to.
 #'
 #' A primitive is considered higher-order if it has subgraphs.
 #' @param name (`character(1)`)\cr
 #'   The name of the primitive, without the `prim_` prefix.
 #' @param subgraphs (`character()`)\cr
 #'   Names of parameters that are subgraphs.
-#' @return (`AnvlPrimitive`)
+#' @param tags (`character()`)\cr
+#'   Tags for internal use, see [`new_primitive()`].
+#' @return (`AnvlPrimitiveDef`)
 #' @export
-AnvlPrimitive <- function(name, subgraphs = character()) {
+AnvlPrimitiveDef <- function(name, subgraphs = character(), tags = character()) {
   checkmate::assert_string(name)
   checkmate::assert_character(subgraphs)
+  checkmate::assert_character(tags, any.missing = FALSE)
 
   env <- new.env(parent = emptyenv())
   env$name <- name
   env$rules <- list()
   env$subgraphs <- subgraphs
+  env$tags <- tags
 
-  structure(env, class = "AnvlPrimitive")
+  structure(env, class = "AnvlPrimitiveDef")
 }
 
 
 primitive_env <- new.env(parent = emptyenv())
 
+# A primitive's tags say what kind of operation it is, so that a rule shared by
+# every primitive of a kind, or derived from another of their rules, is
+# assigned from the tag, and a new primitive of that kind gets it without being
+# added to a list. The tags in use:
+# * "elementwise": each element of the output is computed from the elements at
+#   the same position of the operands alone, where a scalar operand is
+#   broadcast, e.g. `prim_add()`.
+# * "reduction": reduces its operand along the axes a parameter names, e.g.
+#   `prim_sum()`.
+# * "cumulative": scans its operand along the axis a parameter names, e.g.
+#   `prim_cumsum()`.
+
+# The registered primitives tagged with any of `tags`, by name.
+primitives_tagged <- function(tags) {
+  prims <- mget(sort(ls(primitive_env)), envir = primitive_env)
+  Filter(function(p) any(primitive_def(p)$tags %in% tags), prims)
+}
+
+# The `AnvlPrimitiveDef` of `x`, which is either that definition or the
+# `AnvlPrimitive` callable carrying it.
+primitive_def <- function(x) {
+  if (inherits(x, "AnvlPrimitive")) attr(x, "definition") else x
+}
+
 is_higher_order_primitive <- function(x) {
-  if (inherits(x, "JitPrimitive")) {
-    x <- attr(x, "primitive")
-  }
-  length(x$subgraphs) > 0L
+  length(primitive_def(x)$subgraphs) > 0L
 }
 
 
-#' @method [[<- AnvlPrimitive
+#' Register a Rule Type
+#'
+#' @description
+#' `r lifecycle::badge("experimental")`
+#'
+#' Makes `name` a type of rule that primitives can carry: afterwards,
+#' `prim_<id>[[name]] <- rule` attaches a rule of that type to a primitive and
+#' `prim_<id>[[name]]` returns it, or `NULL` for a primitive without one. A
+#' backend added with [`register_backend()`] registers the type of the rules
+#' it lowers or evaluates the primitives with, as the `"pjrt"` backend lowers
+#' them with their `"stablehlo"` rules and the `"quickr"` backend with their
+#' `"quickr"` rules. Registering a type again has no further effect.
+#'
+#' @param name (`character(1)`)\cr
+#'   The rule type.
+#' @return (`NULL`)\cr
+#'   Invisibly. Called for its side effect.
+#' @seealso [`AnvlPrimitiveDef`], [`register_backend()`]
 #' @export
-`[[<-.AnvlPrimitive` <- function(x, name, value) {
-  if (name %in% globals$interpretation_rules) {
-    x$rules[[name]] <- value
-  } else {
-    cli_abort("Invalid field name {.field {name}} for primitive {.field {x$name}}")
+register_rule_type <- function(name) {
+  assert_string(name, min.chars = 1L)
+  globals$interpretation_rules <- union(globals$interpretation_rules, name)
+  invisible(NULL)
+}
+
+#' @method [[<- AnvlPrimitiveDef
+#' @export
+`[[<-.AnvlPrimitiveDef` <- function(x, name, value) {
+  if (!(name %in% globals$interpretation_rules)) {
+    cli_abort(c(
+      "Invalid field name {.field {name}} for primitive {.field {x$name}}",
+      i = "A new type of rule must first be registered with {.fn register_rule_type}."
+    ))
   }
+  x$rules[[name]] <- value
   x
 }
 
-#' @method [[ AnvlPrimitive
+#' @method [[ AnvlPrimitiveDef
 #' @export
-`[[.AnvlPrimitive` <- function(x, name) {
+`[[.AnvlPrimitiveDef` <- function(x, name) {
   if (name %in% globals$interpretation_rules) {
     return(x$rules[[name]])
   }
   cli_abort("Invalid field name {.field {name}} for primitive {.field {x$name}}")
 }
 
-#' @method print AnvlPrimitive
+#' @method print AnvlPrimitiveDef
 #' @export
-print.AnvlPrimitive <- function(x, ...) {
-  cat(sprintf("<AnvlPrimitive:%s>\n", x$name))
+print.AnvlPrimitiveDef <- function(x, ...) {
+  cat(sprintf("<AnvlPrimitiveDef:%s>\n", x$name))
   invisible(x)
 }
 
-#' @method [[ JitPrimitive
+#' @method [[ AnvlPrimitive
 #' @export
-`[[.JitPrimitive` <- function(x, name) {
-  attr(x, "primitive")[[name]]
+`[[.AnvlPrimitive` <- function(x, name) {
+  attr(x, "definition")[[name]]
 }
 
-#' @method [[<- JitPrimitive
+#' @method [[<- AnvlPrimitive
 #' @export
-`[[<-.JitPrimitive` <- function(x, name, value) {
-  attr(x, "primitive")[[name]] <- value
+`[[<-.AnvlPrimitive` <- function(x, name, value) {
+  attr(x, "definition")[[name]] <- value
   x
 }
 
 #' @title Create a Primitive
 #' @description
-#' Create a new primitive.
-#' For details on how to do this, see the article on *Adding a Primitive*.
+#' `new_primitive()` creates a new primitive: an `AnvlPrimitive`, the function
+#' the primitive is called through (e.g. `prim_add()`).
+#' For details on how to do this, see `r roxy_article("extending_primitive")`.
 #' Like every jitted function it runs on the active backend when called.
 #' @param name (`character(1)`)\cr
 #'   Primitive name, without the `prim_` prefix (`"add"` for `prim_add()`).
 #' @param fn (`function`)\cr
 #'   Body of the primitive. Its formals become the formals of the returned
 #'   JIT-compiled callable. Inside `fn`, the primitive is accessible via
-#'   the lexically-bound symbol `self` (an [`AnvlPrimitive`]); pass it as
+#'   the lexically-bound symbol `self` (an [`AnvlPrimitiveDef`]); pass it as
 #'   the first argument to [`graph_desc_add()`].
 #' @param subgraphs (`character()`)\cr
 #'   Names of parameters that are subgraphs (for higher-order primitives).
 #' @param static (`character()` | `integer()`)\cr
 #'   Passed to [`jit()`].
+#' @param tags (`character()`)\cr
+#'   Tags for anvl's internal use, which say what kind of operation the
+#'   primitive is, e.g. `"elementwise"`, so that rules shared by the
+#'   primitives of one kind can be derived from them.
 #' @param register (`logical(1)`)\cr
-#'   If `TRUE` (default), register the result under `name` in the primitive
-#'   registry.
-#' @return (`JitPrimitive`)\cr
-#'   A callable of class `c("JitPrimitive", "JitFunction")`.
+#'   Whether to add the primitive to anvl's internal registry of primitives,
+#'   under `name`, replacing one registered under the same name. The quickr
+#'   backend reads that registry to know which primitives it can lower, so a
+#'   primitive created with `register = FALSE` is rejected on quickr even if
+#'   it has a `quickr` rule. The other backends only read the rules of the
+#'   primitive itself. This does not bind the result to a `prim_<name>`
+#'   variable; assign it yourself.
+#' @return (`AnvlPrimitive`)\cr
+#'   The function the primitive is called through, of class
+#'   `c("AnvlPrimitive", "JitFunction")`. Its [`AnvlPrimitiveDef`] is
+#'   `attr(<fn>, "definition")`, and `[[` / `[[<-` on it access the rules of
+#'   that definition.
+#' @aliases AnvlPrimitive
 #' @export
 new_primitive <- function(
   name,
   fn,
   subgraphs = character(),
   static = character(),
+  tags = character(),
   register = TRUE
 ) {
   checkmate::assert_string(name)
@@ -109,21 +181,22 @@ new_primitive <- function(
   checkmate::assert_character(subgraphs)
   checkmate::assert_flag(register)
 
-  primitive <- AnvlPrimitive(name, subgraphs = subgraphs)
+  definition <- AnvlPrimitiveDef(name, subgraphs = subgraphs, tags = tags)
 
-  # Bind `self` (the AnvlPrimitive) in a per-primitive env wrapped around fn's
+  # Bind `self` (the AnvlPrimitiveDef) in a per-primitive env wrapped around fn's
   # existing enclosing env, so the body can reference the primitive directly —
   # same idea as R6's `self`. A per-primitive env is needed because inline
   # `function(...)` literals in R/primitives.R all share the package namespace
   # env; binding `self` there would clobber across primitives.
   self_env <- new.env(parent = environment(fn))
-  self_env$self <- primitive
+  self_env$self <- definition
   environment(fn) <- self_env
   body(fn) <- mark_primitive_body(body(fn))
 
   jit_fn <- jit(fn, static = static)
-  attr(jit_fn, "primitive") <- primitive
-  class(jit_fn) <- c("JitPrimitive", class(jit_fn))
+  class(jit_fn) <- c("AnvlPrimitive", class(jit_fn))
+  attr(jit_fn, "definition") <- definition
+  definition$fn <- jit_fn
 
   if (register) {
     assign(name, jit_fn, envir = primitive_env)
@@ -134,19 +207,15 @@ new_primitive <- function(
 
 
 # Say which primitive is running, so that whatever it refuses reaches the caller
-# as coming from the `prim_*()` they wrote. `trace_fn()` already rewrites the
-# call of any error raised under a trace to the primitive this names; until now
-# `graph_desc_add()` set it, which is only reached once the wrapper's own checks
-# have passed -- so `resolve_axes()` and friends reported themselves
-# (`Error in resolve_axes()`), and a `cli_abort()` in a body reported the
-# anonymous function `jit()` wraps (`Error in (function (init, cond, body)`).
-#
-# This is one assignment into an environment, taken out of `graph_desc_add()`
-# rather than added to it, and no handler: an error is still caught in the one
-# place it always was.
+# as coming from the `prim_*()` they wrote. The marker is set first thing in the
+# body, before the wrapper's own checks run, so an error from a helper such as
+# `resolve_axes()` or from a `cli_abort()` in the body is reported as the
+# primitive (`Error in prim_sum()`) rather than as the helper or the anonymous
+# function `jit()` wraps. `trace_fn()` does the rewriting of the error's call,
+# and `graph_desc_add()` clears the marker once inference has passed.
 mark_primitive_body <- function(body) {
   rlang::expr({
-    base::assign("INFER_PRIMITIVE", self, envir = utils::getFromNamespace("globals", "anvl"))
+    base::assign("infer_primitive", self, envir = utils::getFromNamespace("globals", "anvl"))
     !!body
   })
 }
@@ -154,23 +223,27 @@ mark_primitive_body <- function(body) {
 
 #' @title Get Subgraphs from Higher-Order Primitive
 #' @description
-#' Extracts subgraphs from the parameters of a higher-order primitive call.
-#' @param call (`PrimitiveCall`)\cr
-#'   The primitive call.
-#' @return (`list(AnvlGraph)`)\cr
-#'   List of subgraphs found in the parameters.
+#' Extracts the subgraphs from the parameters of a statement that applies a
+#' higher-order primitive, such as the branches of [`prim_if()`] or the body
+#' of [`prim_while()`].
+#'
+#' This is not recursive: only the subgraphs held directly by `statement` are
+#' returned, not the ones nested in the statements of those subgraphs. Call
+#' `subgraphs()` on their statements to descend further.
+#' @param statement (`GraphStatement`)\cr
+#'   The statement.
+#' @return (named `list(AnvlGraph)`)\cr
+#'   The subgraphs, named after the parameters that hold them. Empty for a
+#'   primitive that is not higher-order.
 #' @export
-subgraphs <- function(call) {
-  p <- call$primitive
-  if (inherits(p, "JitPrimitive")) {
-    p <- attr(p, "primitive")
-  }
+subgraphs <- function(statement) {
+  p <- primitive_def(statement$primitive)
   if (!is_higher_order_primitive(p)) {
     return(list())
   }
 
   stats::setNames(
-    lapply(p$subgraphs, \(sg) call$params[[sg]]),
+    lapply(p$subgraphs, \(sg) statement$params[[sg]]),
     p$subgraphs
   )
 }

@@ -7,11 +7,12 @@
 \usage{
 nv_upper_tri(shape, diagonal = 1L, device = NULL)
 
-nv_upper_tri_like(like, shape = NULL, diagonal = 1L, device = NULL)
+nv_upper_tri_like(like, shape = "auto", diagonal = 1L, device = NULL)
 }
 \arguments{
-\item{shape}{(\code{integer()})\cr
-Shape of the result: exactly two axis sizes, since the result is a matrix.}
+\item{shape}{(\code{integer()} | \code{"auto"})\cr
+Shape of the result: exactly two axis sizes, since the result is a matrix.
+For \code{nv_upper_tri_like()}, \code{"auto"} (the default) uses \code{shape(like)}.}
 
 \item{diagonal}{(\code{integer(1)})\cr
 Diagonal offset, with the same meaning as in \code{\link[=nv_triu]{nv_triu()}}. The default

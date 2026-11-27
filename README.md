@@ -50,9 +50,10 @@ There are three core ideas:
   compilation step, resulting programs can be faster compared to
   implementing them in [{torch}](https://torch.mlverse.org).
 - **Function transformation.** Programmatically derive new functions
-  from existing ones. Currently the only available transformation is
-  reverse-mode automatic differentiation via `gradient()`, which returns
-  the derivative of a function as another R function.
+  from existing ones. Reverse-mode automatic differentiation via
+  `gradient()` returns the derivative of a function as another R
+  function, and `vectorize()` maps a function written for a single
+  instance over a whole batch.
 - **Hardware portability.** The same code runs on CPU or GPU.
 
 Moreover, the package is designed to be extensible. As the package is
@@ -120,13 +121,16 @@ with_default_dtypes(c(float = "f64"), {
 #> [ CPUf64{} ]
 ```
 
-To learn more, see the [Get
-Started](https://r-xla.github.io/anvl/articles/anvl.html) article.
+To learn more, see the [get
+started](https://r-xla.github.io/anvl/articles/anvl.html) article. If
+you want to use {anvl} in your package, see the [depending on
+anvl](https://r-xla.github.io/anvl/articles/depending-on-anvl.html)
+article.
 
 ## Platform Support
 
 | OS      | Architecture | CPU | CUDA |
-|---------|--------------|:---:|:----:|
+|:--------|:-------------|:---:|:----:|
 | Linux   | x86_64       |  ✓  |  ✓   |
 | Linux   | arm64        |  ✓  |  ✓   |
 | Windows | x86_64       |  ✓  | WSL2 |
@@ -134,7 +138,34 @@ Started](https://r-xla.github.io/anvl/articles/anvl.html) article.
 | macOS   | x86_64       |  ✓  |  ✗   |
 | macOS   | arm64        |  ✓  |  ✗   |
 
-✓ fully supported  ·  ✗ not supported
+✓ supported  ·  WSL2: via the Windows Subsystem for Linux  ·  ✗ not
+supported
+
+## anvl in the Wild
+
+Projects that build on {anvl}:
+
+<table>
+<tr>
+<td align="center" width="140">
+<a href="https://github.com/belian-earth/garry"><img src="man/figures/logo-garry.png" alt="garry logo" height="100" /></a>
+</td>
+<td>
+<a href="https://github.com/belian-earth/garry"><b>garry</b></a> is a
+lazy, spatial-aware raster engine that JIT-compiles its numeric kernels
+with {anvl}.
+</td>
+</tr>
+<tr>
+<td align="center" width="140">
+<a href="https://www.apollochoicemodelling.com"><img src="man/figures/logo-apollo.png" alt="Apollo logo" width="110" /></a>
+</td>
+<td>
+<a href="https://www.apollochoicemodelling.com"><b>Apollo</b></a> is a
+flexible package for the estimation and application of choice models.
+</td>
+</tr>
+</table>
 
 ## Acknowledgments
 
@@ -143,5 +174,5 @@ Started](https://r-xla.github.io/anvl/articles/anvl.html) article.
   [JAX](https://github.com/jax-ml/jax).
 - For JIT compilation, we build on the [OpenXLA](https://openxla.org/)
   project.
-- Most of the compiler binaries are downloaded from
+- Some of the compiler binaries are downloaded from
   [zml](https://github.com/zml/pjrt-artifacts/).

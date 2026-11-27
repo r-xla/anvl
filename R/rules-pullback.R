@@ -1,0 +1,2033 @@
+# The gradient of an elementwise primitive's operand `x`, from `grad`, a
+# cotangent at the shape of the output. A scalar operand was broadcast to that
+# shape, so its gradient is the sum over it.
+unbroadcast <- function(grad, x) {
+  if (naxes(x) || !naxes(grad)) {
+    return(grad)
+  }
+  prim_sum(grad, axes = seq_along(shape(grad)), drop = TRUE)
+}
+
+# A pullback rule receives one cotangent per output: length(grads) == length(outputs).
+prim_add[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  grad <- grads[[1L]]
+  list(
+    if (required[[1L]]) unbroadcast(grad, inputs[[1L]]),
+    if (required[[2L]]) unbroadcast(grad, inputs[[2L]])
+  )
+})
+
+prim_mul[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  lhs <- inputs[[1L]]
+  rhs <- inputs[[2L]]
+  grad <- grads[[1L]]
+  list(
+    if (required[[1L]]) unbroadcast(prim_mul(grad, rhs), lhs),
+    if (required[[2L]]) unbroadcast(prim_mul(grad, lhs), rhs)
+  )
+})
+
+prim_sub[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  grad <- grads[[1L]]
+  list(
+    if (required[[1L]]) unbroadcast(grad, inputs[[1L]]),
+    if (required[[2L]]) prim_negate(unbroadcast(grad, inputs[[2L]]))
+  )
+})
+
+prim_negate[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  grad <- grads[[1L]]
+  list(
+    if (required[[1L]]) prim_negate(grad)
+  )
+})
+
+prim_div[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  lhs <- inputs[[1L]]
+  rhs <- inputs[[2L]]
+  y <- outputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    if (required[[1L]]) unbroadcast(prim_div(grad, rhs), lhs),
+    if (required[[2L]]) unbroadcast(prim_div(prim_mul(grad, prim_negate(y)), rhs), rhs)
+  )
+})
+
+prim_remainder[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  # prim_remainder lowers to StableHLO `remainder`, which truncates the quotient:
+  # the result is x - trunc(x / y) * y, so it follows the sign of x.
+  # Match that here — using floor() would silently disagree with the forward op
+  # for inputs of opposite sign. Non-differentiable points (y == 0, x an
+  # integer multiple of y) are ignored.
+  x <- inputs[[1L]]
+  y <- inputs[[2L]]
+  grad <- grads[[1L]]
+  list(
+    if (required[[1L]]) unbroadcast(grad, x),
+    if (required[[2L]]) {
+      q <- prim_div(x, y)
+      # trunc(q) = sign(q) * floor(|q|); valid at q == 0 too (sign(0) = 0).
+      k <- prim_mul(prim_sign(q), prim_floor(prim_abs(q)))
+      unbroadcast(prim_mul(grad, prim_negate(k)), y)
+    }
+  )
+})
+
+prim_pow[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  y <- inputs[[2L]]
+  out <- outputs[[1L]]
+  grad <- grads[[1L]]
+  # As in JAX, the derivatives are 0 where they would otherwise read 0^-1 or
+  # log(0) at base 0: x^0 is constant in x, and 0^y is constant in y.
+  list(
+    if (required[[1L]]) {
+      dx <- prim_mul(y, prim_pow(x, prim_sub(y, 1)))
+      unbroadcast(prim_mul(grad, prim_ifelse(prim_eq(y, 0), 0, dx)), x)
+    },
+    if (required[[2L]]) {
+      safe_x <- prim_ifelse(prim_eq(x, 0), 1, x)
+      unbroadcast(prim_mul(grad, prim_mul(prim_log(safe_x), out)), y)
+    }
+  )
+})
+
+prim_log[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    if (required[[1L]]) prim_div(grad, x)
+  )
+})
+
+prim_exp[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  y <- outputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    if (required[[1L]]) prim_mul(grad, y)
+  )
+})
+
+prim_sqrt[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  y <- outputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx sqrt(x) = 1 / (2 * sqrt(x))
+    if (required[[1L]]) prim_div(prim_mul(grad, 0.5), y)
+  )
+})
+
+prim_rsqrt[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  y <- outputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx 1/sqrt(x) = -0.5 * x^(-3/2) = -0.5 * rsqrt(x)^3
+    if (required[[1L]]) prim_mul(prim_mul(grad, -0.5), prim_mul(y, prim_mul(y, y)))
+  )
+})
+
+prim_tanh[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  y <- outputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx tanh(x) = 1 - tanh(x)^2
+    if (required[[1L]]) prim_mul(grad, prim_sub(1, prim_mul(y, y)))
+  )
+})
+
+prim_tan[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  y <- outputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx tan(x) = 1 + tan(x)^2
+    if (required[[1L]]) prim_mul(grad, prim_add(1, prim_mul(y, y)))
+  )
+})
+
+prim_sin[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx sin(x) = cos(x)
+    if (required[[1L]]) prim_mul(grad, prim_cos(x))
+  )
+})
+
+prim_cos[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx cos(x) = -sin(x)
+    if (required[[1L]]) prim_mul(grad, prim_negate(prim_sin(x)))
+  )
+})
+
+prim_acos[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx acos(x) = -1 / sqrt(1 - x^2)
+    if (required[[1L]]) {
+      denom <- prim_sqrt(prim_sub(1, prim_mul(x, x)))
+      prim_negate(prim_div(grad, denom))
+    }
+  )
+})
+
+prim_acosh[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx acosh(x) = 1 / sqrt(x^2 - 1)
+    if (required[[1L]]) {
+      denom <- prim_sqrt(prim_sub(prim_mul(x, x), 1))
+      prim_div(grad, denom)
+    }
+  )
+})
+
+prim_asin[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx asin(x) = 1 / sqrt(1 - x^2)
+    if (required[[1L]]) {
+      denom <- prim_sqrt(prim_sub(1, prim_mul(x, x)))
+      prim_div(grad, denom)
+    }
+  )
+})
+
+prim_asinh[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx asinh(x) = 1 / sqrt(1 + x^2)
+    if (required[[1L]]) {
+      denom <- prim_sqrt(prim_add(1, prim_mul(x, x)))
+      prim_div(grad, denom)
+    }
+  )
+})
+
+prim_atan[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx atan(x) = 1 / (1 + x^2)
+    if (required[[1L]]) prim_div(grad, prim_add(1, prim_mul(x, x)))
+  )
+})
+
+prim_atanh[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx atanh(x) = 1 / (1 - x^2)
+    if (required[[1L]]) prim_div(grad, prim_sub(1, prim_mul(x, x)))
+  )
+})
+
+prim_cosh[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx cosh(x) = sinh(x)
+    if (required[[1L]]) prim_mul(grad, prim_sinh(x))
+  )
+})
+
+prim_sinh[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx sinh(x) = cosh(x)
+    if (required[[1L]]) prim_mul(grad, prim_cosh(x))
+  )
+})
+
+prim_digamma[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx digamma(x) = trigamma(x) = polygamma(1, x)
+    if (required[[1L]]) prim_mul(grad, prim_psigamma(x, 1))
+  )
+})
+
+prim_lgamma[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx lgamma(x) = digamma(x)
+    if (required[[1L]]) prim_mul(grad, prim_digamma(x))
+  )
+})
+
+prim_psigamma[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  deriv <- inputs[[2L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx psigamma(x, deriv) = psigamma(x, deriv + 1)
+    if (required[[1L]]) unbroadcast(prim_mul(grad, prim_psigamma(x, prim_add(deriv, 1))), x),
+    # gradient w.r.t. deriv: psigamma is typically called with an integer
+    # order, which is not differentiable; follow torch and refuse.
+    if (required[[2L]]) {
+      cli_abort("Gradient for {.arg deriv} of {.fn prim_psigamma} not implemented")
+    }
+  )
+})
+
+prim_erf[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx erf(x) = (2 / sqrt(pi)) * exp(-x^2)
+    if (required[[1L]]) prim_mul(grad, prim_mul(2 / sqrt(pi), prim_exp(prim_negate(prim_mul(x, x)))))
+  )
+})
+
+prim_erfc[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx erfc(x) = -(2 / sqrt(pi)) * exp(-x^2)
+    if (required[[1L]]) prim_mul(grad, prim_mul(-2 / sqrt(pi), prim_exp(prim_negate(prim_mul(x, x)))))
+  )
+})
+
+prim_erf_inv[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  y <- outputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx erf_inv(x) = sqrt(pi)/2 * exp(erf_inv(x)^2)
+    if (required[[1L]]) prim_mul(grad, prim_mul(sqrt(pi) / 2, prim_exp(prim_mul(y, y))))
+  )
+})
+
+prim_abs[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx |x| = sign(x)
+    if (required[[1L]]) prim_mul(grad, prim_sign(x))
+  )
+})
+
+prim_pmax[["pullback"]] <- prim_pmin[["pullback"]] <- rule_pullback(function(
+  inputs,
+  outputs,
+  grads,
+  params,
+  required
+) {
+  lhs <- inputs[[1L]]
+  rhs <- inputs[[2L]]
+  grad <- grads[[1L]]
+
+  y <- outputs[[1L]]
+  mask_lhs <- prim_convert(prim_eq(lhs, y), dtype = dtype(grad))
+  mask_rhs <- prim_convert(prim_eq(rhs, y), dtype = dtype(grad))
+  count <- prim_add(mask_lhs, mask_rhs)
+
+  list(
+    if (required[[1L]]) unbroadcast(prim_div(prim_mul(grad, mask_lhs), count), lhs),
+    if (required[[2L]]) unbroadcast(prim_div(prim_mul(grad, mask_rhs), count), rhs)
+  )
+})
+
+prim_dot_general[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  lhs <- inputs[[1L]]
+  rhs <- inputs[[2L]]
+  grad <- grads[[1L]]
+
+  contracting_axes <- params$contracting_axes
+  batching_axes <- params$batching_axes
+  precision <- params$precision
+
+  # batching axes
+  bd_lhs <- batching_axes[[1L]]
+  bd_rhs <- batching_axes[[2L]]
+  # contracting axes
+  cd_lhs <- contracting_axes[[1L]]
+  cd_rhs <- contracting_axes[[2L]]
+  # remaining axes
+  rd_lhs <- without(axes(lhs), c(bd_lhs, cd_lhs))
+  rd_rhs <- without(axes(rhs), c(bd_rhs, cd_rhs))
+
+  # output axes: the remaining axes of lhs, then those of rhs, then the batching axes
+  d_lhs_out <- seq_along(rd_lhs)
+  d_rhs_out <- length(rd_lhs) + seq_along(rd_rhs)
+  bd_out <- length(rd_lhs) + length(rd_rhs) + seq_along(bd_lhs)
+
+  # `grad_lhs` contracts `grad` with `rhs` over the remaining axes of rhs. As
+  # axes of lhs, its axes are the remaining ones (from `grad`), then the
+  # contracting ones in the ascending order of their partners in rhs, then the
+  # batching ones. `grad_rhs` contracts `lhs` with `grad`, so as axes of rhs its
+  # axes are the contracting ones in the ascending order of their partners in
+  # lhs, then the remaining ones, then the batching ones. `order()` of such an
+  # axis list is the permutation back into the input's axis order; for a matrix
+  # product it is the identity.
+  perm_lhs <- order(c(rd_lhs, cd_lhs[order(cd_rhs)], bd_lhs))
+  perm_rhs <- order(c(cd_rhs[order(cd_lhs)], rd_rhs, bd_rhs))
+  transpose_unless_identity <- function(x, perm) {
+    if (identical(perm, seq_along(perm))) x else prim_transpose(x, perm)
+  }
+
+  list(
+    if (required[[1L]]) {
+      grad_lhs <- prim_dot_general(
+        grad,
+        rhs,
+        contracting_axes = list(d_rhs_out, rd_rhs),
+        batching_axes = list(bd_out, bd_rhs),
+        precision = precision
+      )
+      transpose_unless_identity(grad_lhs, perm_lhs)
+    },
+    if (required[[2L]]) {
+      grad_rhs <- prim_dot_general(
+        lhs,
+        grad,
+        contracting_axes = list(rd_lhs, d_lhs_out),
+        batching_axes = list(bd_lhs, bd_out),
+        precision = precision
+      )
+      transpose_unless_identity(grad_rhs, perm_rhs)
+    }
+  )
+})
+
+prim_transpose[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  grad <- grads[[1L]]
+  list(
+    # `order()` of a permutation is its inverse.
+    if (required[[1L]]) prim_transpose(grad, order(params$perm))
+  )
+})
+
+prim_reshape[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    if (required[[1L]]) prim_reshape(grad, shape(x))
+  )
+})
+
+# The axes of `x` that `grad`, the cotangent of a reduction of `x` over `axes`,
+# broadcasts back along.
+reduction_broadcast_axes <- function(x, grad, axes, drop) {
+  if (drop) without(seq_along(shape(x)), axes) else seq_along(shape(grad))
+}
+
+prim_sum[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  axes <- params$axes
+  drop <- params$drop
+  x <- inputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    if (required[[1L]]) {
+      prim_broadcast_in_axes(grad, shape(x), reduction_broadcast_axes(x, grad, axes, drop))
+    }
+  )
+})
+
+prim_max[["pullback"]] <- prim_min[["pullback"]] <- rule_pullback(function(
+  inputs,
+  outputs,
+  grads,
+  params,
+  required
+) {
+  axes <- params$axes
+  drop <- params$drop
+  x <- inputs[[1L]]
+  grad <- grads[[1L]]
+
+  list(
+    if (required[[1L]]) {
+      baxes <- reduction_broadcast_axes(x, grad, axes, drop)
+
+      y <- outputs[[1L]]
+      y_bc <- prim_broadcast_in_axes(y, shape(x), baxes)
+
+      grad_bc <- prim_broadcast_in_axes(grad, shape(x), baxes)
+      mask <- prim_eq(x, y_bc)
+      mask_f <- prim_convert(mask, dtype = dtype(grad_bc))
+
+      count <- prim_sum(mask_f, axes = axes, drop = drop)
+      count_bc <- prim_broadcast_in_axes(count, shape(x), baxes)
+
+      prim_div(prim_mul(grad_bc, mask_f), count_bc)
+    }
+  )
+})
+
+prim_broadcast_in_axes[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  broadcast_axes <- params$broadcast_axes
+  x <- inputs[[1L]]
+  y <- outputs[[1L]]
+  grad <- grads[[1L]]
+
+  list(
+    if (required[[1L]]) {
+      # Sum grad over the axes that were introduced by broadcasting
+      new_axes <- setdiff(axes(y), broadcast_axes)
+      expand_axes <- broadcast_axes[(shape(y)[broadcast_axes] != 1L) & (shape(x) == 1L)]
+      reduce_axes <- c(new_axes, expand_axes)
+
+      g <- if (length(reduce_axes)) prim_sum(grad, axes = reduce_axes, drop = FALSE) else grad
+
+      # Drop the size-1 axes that broadcasting added
+      if (length(new_axes)) {
+        g <- prim_reshape(g, shape(g)[-new_axes])
+      }
+
+      # The remaining axes are those of the output, in increasing order, so
+      # axis `i` of `x` sits at position `rank(broadcast_axes)[i]` of `g`.
+      if (is.unsorted(broadcast_axes)) {
+        g <- prim_transpose(g, rank(broadcast_axes))
+      }
+      g
+    }
+  )
+})
+
+# control flow pullback --------------------------------------------------------
+
+prim_ifelse[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  test <- inputs[[1L]]
+  grad <- grads[[1L]]
+
+  # Predicate is boolean -- its cotangent is zero a.e. Matches the JAX
+  # `select` transpose rule, which returns no contribution for `which`.
+  list(
+    if (required[[1L]]) zeros_like(test),
+    if (required[[2L]]) unbroadcast(prim_ifelse(test, grad, 0), inputs[[2L]]),
+    if (required[[3L]]) unbroadcast(prim_ifelse(test, 0, grad), inputs[[3L]])
+  )
+})
+
+# In forward-mode, the two branches capture constants via lexical scoping
+# and they are turned into pure functions that receive these constants as arguments
+# (both true and false get the same arguments)
+# In reverse-mode, we could simply compute the forward-reverse graph and select
+# either branche's graph via prim_if
+# The problem with this is that it re-runs the forward pass and as both is part of
+# an if-condition we can't rely on XLA to optimize this away (?)
+# So now we instead run a modified forward pass that also outputs any intermediate
+# values (residuals) that are needed by the reverse pass
+prim_if[["pullback"]] <- rule_pullback(forward = function(inputs, params, required) {
+  pred <- inputs[[1L]]
+  operands <- inputs[-1L]
+  needed <- which(required[-1L])
+  n_out <- length(params$true$outputs)
+  vjps <- lapply(list(params$true, params$false), split_vjp, needed = needed)
+
+  # The function the forward `if` runs for branch `k` (1 = true, 2 = false).
+
+  # we return in the form of (outputs, true_residuals, false_residuals)
+  # During reverse, the true path returns 0 for false's residuals and
+  # the false path returns 0 for true's residuals
+  branch_forward <- function(k) {
+    function() {
+      # Run the branch's forward graph on the `if`'s operands: its outputs,
+      # then the residuals its backward pass reads.
+      outs <- graph_apply(vjps[[k]]$fwd, operands)
+      # Both branches must return the same structure, so each returns a slot
+      # for every branch's residuals: its own values in its own slots, zeros
+      # of the right aval in the other branch's, which that branch's backward
+      # never runs to read.
+      res <- lapply(seq_along(vjps), function(j) {
+        if (j == k) {
+          outs[n_out + seq_along(vjps[[k]]$residual_avals)]
+        } else {
+          lapply(vjps[[j]]$residual_avals, \(a) zeros(a$dtype, shape(a)))
+        }
+      })
+      # `out` are the `if`'s results. `res[[k]]` holds branch k's residuals
+      # when branch k ran, which is exactly when the backward `if` runs branch
+      # k's backward to read them.
+      list(out = outs[seq_len(n_out)], res = res)
+    }
+  }
+  fwd <- prim_if(pred, branch_forward(1L), branch_forward(2L))
+
+  list(
+    outputs = fwd$out,
+    backward = function(inputs, outputs, grads, params, required) {
+      branch_backward <- function(k) {
+        function() graph_apply(vjps[[k]]$bwd, c(grads, operands, fwd$res[[k]]))
+      }
+      grads_in <- vector("list", length(inputs))
+      grads_in[needed + 1L] <- prim_if(pred, branch_backward(1L), branch_backward(2L))
+      grads_in
+    }
+  )
+})
+
+# As JAX's partial evaluation and transpose of a `scan`: the body is split
+# with `split_vjp()`, the forward scan runs the split-off forward and stacks
+# each step's residuals as extra outputs, and the backward pass is a scan in
+# the opposite direction that runs the split-off backward over them. It
+# carries the cotangent of the carry and sums those of the captures over the
+# steps; the cotangents of `xs` are stacked like any output. Nothing of the
+# forward pass is rerun.
+#
+# What the backward reads besides the residuals is stored no more than it has
+# to be: the carry a step started with is stacked only where it is read, `xs`
+# are read from the operands, a residual or carry that is also a stacked output
+# is read from that output, and what does not change from step to step --
+# computed from the captures alone -- is computed once, before the loop, as JAX
+# hoists it. Slots that nothing reads are left empty, in the step of either
+# scan.
+#
+# Operands are the carry, then `xs`, then what the body captures; the body's
+# inputs line up with them.
+prim_scan[["pullback"]] <- rule_pullback(forward = function(inputs, params, required) {
+  body <- params$body
+  n_carry <- params$n_carry
+  carry_idx <- seq_len(n_carry)
+  n_xs <- params$n_xs
+  xs_idx <- n_carry + seq_len(n_xs)
+  cap_idx <- n_carry + n_xs + seq_len(params$n_captures)
+  n_out <- length(body$outputs) - n_carry
+  caps <- inputs[cap_idx]
+
+  carry_needed <- which(scan_carry_requires(body, required, carry_idx))
+  xs_needed <- xs_idx[required[xs_idx]]
+  cap_needed <- cap_idx[required[cap_idx]]
+  vjp <- split_vjp(body, c(carry_needed, xs_needed, cap_needed))
+  n_res <- length(vjp$residual_avals)
+
+  # The backward graph takes a cotangent per body output, the body's inputs,
+  # then the residuals. A slot it does not read is passed as `NULL`: the
+  # cotangent of an output that depends on no target, an input it does not
+  # need.
+  bwd_reads <- graph_reads(vjp$bwd)
+  bwd_read <- vapply(vjp$bwd$inputs, \(g) isTRUE(bwd_reads[[g]]), logical(1L))
+  out_read <- which(bwd_read[n_carry + seq_len(n_out)])
+  body_input_read <- bwd_read[length(body$outputs) + seq_along(body$inputs)]
+  tape_idx <- carry_idx[body_input_read[carry_idx]]
+  xs_read <- xs_idx[body_input_read[xs_idx]]
+  cap_read <- cap_idx[body_input_read[cap_idx]]
+
+  # What does not change from step to step -- computed from the captures
+  # alone -- is computed once, before the loop, as JAX hoists it: the forward
+  # scan reads it like a capture, and so does the backward scan where it is a
+  # residual. Carrying such a residual through the loop instead would cost a
+  # copy of it per step. What prints stays in the loop (see
+  # `split_loop_invariant()`).
+  split <- split_loop_invariant(vjp$fwd, vjp$fwd$inputs[c(carry_idx, xs_idx)])
+  before <- if (length(split$invariant)) {
+    # It reads none of the carry and `xs`.
+    graph_apply(split$before, c(vector("list", n_carry + n_xs), caps))
+  }
+  position_in <- function(g, gvals) Position(\(h) identical(h, g), gvals)
+  res_outputs <- vjp$fwd$outputs[n_carry + n_out + seq_len(n_res)]
+  res_hoisted <- vapply(res_outputs, \(g) !isTRUE(split$in_loop[[g]]), logical(1L))
+  # A value the backward pass reads at every step that is also a stacked
+  # output -- a residual, or the carry the step started from -- is read from
+  # that output, as JAX dedupes residuals.
+  stacked_outputs <- vjp$fwd$outputs[n_carry + seq_len(n_out)]
+  res_out_pos <- vapply(res_outputs, position_in, integer(1L), stacked_outputs)
+  res_in_out <- !res_hoisted & !is.na(res_out_pos)
+  res_stacked <- !res_hoisted & !res_in_out
+  tape_out_pos <- vapply(vjp$fwd$inputs[tape_idx], position_in, integer(1L), stacked_outputs)
+  tape_in_out <- !is.na(tape_out_pos)
+
+  # The step returns the carry, the stacked outputs and the residuals stacked
+  # for the backward pass, and reads nothing else: a capture or a value
+  # computed before the loop that it does not read is not passed in, so that
+  # the scan does not carry it as an operand.
+  step_outputs <- c(seq_len(n_carry + n_out), n_carry + n_out + which(res_stacked))
+  step <- prune_graph(split$loop, split$loop$outputs[step_outputs])
+  step_reads <- graph_reads(step)
+  step_unread <- !vapply(step$inputs, \(g) isTRUE(step_reads[[g]]), logical(1L))
+  fwd <- prim_scan(
+    init = inputs[carry_idx],
+    xs = inputs[xs_idx],
+    body = function(carry, x) {
+      args <- c(carry, x, caps, before)
+      args[step_unread] <- list(NULL)
+      outs <- graph_apply(step, args)
+      list(
+        carry = outs[carry_idx],
+        out = list(
+          out = outs[n_carry + seq_len(n_out)],
+          res = outs[n_carry + n_out + seq_len(sum(res_stacked))],
+          tape = carry[tape_idx[!tape_in_out]]
+        )
+      )
+    },
+    steps = params$steps,
+    reverse = params$reverse
+  )
+
+  list(
+    outputs = c(fwd$carry, fwd$out$out),
+    backward = function(inputs, outputs, grads, params, required) {
+      n_carry_needed <- length(carry_needed)
+      n_xs_needed <- length(xs_needed)
+      n_cap <- length(cap_needed)
+      # A scan needs a carry; where only `xs` is differentiated there is none
+      # to thread, so a placeholder rides along.
+      placeholder <- if (!n_carry_needed && !n_cap) list(FALSE)
+
+      pulled <- prim_scan(
+        init = list(
+          carry = grads[carry_needed],
+          caps = lapply(inputs[cap_needed], zeros_like),
+          placeholder = placeholder
+        ),
+        xs = list(
+          out = grads[n_carry + out_read],
+          res = fwd$out$res,
+          res_out = fwd$out$out[res_out_pos[res_in_out]],
+          tape = fwd$out$tape,
+          tape_out = fwd$out$out[tape_out_pos[tape_in_out]],
+          xs = inputs[xs_read]
+        ),
+        body = function(carry, x) {
+          cts <- vector("list", length(body$outputs))
+          cts[carry_needed] <- carry$carry
+          cts[n_carry + out_read] <- x$out
+          body_ins <- vector("list", length(body$inputs))
+          body_ins[tape_idx[!tape_in_out]] <- x$tape
+          body_ins[tape_idx[tape_in_out]] <- x$tape_out
+          body_ins[xs_read] <- x$xs
+          body_ins[cap_read] <- inputs[cap_read]
+          res <- vector("list", n_res)
+          res[res_stacked] <- x$res
+          res[res_in_out] <- x$res_out
+          res[res_hoisted] <- before[vapply(res_outputs[res_hoisted], position_in, integer(1L), split$invariant)]
+          ct <- graph_apply(vjp$bwd, c(cts, body_ins, res))
+          list(
+            carry = list(
+              carry = ct[seq_len(n_carry_needed)],
+              caps = Map(prim_add, carry$caps, ct[n_carry_needed + n_xs_needed + seq_len(n_cap)]),
+              placeholder = carry$placeholder
+            ),
+            out = ct[n_carry_needed + seq_len(n_xs_needed)]
+          )
+        },
+        steps = params$steps,
+        reverse = !params$reverse
+      )
+
+      grads_in <- vector("list", length(inputs))
+      grads_in[carry_needed] <- pulled$carry$carry
+      grads_in[xs_needed] <- pulled$out
+      grads_in[cap_needed] <- pulled$carry$caps
+      grads_in
+    }
+  )
+})
+
+# Which carry slots of a scan carry a gradient: a slot does if its `init`
+# requires one, or if the body makes it depend on something that does -- a
+# required `xs` or capture, or another such slot. The set only grows, so this
+# reaches its fixed point within `n_carry` rounds. A slot outside it, such as
+# a random state or a counter, is neither differentiated nor has to be.
+scan_carry_requires <- function(body, required, carry_idx) {
+  seeds <- required
+  repeat {
+    seed <- hashtab()
+    for (k in seq_along(body$inputs)) {
+      seed[[body$inputs[[k]]]] <- seeds[[k]]
+    }
+    env <- propagate_requirements(body, seed)
+    out_req <- vapply(
+      body$outputs[carry_idx],
+      function(out) !is_graph_literal(out) && isTRUE(env[[out]]),
+      logical(1L)
+    )
+    grown <- seeds[carry_idx] | out_req
+    if (identical(grown, seeds[carry_idx])) {
+      return(grown)
+    }
+    seeds[carry_idx] <- grown
+  }
+}
+
+# The pullback rule replaces the forward pass of the call, where it is known
+# which entries of `args` require a gradient. Without `forward`, the call is
+# recorded again; with it, `forward` runs in its place and gives the result and
+# the residuals. Either way `rule` is traced and applied to the call's
+# arguments, its result, the cotangents and the residuals, so the gradient is
+# recorded as anvl operations, and differentiating it differentiates them in
+# turn. Nothing gives a gradient for what `fn` closes over, so differentiating
+# with respect to that is refused.
+prim_custom_gradient[["pullback"]] <- rule_pullback(forward = function(inputs, params, required) {
+  fn <- params$fn
+  arg_idx <- seq_len(length(inputs) - params$n_captures)
+  if (any(required[-arg_idx])) {
+    cli_abort(
+      c(
+        "{.fn gradient} cannot differentiate with respect to a value that {.arg fn} of {.fn prim_custom_gradient} closes over.", # nolint
+        i = "Pass the value to {.arg fn} through {.arg args} instead."
+      ),
+      call = NULL
+    )
+  }
+  args <- unflatten(fn$in_tree, inputs[arg_idx])
+  # An entry of `args` requires a gradient where any of its arrays does.
+  required_entries <- vapply(
+    unflatten(fn$in_tree, as.list(required[arg_idx])),
+    \(r) any(unlist(r)),
+    logical(1L)
+  )
+  residuals <- NULL
+  if (is.null(params$forward)) {
+    outputs <- graph_desc_add(prim_custom_gradient, args = inputs, params = params, infer_fn = infer_custom_gradient)
+  } else {
+    fwd <- custom_forward_pass(params$forward, args, fn, required_entries)
+    outputs <- fwd$outputs
+    residuals <- fwd$residuals
+  }
+  backward <- function(inputs, outputs, grads, params, required) {
+    traced <- trace_custom_gradient_rule(
+      params$rule,
+      args = args,
+      out = unflatten(fn$out_tree, outputs),
+      grad = unflatten(fn$out_tree, grads),
+      required = required_entries,
+      residuals = residuals
+    )
+    cts <- vector("list", length(inputs))
+    residual_leaves <- if (!is.null(residuals)) flatten(residuals)
+    cts[traced$leaves] <- graph_apply(traced$graph, c(inputs[arg_idx], outputs, grads, residual_leaves))
+    cts
+  }
+  list(outputs = outputs, backward = backward)
+})
+
+# Traces `rule` of `prim_custom_gradient()` on `args`, `out` and `grad`, boxes
+# of the trace being differentiated, and the `residuals` of its `forward`
+# (`NULL` without one), telling it which entries of `args` are `required` (a
+# named logical). Returns the graph, which takes the arrays of `args`, `out`,
+# `grad` and `residuals` and returns the gradients `rule` gave, and `leaves`:
+# the positions among the arrays of `args` these are the gradients of. `rule`
+# is checked here, as it is not traced before.
+trace_custom_gradient_rule <- function(rule, args, out, grad, required, residuals = NULL) {
+  call <- quote(prim_custom_gradient())
+  given <- NULL
+  rule_traced <- function(args, out, grad, residuals = NULL) {
+    extra <- if (!is.null(residuals)) list(residuals = residuals)
+    grads <- do.call(rule, c(args, list(out = out, grad = grad, required = required), extra))
+    checked <- check_custom_gradients(grads, args, required, "{.arg rule}", call)
+    given <<- checked$given
+    checked$grads
+  }
+  desc <- local_descriptor()
+  inputs <- list(args = args, out = out, grad = grad)
+  if (!is.null(residuals)) {
+    inputs$residuals <- residuals
+  }
+  graph <- trace_fn(rule_traced, inputs, desc = desc)
+
+  # A traced value `rule` closes over belongs to a trace that has been replayed
+  # by now; only arrays are constants here.
+  if (!all(vapply(graph$constants, \(g) is_concrete_array(g$aval), logical(1L)))) {
+    cli_abort(
+      c(
+        "{.arg rule} must not close over a traced value.",
+        i = "Pass it to {.arg rule} through {.arg args} instead."
+      ),
+      call = call
+    )
+  }
+
+  leaves <- given_leaves(args, given)
+  check_custom_gradient_types(
+    lapply(graph$inputs[leaves], \(g) g$aval),
+    graph_output_avals(graph),
+    build_tree(args),
+    leaves,
+    "{.arg rule}",
+    call
+  )
+  list(graph = graph, leaves = leaves)
+}
+
+# Runs `forward` of `prim_custom_gradient()` on `args`, the boxes of the call's
+# arguments by entry, telling it which entries are `required`. Returns the boxes
+# of the result, which must be of the types `fn` returns, as `outputs`, and the
+# residuals, a list of boxes or trees of them, as `residuals`. `forward` may
+# close over arrays, but not over another traced value.
+custom_forward_pass <- function(forward, args, fn, required) {
+  call <- quote(prim_custom_gradient())
+  desc <- current_descriptor()
+  # What `forward` may read besides arrays: the arguments, then what it
+  # computes from them.
+  known <- hashtab()
+  for (box in flatten(args)) {
+    known[[box$gnode]] <- TRUE
+  }
+  n_before <- desc$statements$size()
+  result <- do.call(forward, c(args, list(required = required)))
+
+  is_list <- function(x) is.list(x) && !is_arrayish(x)
+  if (!is_list(result) || !all(c("out", "residuals") %in% names(result))) {
+    got <- if (is_list(result)) "Got a list with names {value_repr(names(result))}." else "Got {value_repr(result)}."
+    cli_abort(
+      c("{.arg forward} must return a list with the result, {.field out}, and the {.field residuals}.", x = got),
+      call = call
+    )
+  }
+  if (!pjrt::tree_equal(build_tree(result$out), fn$out_tree)) {
+    cli_abort(
+      c(
+        "{.arg forward} must return {.field out} with the structure of the result of {.arg fn}.",
+        x = "Got {value_repr(result$out)}."
+      ),
+      call = call
+    )
+  }
+  residual_leaves <- if (is_list(result$residuals)) flatten(result$residuals)
+  not_array <- which(!vapply(residual_leaves, is_arrayish, logical(1L)))
+  if (!is_list(result$residuals) || length(not_array)) {
+    got <- if (is_list(result$residuals)) {
+      sprintf(
+        "Got {value_repr(residual_leaves[[not_array[[1L]]]])} at `%s`.",
+        pjrt::tree_path(build_tree(result$residuals), not_array[[1L]])
+      )
+    } else {
+      "Got {value_repr(result$residuals)}."
+    }
+    cli_abort(
+      c("{.arg forward} must return {.field residuals} that are a list of arrays, or trees of them.", x = got),
+      call = call
+    )
+  }
+  as_box <- \(x) materialize_rdata_box(maybe_box_arrayish(x, desc))
+  outputs <- lapply(flatten(result$out), as_box)
+  residual_boxes <- lapply(residual_leaves, as_box)
+  check_custom_reads(desc, n_before, known, c(outputs, residual_boxes), "{.arg forward}", call)
+  fn_avals <- graph_output_avals(fn)
+  out_avals <- lapply(outputs, \(box) box$gnode$aval)
+  bad <- type_mismatches(fn_avals, out_avals)
+  if (length(bad)) {
+    paths <- vapply(bad, \(i) pjrt::tree_path(fn$out_tree, i), character(1L))
+    described <- sprintf(
+      "`fn` returns %s%s, `forward` %s",
+      vapply(fn_avals[bad], repr, character(1L)),
+      ifelse(nzchar(paths), sprintf(" at `%s`", paths), ""),
+      vapply(out_avals[bad], repr, character(1L))
+    )
+    cli_abort(
+      c(
+        "{.arg forward} must return {.field out} of the same types as the result of {.arg fn}.",
+        x = "{described}."
+      ),
+      call = call
+    )
+  }
+  list(outputs = outputs, residuals = unflatten(build_tree(result$residuals), residual_boxes))
+}
+
+# Refuses `what`, the `forward` of `prim_custom_gradient()`, where it read a
+# traced value it does not `know`: one that no call it recorded into `desc`
+# (those after the first `n_before`) computed, and that is no array. Checks the
+# operands of those calls and `results`, the boxes it returned, and adds what
+# those calls computed to `known`.
+check_custom_reads <- function(desc, n_before, known, results, what, call) {
+  is_known <- function(g) is_graph_literal(g) || isTRUE(known[[g]]) || is_concrete_array(g$aval)
+  calls <- desc$statements$as_list()
+  for (stmt in calls[seq_along(calls) > n_before]) {
+    if (!all(vapply(stmt$inputs, is_known, logical(1L)))) {
+      abort_custom_closure(what, call)
+    }
+    for (g in stmt$outputs) {
+      known[[g]] <- TRUE
+    }
+  }
+  if (!all(vapply(results, \(box) is_known(box$gnode), logical(1L)))) {
+    abort_custom_closure(what, call)
+  }
+}
+
+abort_custom_closure <- function(what, call) {
+  cli_abort(
+    c(
+      paste0(what, " must not close over a traced value."),
+      i = "Pass it through {.arg args} instead."
+    ),
+    call = call
+  )
+}
+
+# Checks `grads`, the gradients a pass `what` of a `rule` of
+# `prim_custom_gradient()` returned, against `args` and which of its entries
+# are `required`: a list named by entries of `args`, with one for each
+# required entry, each of the structure of its entry. Returns those given,
+# in the order of `args`, and `given`, which entries they are of.
+check_custom_gradients <- function(grads, args, required, what, call) {
+  is_list <- is.list(grads) && !is_arrayish(grads)
+  grad_names <- if (is_list) names(grads)
+  valid_names <- !length(grads) ||
+    (!is.null(grad_names) &&
+      all(nzchar(grad_names)) &&
+      !anyDuplicated(grad_names) &&
+      all(grad_names %in% names(args)))
+  if (!is_list || !valid_names) {
+    got <- if (is_list) "Got a list with names {value_repr(grad_names)}." else "Got {value_repr(grads)}."
+    cli_abort(
+      c(
+        paste0(what, " must return a list of gradients, named by the entries of {.arg args} they belong to."),
+        x = got,
+        i = "{.arg args} has names {value_repr(names(args))}."
+      ),
+      call = call
+    )
+  }
+  given <- names(args) %in% names(Filter(Negate(is.null), grads))
+  missing <- names(args)[required & !given]
+  if (length(missing)) {
+    cli_abort(
+      c(
+        paste0(what, " must return the gradient of each entry of {.arg args} that is required."),
+        x = "Got none for {value_repr(missing)}.",
+        i = paste0(what, " receives which entries are required as {.arg required}.")
+      ),
+      call = call
+    )
+  }
+  grads <- grads[names(args)[given]]
+  same_structure <- vapply(
+    names(grads),
+    function(nm) pjrt::tree_equal(build_tree(grads[[nm]]), build_tree(args[[nm]])),
+    logical(1L)
+  )
+  if (!all(same_structure)) {
+    bad <- names(grads)[!same_structure]
+    cli_abort(
+      c(
+        paste0(what, " must return each gradient with the structure of the entry of {.arg args} it belongs to."),
+        x = "The {cli::qty(length(bad))}gradient{?s} of {value_repr(bad)} {cli::qty(length(bad))}{?has/have} another structure." # nolint
+      ),
+      call = call
+    )
+  }
+  list(grads = grads, given = given)
+}
+
+# The positions among the arrays of `args` that belong to the entries `given`.
+given_leaves <- function(args, given) {
+  which(rep(given, vapply(args, \(arg) length(flatten(arg)), integer(1L))))
+}
+
+# Refuses gradients whose avals `grad_avals` are not of the types of
+# `arg_avals`, the arrays at positions `leaves` of the arguments `in_tree`.
+check_custom_gradient_types <- function(arg_avals, grad_avals, in_tree, leaves, what, call) {
+  bad <- type_mismatches(arg_avals, grad_avals)
+  if (!length(bad)) {
+    return(invisible(NULL))
+  }
+  described <- sprintf(
+    "`%s` is %s, its gradient %s",
+    vapply(leaves[bad], function(i) pjrt::tree_path(in_tree, i), character(1L)),
+    vapply(arg_avals[bad], repr, character(1L)),
+    vapply(grad_avals[bad], repr, character(1L))
+  )
+  cli_abort(
+    c(
+      paste0(what, " must return a gradient of the same type as the argument it belongs to."),
+      x = "{described}."
+    ),
+    call = call
+  )
+}
+
+# Printing hands its argument back unchanged, so the cotangent passes through.
+prim_print[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  list(if (required[[1L]]) grads[[1L]])
+})
+
+# The derivative is the identity. Apply a barrier to the required cotangents
+# to prevent fusion across this point in the backward pass.
+prim_optimization_barrier[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  out <- vector("list", length(inputs))
+  out[required] <- prim_optimization_barrier(grads[required])
+  out
+})
+
+# convert pullback -----------------
+
+# A conversion is the identity, and so passes the cotangent through, only
+# between floats. Landing on an integer or a bool is a step function whose
+# derivative is zero almost everywhere, and a value that started as one has no
+# gradient to give back either. Passing the cotangent through regardless would
+# report a gradient of 1 across `nv_convert(nv_convert(x, "i32"), "f64")`,
+# where `prim_floor()` -- the same function on the reals -- correctly reports 0.
+prim_convert[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  differentiable <- is_dtype_float(dtype(x)) && is_dtype_float(dtype(outputs[[1L]]))
+  list(
+    if (required[[1L]]) {
+      if (differentiable) prim_convert(grads[[1L]], dtype(x)) else zeros_like(x)
+    }
+  )
+})
+
+# for comparison primitives --------------------------
+# The backward pass has to propagate through them when a float was converted to
+# an int/bool that eventually influenced the output. The gradients of such
+# inputs are never read (only floats can be differentiated), so their dtype
+# need not match the input's: the rules return zeros.
+
+pullback_zero_bin <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  list(
+    if (required[[1L]]) zeros_like(inputs[[1L]]),
+    if (required[[2L]]) zeros_like(inputs[[2L]])
+  )
+})
+
+prim_eq[["pullback"]] <- pullback_zero_bin
+prim_ne[["pullback"]] <- pullback_zero_bin
+prim_gt[["pullback"]] <- pullback_zero_bin
+prim_ge[["pullback"]] <- pullback_zero_bin
+prim_lt[["pullback"]] <- pullback_zero_bin
+prim_le[["pullback"]] <- pullback_zero_bin
+
+# zero-grads (ignores the non-differentiable points)
+
+pullback_zero_uni <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  list(
+    if (required[[1L]]) zeros_like(x)
+  )
+})
+
+prim_floor[["pullback"]] <- pullback_zero_uni
+prim_ceiling[["pullback"]] <- pullback_zero_uni
+prim_sign[["pullback"]] <- pullback_zero_uni
+prim_round[["pullback"]] <- pullback_zero_uni
+prim_which_max[["pullback"]] <- pullback_zero_uni
+prim_which_min[["pullback"]] <- pullback_zero_uni
+
+prim_cbrt[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  y <- outputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx cbrt(x) = 1 / (3 * cbrt(x)^2)
+    if (required[[1L]]) prim_div(grad, prim_mul(prim_mul(y, y), 3))
+  )
+})
+
+prim_expm1[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx (exp(x) - 1) = exp(x)
+    if (required[[1L]]) prim_mul(grad, prim_exp(x))
+  )
+})
+
+prim_log1p[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx log(1 + x) = 1 / (1 + x)
+    if (required[[1L]]) prim_div(grad, prim_add(1, x))
+  )
+})
+
+prim_plogis[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  y <- outputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    # d/dx sigmoid(x) = sigmoid(x) * (1 - sigmoid(x))
+    if (required[[1L]]) prim_mul(grad, prim_mul(y, prim_sub(1, y)))
+  )
+})
+
+prim_clamp[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  y <- outputs[[1L]]
+  grad <- grads[[1L]]
+
+  # the points where `x` is equal to `min` or `max` are non differentiable,
+  # so we just implement it like torch, which uses 1 for the gradient there.
+  mask_x <- prim_convert(prim_eq(x, y), dtype = dtype(grad))
+
+  list(
+    if (required[[1L]]) unbroadcast(prim_mul(grad, mask_x), x),
+    if (required[[2L]]) cli_abort("Gradient for {.arg min} not implemented"),
+    if (required[[3L]]) cli_abort("Gradient for {.arg max} not implemented")
+  )
+})
+
+prim_rev[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  axes <- params$axes
+  grad <- grads[[1L]]
+  list(
+    # Reverse the gradient along the same axes
+    if (required[[1L]]) prim_rev(grad, axes)
+  )
+})
+
+prim_pad[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  edge_padding_low <- params$edge_padding_low
+  edge_padding_high <- params$edge_padding_high
+  interior_padding <- params$interior_padding
+  grad <- grads[[1L]]
+  list(
+    if (required[[1L]]) {
+      # A negative edge padding trimmed the interior-padded operand: pad the
+      # cotangent back with zeros there, then select the non-padded elements.
+      trimmed_low <- pmax(-edge_padding_low, 0L)
+      trimmed_high <- pmax(-edge_padding_high, 0L)
+      if (any(trimmed_low > 0L | trimmed_high > 0L)) {
+        grad <- prim_pad(grad, zeros(dtype(grad), integer()), trimmed_low, trimmed_high, integer(length(trimmed_low)))
+      }
+      strides <- interior_padding + 1L
+      start_indices <- pmax(edge_padding_low, 0L) + 1L
+      end_indices <- shape(grad) - pmax(edge_padding_high, 0L)
+      prim_static_slice(grad, start_indices, end_indices, strides)
+    },
+    if (required[[2L]]) {
+      cli_abort("Gradient for padding_value not implemented")
+    }
+  )
+})
+
+# Non-differentiable operations (logical/bitwise) return zero gradients
+# (Floats might be converted to integers that are then fed into these operations, but we then
+# propagate back to the floats, which requires the existence of these rules)
+
+prim_and[["pullback"]] <- pullback_zero_bin
+prim_or[["pullback"]] <- pullback_zero_bin
+prim_xor[["pullback"]] <- pullback_zero_bin
+prim_not[["pullback"]] <- pullback_zero_uni
+
+prim_shift_left[["pullback"]] <- pullback_zero_bin
+prim_shift_right_arithmetic[["pullback"]] <- pullback_zero_bin
+prim_shift_right_logical[["pullback"]] <- pullback_zero_bin
+
+prim_is_finite[["pullback"]] <- pullback_zero_uni
+prim_popcnt[["pullback"]] <- pullback_zero_uni
+
+prim_all[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  list(
+    if (required[[1L]]) prim_fill(FALSE, dtype = dtype(x), shape = shape(x))
+  )
+})
+
+prim_any[["pullback"]] <- prim_all[["pullback"]]
+
+prim_bitcast_convert[["pullback"]] <- pullback_zero_uni
+
+prim_atan2[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  y <- inputs[[1L]]
+  x <- inputs[[2L]]
+  grad <- grads[[1L]]
+  denom <- prim_add(prim_mul(y, y), prim_mul(x, x))
+  list(
+    if (required[[1L]]) unbroadcast(prim_div(prim_mul(grad, x), denom), y),
+    if (required[[2L]]) unbroadcast(prim_div(prim_mul(grad, prim_negate(y)), denom), x)
+  )
+})
+
+# sort pullback: route each upstream gradient back to original positions via
+# the inverse permutation.
+#
+# For y = sort(key)[forward perm π], we have y[i] = key[π[i]], so the gradient
+# satisfies dkey[k] = dy[σ[k]] where σ = π^{-1} (= argsort(π)).
+#
+# Implementation trick: instead of computing σ explicitly and gathering, sort
+# (π, grad) ascending — the second output is grad permuted by argsort(π) = σ,
+# which is exactly the input gradient.
+prim_sort[["pullback"]] <- rule_pullback(forward = function(inputs, params, required) {
+  axis <- params$axis
+  decreasing <- params$decreasing
+  stable <- params$stable
+
+  key <- inputs[[1L]]
+  iota <- prim_iota(axis = axis, shape = shape(key), dtype = "i64", start = 1L)
+  sorted <- prim_sort(
+    c(inputs, list(iota)),
+    axis = axis,
+    decreasing = decreasing,
+    stable = stable
+  )
+  perm <- sorted[[length(sorted)]]
+  outputs <- sorted[seq_along(inputs)]
+
+  list(
+    outputs = outputs,
+    backward = function(inputs, outputs, grads, params, required) {
+      # Route all required gradients through a single argsort-by-perm: sort
+      # (perm, grad_1, ..., grad_K) ascending. Each carried output is then
+      # `grad_j` permuted by argsort(perm) = sigma, which is exactly the
+      # gradient for the j-th input.
+      required_idx <- which(required)
+      inv <- prim_sort(
+        c(list(perm), grads[required_idx]),
+        axis = axis,
+        decreasing = FALSE,
+        stable = FALSE
+      )
+
+      out <- vector("list", length(inputs))
+      for (k in seq_along(required_idx)) {
+        out[[required_idx[[k]]]] <- inv[[k + 1L]]
+      }
+      out
+    }
+  )
+})
+
+# top_k pullback: scatter the values gradient at the forward indices into a
+# zero buffer of the input shape. Using the actual forward indices (rather
+# than recomputing a permutation) is correct by construction even when
+# `x` has duplicate values — top-k indices are pairwise unique along
+# axis 1.
+# The forward always runs with indices, even when the call asked for the values
+# only, so the backward has them without a second top_k.
+prim_top_k[["pullback"]] <- rule_pullback(forward = function(inputs, params, required) {
+  x <- inputs[[1L]]
+  out <- prim_top_k(x, k = params$k, indices = TRUE)
+  indices <- out[[2L]]
+
+  list(
+    outputs = if (params$indices) out else out[1L],
+    backward = function(inputs, outputs, grads, params, required) {
+      if (!required[[1L]]) {
+        return(list(NULL))
+      }
+      grad_values <- grads[[1L]]
+      full_shape <- shape(x)
+      rank <- length(full_shape)
+      batching <- seq_len(rank - 1L) + 1L
+
+      zero_input <- prim_fill(
+        0L,
+        dtype = dtype(grad_values),
+        shape = full_shape
+      )
+
+      # All axes are iteration axes and we have a single index vector axis that
+      # indicates the position to write to (in axis 1 of the input)
+      list(prim_scatter(
+        x = zero_input,
+        # index vectors selecting positions along axis 1 of `x`
+        scatter_indices = indices,
+        update = grad_values,
+        update_window_axes = integer(0L),
+        inserted_window_axes = 1L,
+        x_batching_axes = batching,
+        scatter_indices_batching_axes = batching,
+        scatter_axes_to_x_axes = 1L,
+        # we sort along a single axis -> all axes are iteration axes
+        index_vector_axis = rank + 1L,
+        unique_indices = TRUE
+      ))
+    }
+  )
+})
+
+# concatenate pullback: split the gradient back along the concatenation axis
+prim_concatenate[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  axis <- params$axis
+  grad <- grads[[1L]]
+  n_inputs <- length(inputs)
+  input_grads <- vector("list", n_inputs)
+
+  offset <- 1L
+  end_indices <- shape(grad)
+  start_indices <- rep(1L, length(end_indices))
+  strides <- rep(1L, length(end_indices))
+  for (i in seq_len(n_inputs)) {
+    axis_size <- shape(inputs[[i]])[axis]
+    if (required[[i]]) {
+      start_indices[axis] <- offset
+      end_indices[axis] <- offset + axis_size - 1L
+      input_grads[[i]] <- prim_static_slice(grad, start_indices, end_indices, strides)
+    }
+    offset <- offset + axis_size
+  }
+  input_grads
+})
+
+
+prim_prod[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  if (!required[[1L]]) {
+    return(list(NULL))
+  }
+  axes <- params$axes
+  drop <- params$drop
+  x <- inputs[[1L]]
+  grad <- grads[[1L]]
+
+  # Move reduced axes to the end and collapse them, so the safe formula
+  # below operates along a single trailing axis.
+  s <- shape(x)
+  non_reduced <- without(seq_along(s), axes)
+  perm <- c(non_reduced, axes)
+  reduced_size <- as.integer(prod(s[axes]))
+  collapsed_shape <- c(s[non_reduced], reduced_size)
+  rank <- length(collapsed_shape)
+
+  operand_c <- prim_reshape(prim_transpose(x, perm), collapsed_shape)
+  grad_squeezed <- if (drop) grad else prim_reshape(grad, s[non_reduced])
+  grad_bc <- prim_broadcast_in_axes(grad_squeezed, collapsed_shape, seq_len(rank - 1L))
+
+  out_c <- if (reduced_size <= 1L) {
+    grad_bc
+  } else {
+    # PyTorch's prod_safe_zeros_backward: the gradient at position k along the
+    # reduced axis is the product of all *other* elements along that axis,
+    # decomposed as (exclusive cumprod left) * (exclusive cumprod right). No
+    # division, smooth in the inputs, hence safe at zeros and twice-differentiable.
+    n <- reduced_size
+    ones_shape <- collapsed_shape
+    ones_shape[rank] <- 1L
+    ones <- prim_fill(1L, dtype = dtype(x), shape = ones_shape)
+    full_strides <- rep(1L, rank)
+
+    starts_n <- rep(1L, rank)
+    limits_n <- collapsed_shape
+    limits_n[rank] <- n - 1L
+    narrow_n <- prim_static_slice(operand_c, starts_n, limits_n, full_strides)
+    exclusive_normal <- prim_cumprod(
+      prim_concatenate(ones, narrow_n, axis = rank),
+      axis = rank
+    )
+
+    starts_r <- rep(1L, rank)
+    starts_r[rank] <- 2L
+    narrow_r <- prim_rev(
+      prim_static_slice(operand_c, starts_r, collapsed_shape, full_strides),
+      axes = rank
+    )
+    exclusive_reverse <- prim_rev(
+      prim_cumprod(prim_concatenate(ones, narrow_r, axis = rank), axis = rank),
+      axes = rank
+    )
+
+    prim_mul(grad_bc, prim_mul(exclusive_normal, exclusive_reverse))
+  }
+
+  out <- prim_transpose(prim_reshape(out_c, s[perm]), order(perm))
+  list(out)
+})
+
+# cumulative (scan) pullback rules ---------------------------------------------
+
+prim_cumsum[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  axis <- params$axis
+  grad <- grads[[1L]]
+  list(
+    # d/dx_i sum_{k<=j} x_k = 1[i<=j], so grad_i = sum_{j>=i} grad_out_j
+    # which is reverse-cumsum of grad_out along axis.
+    if (required[[1L]]) prim_rev(prim_cumsum(prim_rev(grad, axis), axis), axis)
+  )
+})
+
+# The forward pass computes the indices, so the backward pass scatters the
+# cotangent at them into zeros, as PyTorch does.
+.cum_extreme_pullback <- function(inputs, outputs, grads, params, required) {
+  if (!required[[1L]]) {
+    return(list(NULL))
+  }
+  axis <- params$axis
+  x <- inputs[[1L]]
+  indices <- outputs[[2L]]
+  grad <- grads[[1L]]
+  rank <- naxes(x)
+
+  batching <- seq_len(rank)[-axis]
+  list(prim_scatter(
+    x = zeros_like(x),
+    scatter_indices = indices,
+    update = grad,
+    update_window_axes = integer(0L),
+    inserted_window_axes = axis,
+    x_batching_axes = batching,
+    scatter_indices_batching_axes = batching,
+    scatter_axes_to_x_axes = axis,
+    index_vector_axis = rank + 1L,
+    unique_indices = FALSE,
+    update_fn = "add"
+  ))
+}
+
+prim_cummax[["pullback"]] <- rule_pullback(.cum_extreme_pullback)
+prim_cummin[["pullback"]] <- rule_pullback(.cum_extreme_pullback)
+
+# slice pullback: pad with zeros
+prim_static_slice[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  start_indices <- params$start_indices
+  end_indices <- params$end_indices
+  strides <- params$strides
+  x <- inputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    if (required[[1L]]) {
+      input_shape <- shape(x)
+      grad_shape <- shape(grad)
+      edge_padding_low <- start_indices - 1L
+      interior_padding <- strides - 1L
+      # An axis of size zero has no gaps to fill with interior padding.
+      edge_padding_high <- input_shape - edge_padding_low - grad_shape - pmax(grad_shape - 1L, 0L) * interior_padding
+      prim_pad(
+        grad,
+        zeros(dtype(grad), integer()),
+        edge_padding_low,
+        edge_padding_high,
+        interior_padding
+      )
+    }
+  )
+})
+
+prim_dynamic_slice[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  start_indices <- inputs[-1L]
+  grad <- grads[[1L]]
+
+  result <- vector("list", length(inputs))
+
+  # dynamic_update_slice does the same clamping as dynamic_slice, so it naturally handles
+  # out of bound indices (in the same weird way)
+  if (required[[1L]]) {
+    zeros <- zeros_like(x)
+    result[[1L]] <- rlang::exec(prim_dynamic_update_slice, zeros, grad, !!!start_indices)
+  }
+
+  result
+})
+
+prim_dynamic_update_slice[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  update <- inputs[[2L]]
+  start_indices <- inputs[-c(1L, 2L)]
+  grad <- grads[[1L]]
+
+  result <- vector("list", length(inputs))
+
+  # dynamic_update_slice does the same clamping as dynamic_slice, so it naturally handles
+  # out of bound indices (in the same weird way)
+  if (required[[1L]]) {
+    zeros <- zeros_like(update)
+    result[[1L]] <- rlang::exec(prim_dynamic_update_slice, grad, zeros, !!!start_indices)
+  }
+
+  if (required[[2L]]) {
+    result[[2L]] <- rlang::exec(prim_dynamic_slice, grad, !!!start_indices, slice_sizes = shape(update))
+  }
+
+  result
+})
+
+prim_gather[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  slice_sizes <- params$slice_sizes
+  offset_axes <- params$offset_axes
+  collapsed_slice_axes <- params$collapsed_slice_axes
+  x_batching_axes <- params$x_batching_axes
+  start_indices_batching_axes <- params$start_indices_batching_axes
+  start_index_map <- params$start_index_map
+  index_vector_axis <- params$index_vector_axis
+  indices_are_sorted <- params$indices_are_sorted
+  unique_indices <- params$unique_indices
+
+  x <- inputs[[1L]]
+  start_indices <- inputs[[2L]]
+  grad <- grads[[1L]]
+
+  # Scatter is basically the "reverse" of gather
+  # We have to take care of two things here:
+  # 1. Out-of-bounds indices:
+  #    Let's say we have an `x` of shape (5, ) and in the forward pass do y = x[6]
+  #    which is clamped to x[5]
+  #    If dout/y = g; then dout/dx = c(0, 0, 0, 0, g)
+  #    But if we just do the reverse x[6] <- g, this gets lost
+  #    (scatter can ignore out-of-bounds indices because the output shape is determined by the input shape)
+  #    So we need to clamp the start_indices to what they actually were.
+  # 2. Multiple reads (x[array(c(1L, 1L)), 2])
+  #    --> accumulate the gradients using update prim_add
+
+  list(
+    if (required[[1L]]) {
+      # Clamp indices to valid range (same as forward pass clamping behavior)
+      scatter_indices <- gather_clamp_indices(
+        start_indices = start_indices,
+        x_shape = shape(x),
+        slice_sizes = slice_sizes,
+        start_index_map = start_index_map,
+        index_vector_axis = index_vector_axis
+      )
+
+      prim_scatter(
+        x = zeros_like(x),
+        scatter_indices = scatter_indices,
+        update = grad,
+        update_window_axes = offset_axes,
+        inserted_window_axes = collapsed_slice_axes,
+        x_batching_axes = x_batching_axes,
+        scatter_indices_batching_axes = start_indices_batching_axes,
+        scatter_axes_to_x_axes = start_index_map,
+        index_vector_axis = index_vector_axis,
+        indices_are_sorted = indices_are_sorted,
+        unique_indices = unique_indices,
+        # Use addition to accumulate gradients when multiple gather positions
+        # read from the same source location
+        update_fn = "add"
+      )
+    },
+    if (required[[2L]]) zeros_like(start_indices)
+  )
+})
+
+
+# Which elements of a scatter's `update` land in `x`, as a boolean array of
+# `update`'s shape. XLA skips an update window that does not fit into `x`
+# entirely, whereas a gather clamps its start index into bounds -- so an update
+# is in bounds exactly when clamping leaves its start index unchanged.
+scatter_update_in_bounds <- function(
+  scatter_indices,
+  update_shape,
+  x_shape,
+  slice_sizes,
+  update_window_axes,
+  scatter_axes_to_x_axes,
+  index_vector_axis
+) {
+  clamped <- gather_clamp_indices(
+    start_indices = scatter_indices,
+    x_shape = x_shape,
+    slice_sizes = slice_sizes,
+    start_index_map = scatter_axes_to_x_axes,
+    index_vector_axis = index_vector_axis
+  )
+  in_bounds <- prim_eq(clamped, scatter_indices)
+  if (index_vector_axis <= naxes(scatter_indices)) {
+    in_bounds <- prim_all(in_bounds, axes = index_vector_axis, drop = TRUE)
+  }
+  # The remaining axes of the indices are `update`'s scatter axes, in order.
+  scatter_axes <- setdiff(seq_along(update_shape), update_window_axes)
+  prim_broadcast_in_axes(in_bounds, update_shape, scatter_axes)
+}
+
+prim_scatter[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  update_window_axes <- params$update_window_axes
+  inserted_window_axes <- params$inserted_window_axes
+  x_batching_axes <- params$x_batching_axes
+  scatter_indices_batching_axes <- params$scatter_indices_batching_axes
+  scatter_axes_to_x_axes <- params$scatter_axes_to_x_axes
+  index_vector_axis <- params$index_vector_axis
+  indices_are_sorted <- params$indices_are_sorted
+  unique_indices <- params$unique_indices
+
+  x <- inputs[[1L]]
+  scatter_indices <- inputs[[2L]]
+  update <- inputs[[3L]]
+  grad <- grads[[1L]]
+
+  # Only an update function given by name is differentiated: what a function
+  # computes is not looked into.
+  kind <- params$update_op
+  if (is.null(kind)) {
+    cli_abort(c(
+      "The gradient of {.fn prim_scatter} is not implemented for an {.arg update_fn} that is a function.",
+      i = "Pass {.arg update_fn} by name instead: {.or {.val {names(scatter_update_fns)}}}."
+    ))
+  }
+  if (kind == "mul" && required[[3L]] && !unique_indices) {
+    cli_abort(c(
+      "The gradient of a multiplying {.fn prim_scatter} with respect to {.arg update} needs {.code unique_indices = TRUE}.",
+      i = "With repeated indices, the gradient of one update depends on every other update to its position."
+    ))
+  }
+
+  update_shape <- shape(update)
+  x_shape <- shape(x)
+
+  slice_sizes <- scatter_to_gather_slice_sizes(
+    update_shape = update_shape,
+    x_shape = x_shape,
+    update_window_axes = update_window_axes,
+    inserted_window_axes = inserted_window_axes,
+    x_batching_axes = x_batching_axes
+  )
+
+  # Scatter into and gather from `x` at the forward scatter's positions.
+  scatter_at <- function(x, update, update_fn, unique_indices = params$unique_indices) {
+    prim_scatter(
+      x = x,
+      scatter_indices = scatter_indices,
+      update = update,
+      update_window_axes = update_window_axes,
+      inserted_window_axes = inserted_window_axes,
+      x_batching_axes = x_batching_axes,
+      scatter_indices_batching_axes = scatter_indices_batching_axes,
+      scatter_axes_to_x_axes = scatter_axes_to_x_axes,
+      index_vector_axis = index_vector_axis,
+      indices_are_sorted = indices_are_sorted,
+      unique_indices = unique_indices,
+      update_fn = update_fn
+    )
+  }
+  gather_at <- function(x, unique_indices = params$unique_indices) {
+    prim_gather(
+      x = x,
+      start_indices = scatter_indices,
+      slice_sizes = slice_sizes,
+      offset_axes = update_window_axes,
+      collapsed_slice_axes = inserted_window_axes,
+      x_batching_axes = x_batching_axes,
+      start_indices_batching_axes = scatter_indices_batching_axes,
+      start_index_map = scatter_axes_to_x_axes,
+      index_vector_axis = index_vector_axis,
+      indices_are_sorted = indices_are_sorted,
+      unique_indices = unique_indices
+    )
+  }
+  # A gather clamps an out-of-bounds index into `x`, but the forward scatter
+  # dropped that update, so its gradient is zero.
+  update_in_bounds <- function() {
+    scatter_update_in_bounds(
+      scatter_indices = scatter_indices,
+      update_shape = update_shape,
+      x_shape = x_shape,
+      slice_sizes = slice_sizes,
+      update_window_axes = update_window_axes,
+      scatter_axes_to_x_axes = scatter_axes_to_x_axes,
+      index_vector_axis = index_vector_axis
+    )
+  }
+  in_bounds_only <- function(update_grad) {
+    prim_ifelse(update_in_bounds(), update_grad, 0)
+  }
+
+  grad_x <- NULL
+  grad_update <- NULL
+  switch(
+    kind,
+    replace = {
+      # `x` keeps the gradient where no update overwrote it. Scattering zeros
+      # is idempotent, so this holds for repeated indices too.
+      if (required[[1L]]) {
+        grad_x <- scatter_at(grad, zeros_like(update), "replace")
+      }
+      if (required[[3L]]) {
+        grad_update <- if (unique_indices) {
+          in_bounds_only(gather_at(grad))
+        } else {
+          scatter_replace_winners_grad(grad, update_shape, update_window_axes, x_shape, scatter_at, gather_at)
+        }
+      }
+    },
+    add = ,
+    sub = {
+      # Every update enters its position linearly, repeated or not.
+      if (required[[1L]]) {
+        grad_x <- grad
+      }
+      if (required[[3L]]) {
+        grad_update <- in_bounds_only(gather_at(grad))
+        if (kind == "sub") grad_update <- prim_negate(grad_update)
+      }
+    },
+    mul = {
+      # result = x * (product of the updates to the position)
+      if (required[[1L]]) {
+        grad_x <- prim_mul(grad, scatter_at(ones_like(x), update, "mul"))
+      }
+      if (required[[3L]]) {
+        # unique indices: result = x * update at the update's position
+        grad_update <- in_bounds_only(gather_at(prim_mul(grad, x)))
+      }
+    },
+    max = ,
+    min = {
+      # The gradient goes to the values the result equals -- `x` and every
+      # update that ties with it share it equally, as for prim_pmax() and
+      # prim_max().
+      out <- outputs[[1L]]
+      grad_dtype <- dtype(grad)
+      retained <- prim_convert(prim_eq(x, out), dtype = grad_dtype)
+      won <- prim_and(prim_eq(update, gather_at(out)), update_in_bounds())
+      won <- prim_convert(won, dtype = grad_dtype)
+      n_winners <- prim_add(retained, scatter_at(zeros(grad_dtype, x_shape), won, "add"))
+      grad_share <- prim_div(grad, n_winners)
+      if (required[[1L]]) {
+        grad_x <- prim_mul(grad_share, retained)
+      }
+      if (required[[3L]]) grad_update <- prim_mul(won, gather_at(grad_share))
+    }
+  )
+
+  list(
+    grad_x,
+    # The indices are not differentiable.
+    if (required[[2L]]) zeros_like(scatter_indices),
+    grad_update
+  )
+})
+
+# The gradient of the updates of a replacing scatter whose indices may repeat.
+# XLA does not say which update wins a position, so we use the ID trick from
+# JAX's scatter JVP:
+# https://github.com/jax-ml/jax/blob/ecd3795959e91c3c28cec8696f4c82f2a28bc086/jax/_src/lax/slicing.py
+# Example: (x has shape (2,)) x[c(1, 1)] <- c(2, 3) --> we don't know whether 2
+# or 3 was assigned to position 1.
+# 1. x <- c(0, 0)
+# 2. Assign unique indices x[c(1, 1)] <- c(1, 2)
+# 3. gather the winners: x[c(1, 1)], which e.g. gives c(2, 2)
+# 4. Compare c(1, 2) == c(2, 2) = c(FALSE, TRUE) -> second one wins
+# 5. Mask out the losers; grad[1] <- 0
+# An update the forward scatter dropped as out of bounds never wins, so it gets
+# no gradient either.
+scatter_replace_winners_grad <- function(grad, update_shape, update_window_axes, x_shape, scatter_at, gather_at) {
+  # a) Create unique positive IDs for each update "batch" position
+  ids_shape <- update_shape
+  ids_shape[update_window_axes] <- 1L
+  num_ids <- prod(ids_shape)
+  id_dtype <- "i64"
+  update_ids <- prim_reshape(prim_iota(1L, num_ids, id_dtype, start = 1L), ids_shape)
+  update_ids <- prim_broadcast_in_axes(update_ids, update_shape, seq_along(update_shape))
+
+  # b) Scatter IDs to see which update "wins" at each position
+  scattered_ids <- scatter_at(prim_fill(0L, dtype = id_dtype, shape = x_shape), update_ids, "replace", FALSE)
+
+  # c) Gather scattered IDs back to update positions
+  gathered_ids <- gather_at(scattered_ids, FALSE)
+
+  # d) Gather gradient and mask: only winning updates get gradient
+  grad_at_positions <- gather_at(grad, FALSE)
+  mask <- prim_eq(update_ids, gathered_ids)
+  prim_ifelse(mask, grad_at_positions, 0)
+}
+
+# The masks below are of the shape `shape` of a batch of square matrices: the
+# matrix its first two axes form, repeated along any trailing batch axes.
+diag_mask <- function(shape) {
+  prim_iota(axis = 1L, shape = shape, dtype = "i32", start = 0L) ==
+    prim_iota(axis = 2L, shape = shape, dtype = "i32", start = 0L)
+}
+
+triangular_mask <- function(shape, lower, unit_diagonal) {
+  mask <- tri_mask(shape, 0L, lower = lower)
+  if (unit_diagonal) {
+    prim_ifelse(diag_mask(shape), FALSE, mask)
+  } else {
+    mask
+  }
+}
+
+#' @name prim_chol
+#' @rdname prim_chol
+#' @references
+#' `r format_bib("murray2016differentiation", "walter2012structured")`
+prim_chol[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  lower <- params$lower
+
+  # The Jacobian for cholesky is actually not unique.
+  # This is, because the derivative property only needs to hold for valid input perturbations.
+  # i.e., we want cholesky(x + dx) \approx cholesky(x) + dcholesky(x) %*% dx
+  # but here x + dx needs to be positive semi-definite.
+  # this is satisfied if dx is symmetric (dx is small)
+  # Because the property only needs to hold for symmetric inputs dx, there are an infinite number
+  # of solutions.
+  # We use the solution that is identical to the one used by {torch} (which we compare against
+  # in the test)
+
+  # Any trailing axes are batch axes, so `t()` is `transpose_matrix_axes()`.
+  L <- outputs[[1L]]
+  grad <- grads[[1L]]
+  L_shape <- shape(L)
+
+  # Phi: keep lower triangle, halve diagonal, zero upper triangle
+  phi <- function(x) {
+    eye <- prim_convert(diag_mask(L_shape), dtype = dtype(x))
+    x <- prim_div(x, prim_add(1, eye))
+    prim_ifelse(tri_mask(L_shape, 0L, lower = TRUE), x, 0)
+  }
+
+  # The stablehlo lowering already zeros out the non-triangular part of L,
+  # so grad is clean and no masking is needed here.
+
+  # For upper triangular, transpose to work with the lower-triangular algorithm.
+  # No transpose back needed at the end: grad_A is symmetric.
+  if (!lower) {
+    L <- transpose_matrix_axes(L)
+    grad <- transpose_matrix_axes(grad)
+  }
+  # We almost use Murray (2016) equation 10, but use M / 2 instead of phi(M) which are both
+  # equivalent for symmetric perturbations
+  P <- phi(nv_matmul(transpose_matrix_axes(L), grad))
+  S <- prim_mul(prim_add(P, transpose_matrix_axes(P)), 0.5)
+  S <- prim_triangular_solve(L, S, left_side = TRUE, lower = TRUE, unit_diagonal = FALSE, transpose_a = TRUE)
+  grad_A <- prim_triangular_solve(
+    L,
+    S,
+    left_side = FALSE,
+    lower = TRUE,
+    unit_diagonal = FALSE,
+    transpose_a = FALSE
+  )
+
+  list(grad_A)
+})
+
+#' @name prim_triangular_solve
+#' @rdname prim_triangular_solve
+#' @references
+#' `r format_bib("giles2008extended")`
+prim_triangular_solve[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  left_side <- params$left_side
+  lower <- params$lower
+  unit_diagonal <- params$unit_diagonal
+  transpose_a <- params$transpose_a
+
+  # Any trailing axes are batch axes, so `t()` is `transpose_matrix_axes()`.
+  a <- inputs[[1L]]
+  x <- outputs[[1L]]
+  grad <- grads[[1L]]
+
+  # op(A) is A or A^T depending on transpose_a.
+  # From the paper: grad_b = op(A)^{-1} * grad (left side), grad * op(A)^{-1} (right side,
+  # where x @ op(a) = b).
+  grad_b <- prim_triangular_solve(
+    a,
+    grad,
+    left_side = left_side,
+    lower = lower,
+    unit_diagonal = unit_diagonal,
+    transpose_a = !transpose_a
+  )
+  # From the paper: dx/da = -A^{-1} * dA * A^{-1} * B
+  # Similar to cholesky, where the perturbation needs to be symmetric, here the perturbation
+  # of A can be assumed to be a lower triangular matrix.
+  # Our derivative therefore only works when the input is a lower triangular matrix.
+  # I.e. dy/dx_{i, j} = 0 for the upper/lower triangular matrix
+  # But because the cotangent can be anything, we need to handle this here.
+  # (we could either modify the cotangent or mask the results; we choose the latter)
+  # Also if unit_diagonal = TRUE the diagonal elements are not read and hence also have no effect
+  # i.e. we also zero out those.
+  grad_a <- if (required[[1L]]) {
+    x_t <- transpose_matrix_axes(x)
+    raw <- prim_negate(if (left_side) nv_matmul(grad_b, x_t) else nv_matmul(x_t, grad_b))
+    mask <- triangular_mask(shape(a), lower, unit_diagonal)
+    if (transpose_a) {
+      raw <- transpose_matrix_axes(raw)
+    }
+    prim_ifelse(mask, raw, 0)
+  }
+
+  list(grad_a, if (required[[2L]]) grad_b)
+})
+
+# Moves a group factor from axis `from` of `x` into axis `to`: `from` is cut
+# into `n_groups` contiguous blocks, and the block index becomes the slower
+# varying part of `to`. These are the blocks a grouped convolution splits a
+# feature or batch axis into.
+regroup_axis <- function(x, from, to, n_groups) {
+  shp <- shape(x)
+  split <- append(replace(shp, from, shp[[from]] %/% n_groups), n_groups, after = from)
+  x <- prim_reshape(x, split)
+  # Where the original axes sit after the split, with the block axis at `from + 1`.
+  pos <- seq_along(shp) + (seq_along(shp) > from)
+  x <- prim_transpose(x, append(pos, from + 1L, after = to))
+  shp[[from]] <- shp[[from]] %/% n_groups
+  shp[[to]] <- shp[[to]] * n_groups
+  prim_reshape(x, shp)
+}
+
+# Both cotangents are convolutions again, as in JAX's
+# `_conv_general_dilated_transpose_lhs()` / `_rhs()`: strides and dilations
+# trade places, and the roles of the axes are swapped.
+prim_convolution[["pullback"]] <- rule_pullback(function(inputs, outputs, grads, params, required) {
+  x <- inputs[[1L]]
+  kernel <- inputs[[2L]]
+  grad <- grads[[1L]]
+  fg_count <- params$feature_group_count
+  bg_count <- params$batch_group_count
+
+  # An empty cotangent carries no gradient and would only form degenerate
+  # convolutions.
+  if (any(shape(grad) == 0L)) {
+    return(list(
+      if (required[[1L]]) zeros_like(x),
+      if (required[[2L]]) zeros_like(kernel)
+    ))
+  }
+
+  x_extent <- dilate_shape(shape(x)[params$x_spatial_axes], params$x_dilation)
+  window_extent <- dilate_shape(shape(kernel)[params$kernel_spatial_axes], params$kernel_dilation)
+  grad_extent <- dilate_shape(shape(grad)[params$output_spatial_axes], params$window_strides)
+  pad_low <- params$padding[, 1L]
+
+  list(
+    if (required[[1L]]) {
+      # Slide the flipped kernel over the cotangent, spread out by the strides.
+      # A group's input features become its output features, so the group
+      # factor moves from the kernel's output feature axis into its input one.
+      flipped <- prim_rev(kernel, params$kernel_spatial_axes)
+      if (fg_count > 1L || bg_count > 1L) {
+        flipped <- regroup_axis(
+          flipped,
+          params$kernel_output_feature_axis,
+          params$kernel_input_feature_axis,
+          fg_count * bg_count
+        )
+      }
+      pad_before <- window_extent - pad_low - 1L
+      pad_after <- x_extent + window_extent - 1L - grad_extent - pad_before
+      grad_x <- prim_convolution(
+        grad,
+        flipped,
+        x_batch_axis = params$output_batch_axis,
+        x_feature_axis = params$output_feature_axis,
+        x_spatial_axes = params$output_spatial_axes,
+        kernel_input_feature_axis = params$kernel_output_feature_axis,
+        kernel_output_feature_axis = params$kernel_input_feature_axis,
+        kernel_spatial_axes = params$kernel_spatial_axes,
+        output_batch_axis = params$x_batch_axis,
+        output_feature_axis = params$x_feature_axis,
+        output_spatial_axes = params$x_spatial_axes,
+        window_strides = params$x_dilation,
+        padding = cbind(pad_before, pad_after, deparse.level = 0L),
+        x_dilation = params$window_strides,
+        kernel_dilation = params$kernel_dilation,
+        feature_group_count = fg_count * bg_count,
+        batch_group_count = 1L,
+        precision = params$precision
+      )
+      # The batch groups came out stacked along the feature axis.
+      if (bg_count > 1L) {
+        grad_x <- regroup_axis(grad_x, params$x_feature_axis, params$x_batch_axis, bg_count)
+      }
+      grad_x
+    },
+    if (required[[2L]]) {
+      # Correlate `x` with the cotangent, contracting over the batch: `x`'s
+      # features play its batch, and the cotangent is the window. Feature
+      # groups turn into batch groups and vice versa.
+      pad_high <- grad_extent - x_extent + window_extent - pad_low - 1L
+      prim_convolution(
+        x,
+        grad,
+        x_batch_axis = params$x_feature_axis,
+        x_feature_axis = params$x_batch_axis,
+        x_spatial_axes = params$x_spatial_axes,
+        kernel_input_feature_axis = params$output_batch_axis,
+        kernel_output_feature_axis = params$output_feature_axis,
+        kernel_spatial_axes = params$output_spatial_axes,
+        output_batch_axis = params$kernel_input_feature_axis,
+        output_feature_axis = params$kernel_output_feature_axis,
+        output_spatial_axes = params$kernel_spatial_axes,
+        window_strides = params$kernel_dilation,
+        padding = cbind(pad_low, pad_high, deparse.level = 0L),
+        x_dilation = params$x_dilation,
+        kernel_dilation = params$window_strides,
+        feature_group_count = bg_count,
+        batch_group_count = fg_count,
+        precision = params$precision
+      )
+    }
+  )
+})

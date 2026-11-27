@@ -26,7 +26,8 @@ Rounds the elements of an array to the nearest integer.
 
 \itemize{
 \item \code{stablehlo}
-\item \code{reverse}
+\item \code{pullback}
+\item \code{vectorize}
 }
 }
 

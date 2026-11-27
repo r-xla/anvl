@@ -44,7 +44,7 @@ Computes the median over one or more axes. Equivalent to
 reduced elements with the default \code{"linear"} interpolation, the average of
 the two middle values is returned, matching base R's \code{median()}.
 
-You can also use \code{median()} directly on an \code{\link{AnvlArray}} or \code{\link{AnvlBox}};
+You can also use \code{median()} directly on an \code{\link{AnvlArray}} or \code{\link{GraphBox}};
 extra arguments (e.g. \code{method}) are forwarded via \code{...}.
 }
 \section{The \code{median()} generic}{

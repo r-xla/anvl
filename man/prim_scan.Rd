@@ -9,11 +9,14 @@ prim_scan(init, xs, body, steps, reverse = FALSE)
 \arguments{
 \item{init}{(\code{list()})\cr
 Initial carry: a (possibly nested) list of arrays. Every leaf keeps its
-shape and data type across steps.}
+shape and data type across steps. It must not contain a random state: to
+draw from one in \code{body}, make it the default before the loop with
+\code{\link[=local_nv_rng_state]{local_nv_rng_state()}}.}
 
 \item{xs}{(\code{list()})\cr
-Per-step inputs: a (possibly nested) list of arrays sliced along axis 1,
-all of size \code{steps} along it. An empty list runs a counted loop.}
+Per-step inputs: a (possibly nested) list of arrays sliced along their
+last axis, all of size \code{steps} along it. An empty list runs a counted
+loop. It must not contain a random state.}
 
 \item{body}{(\code{function})\cr
 Step function \verb{function(carry, x)} returning \code{list(carry = , out = )},
@@ -21,8 +24,8 @@ where \code{carry} has the structure of \code{init} and \code{out} is a (possibl
 nested) list of arrays or \code{NULL}. \code{x} is \code{NULL} when \code{xs} is empty.}
 
 \item{steps}{(\code{integer(1)})\cr
-Static trip count; the size of axis 1 of every array in \code{xs}. \code{0} runs
-no step and returns \code{init} with zero-length stacked outputs.}
+Static trip count; the size of the last axis of every array in \code{xs}.
+\code{0} runs no step and returns \code{init} with zero-length stacked outputs.}
 
 \item{reverse}{(\code{logical(1)})\cr
 If \code{TRUE}, steps run from \code{steps} down to \code{1}; each step still reads
@@ -30,18 +33,20 @@ If \code{TRUE}, steps run from \code{steps} down to \code{1}; each step still re
 }
 \value{
 \code{list(carry = , out = )}: the final carry and the stacked
-outputs, each leaf of \code{out} gaining a leading axis of size \code{steps}.
+outputs, each leaf of \code{out} gaining a trailing axis of size \code{steps}.
 }
 \description{
 Runs \code{body} a fixed number of times, threading a carry through the steps
-and stacking each step's outputs along a new leading axis. Step \code{t}
+and stacking each step's outputs along a new trailing axis. Step \code{t}
 receives the carry and, for every array in \code{xs}, its slice at position \code{t}
-along axis 1 with that axis dropped.
+along its last axis with that axis dropped.
 }
 \section{Implemented Rules}{
 
 \itemize{
 \item \code{stablehlo}
+\item \code{pullback}
+\item \code{vectorize}
 }
 }
 

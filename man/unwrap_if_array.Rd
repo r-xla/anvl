@@ -2,7 +2,7 @@
 % Please edit documentation in R/array.R
 \name{unwrap_if_array}
 \alias{unwrap_if_array}
-\title{Get the underlying PJRT buffer from an AnvlArray or pass through other values}
+\title{Get the Underlying PJRT Buffer from an AnvlArray or Pass Through Other Values}
 \usage{
 unwrap_if_array(x)
 }
@@ -13,6 +13,6 @@ unwrap_if_array(x)
 (\code{PJRTBuffer} | \code{any})
 }
 \description{
-Get the underlying PJRT buffer from an AnvlArray or pass through other values
+Get the Underlying PJRT Buffer from an AnvlArray or Pass Through Other Values
 }
 \keyword{internal}

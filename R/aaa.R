@@ -2,9 +2,10 @@
 NULL
 
 #' @section Options:
-#' * `anvl.backend` (`character(1)`, default `"pjrt"`): the backend every
-#'   operation runs on -- `"pjrt"` or `"quickr"`. Arrays are allocated with it
-#'   and jitted functions are compiled for it.
+#' * `anvl.backend` (`character(1)`): the backend every
+#'   operation runs on.
+#'   Must be `"pjrt"`, `"quickr"`, or a backend a package added with
+#'   [`register_backend()`]. If not set, `"pjrt"` is used.
 #'   Also see [`active_backend()`], [`local_backend()`] and [`with_backend()`].
 #' * `anvl.default_dtypes` (named `character()` | named `list()`): the data
 #'   types an R double and an R integer settle on when they meet no typed
@@ -19,10 +20,14 @@ NULL
 #' * `ANVL_DEFAULT_DTYPES`: `category=dtype` pairs such as
 #'   `"float=f64,int=i64"`, used for every backend when the
 #'   `anvl.default_dtypes` option is not set.
-#' * `ANVL_DEFAULT_DEVICE`: a device identifier such as `"cuda"` or `"cpu:1"`,
+#' * `ANVL_DEFAULT_DEVICE`: a device identifier such as `"cuda"` or `"cuda:0"`,
 #'   used when the `anvl.default_device` option is not set.
 #'
-#' Both are read once, when anvl is loaded.
+#' Both are read once, when anvl is loaded, and kept as fallbacks for the
+#' options rather than set as them: `getOption("anvl.default_device")` stays
+#' `NULL`, and an option set later takes precedence. Changing a variable after
+#' anvl is loaded has no effect until the package is loaded again, e.g. in a
+#' new R session.
 #'
 #' The remaining ones, all prefixed `ANVL_TEST`, affect only anvl's own test
 #' suite, not the package:
@@ -52,10 +57,9 @@ NULL
 #' @importFrom stablehlo hlo_scalar hlo_tensor
 #' @evalNamespace paste0("importFrom(stablehlo,", setdiff(grep("^hlo_", getNamespaceExports("stablehlo"), value = TRUE), c("hlo_scalar", "hlo_tensor")), ")")
 #' @import checkmate
-#' @import tengen
+#' @import xlamisc
 #' @importFrom pjrt pjrt_buffer pjrt_scalar pjrt_execute pjrt_compile pjrt_program elt_type
-#' @importFrom utils gethash hashtab maphash numhash
-#' @importFrom xlamisc seq_len0 seq_along0
+#' @importFrom utils hashtab maphash
 #' @importFrom utils head tail getFromNamespace install.packages
 #' @importFrom cli cli_abort cli_warn
 #' @importFrom rlang %||%
@@ -66,9 +70,10 @@ NULL
 NULL
 
 globals <- new.env()
-globals$nv_types <- "AnvlArray"
-globals$interpretation_rules <- c("stablehlo", "quickr", "reverse")
-globals[["DESCRIPTOR_STASH"]] <- list()
-globals[["CURRENT_DESCRIPTOR"]] <- NULL
-globals[["LOWERING_PLATFORM"]] <- NULL
+globals$interpretation_rules <- c("stablehlo", "quickr", "pullback", "vectorize")
+globals[["descriptor_stash"]] <- list()
+globals[["current_descriptor"]] <- NULL
+globals[["lowering_platform"]] <- NULL
+globals[["lowering_funcs"]] <- NULL
+globals$rng_state <- NULL
 utils::globalVariables(c("globals", "self"))

@@ -11,21 +11,22 @@ quickr_user_arg_names <- function(n) {
   paste0("x", seq_len(n))
 }
 
-# What quickr can represent, per data type: the R storage it uses, its zero, and
-# the cast to it. quickr has no single precision, so `f32` is *not* accepted --
-# carrying it as a double would label an array `f32` while holding `f64` values,
-# which is the mislabelling the data type system exists to prevent.
+# What quickr can represent, per data type: the R storage it uses, its zero, the
+# cast to it, and the bytes per element of its raw payload. quickr has no single
+# precision, so `f32` is *not* accepted -- carrying it as a double would label
+# an array `f32` while holding `f64` values, which is the mislabelling the data
+# type system exists to prevent.
 quickr_dtype_info <- function(dt_chr) {
   dt_chr <- as.character(dt_chr)
 
   if (dt_chr == "f64") {
-    return(list(ctor = "double", zero = 0.0, scalar_cast = as.double))
+    return(list(ctor = "double", zero = 0.0, scalar_cast = as.double, size = 8L))
   }
   if (dt_chr == "i32") {
-    return(list(ctor = "integer", zero = 0L, scalar_cast = as.integer))
+    return(list(ctor = "integer", zero = 0L, scalar_cast = as.integer, size = 4L))
   }
   if (dt_chr %in% "bool") {
-    return(list(ctor = "logical", zero = FALSE, scalar_cast = as.logical))
+    return(list(ctor = "logical", zero = FALSE, scalar_cast = as.logical, size = 1L))
   }
 
   cli_abort(paste0(
@@ -492,7 +493,7 @@ quickr_emit_reverse <- function(out_sym, operand_expr, shape_in, axes, out_aval)
 
 quickr_emit_concatenate <- function(out_sym, operands_expr, operands_shape, axis, out_aval) {
   axis <- as.integer(axis)
-  rank <- length(shape(out_aval))
+  rank <- naxes(out_aval)
   if (!rank || rank > 5L) {
     cli_abort("concatenate: only arrays of rank 1..5 are supported by quickr lowering")
   }
@@ -986,8 +987,10 @@ quickr_emit_dot_general <- function(
     ))
   }
 
-  nbatch <- length(bd_lhs)
+  # The output axes are the free axes of lhs, then those of rhs, then the batch
+  # axes.
   nfree_lhs <- length(free_lhs)
+  nfree <- nfree_lhs + length(free_rhs)
 
   out_idxs <- lapply(seq_len(out_rank), function(d) as.name(paste0("i_", as.character(out_sym), "_", d)))
   k_idxs <- lapply(seq_along(cd_lhs), function(i) as.name(paste0("k_", as.character(out_sym), "_", i)))
@@ -996,9 +999,9 @@ quickr_emit_dot_general <- function(
   lhs_idxs <- vector("list", lhs_rank)
   for (d in seq_len(lhs_rank)) {
     if (d %in% bd_lhs) {
-      lhs_idxs[[d]] <- out_idxs[[match(d, bd_lhs)]]
+      lhs_idxs[[d]] <- out_idxs[[nfree + match(d, bd_lhs)]]
     } else if (d %in% free_lhs) {
-      lhs_idxs[[d]] <- out_idxs[[nbatch + match(d, free_lhs)]]
+      lhs_idxs[[d]] <- out_idxs[[match(d, free_lhs)]]
     } else {
       lhs_idxs[[d]] <- k_idxs[[match(d, cd_lhs)]]
     }
@@ -1007,9 +1010,9 @@ quickr_emit_dot_general <- function(
   rhs_idxs <- vector("list", rhs_rank)
   for (d in seq_len(rhs_rank)) {
     if (d %in% bd_rhs) {
-      rhs_idxs[[d]] <- out_idxs[[match(d, bd_rhs)]]
+      rhs_idxs[[d]] <- out_idxs[[nfree + match(d, bd_rhs)]]
     } else if (d %in% free_rhs) {
-      rhs_idxs[[d]] <- out_idxs[[nbatch + nfree_lhs + match(d, free_rhs)]]
+      rhs_idxs[[d]] <- out_idxs[[nfree_lhs + match(d, free_rhs)]]
     } else {
       rhs_idxs[[d]] <- k_idxs[[match(d, cd_rhs)]]
     }
@@ -1449,7 +1452,7 @@ quickr_emit_reshape <- function(out_sym, operand_expr, shape_in, shape_out, out_
 # Primitive lowering registry ---------------------------------------------------
 
 quickr_register_prim_lowerer <- function(primitive, fun) {
-  primitives <- if (inherits(primitive, "AnvlPrimitive") || inherits(primitive, "JitPrimitive")) {
+  primitives <- if (inherits(primitive, "AnvlPrimitiveDef") || inherits(primitive, "AnvlPrimitive")) {
     list(primitive)
   } else {
     primitive
@@ -1461,16 +1464,31 @@ quickr_register_prim_lowerer <- function(primitive, fun) {
 }
 
 # Registers `fun` for an elementwise primitive: one whose output has the shape
-# of its operands, so an output with a zero-size axis has nothing to compute.
-# Such an output is allocated directly instead -- quickr rejects an elementwise
-# operation with an empty operand (Fortran has no recycling).
-quickr_register_elementwise_lowerer <- function(primitive, fun) {
+# of its operands that are not scalars, so an output with a zero-size axis has
+# nothing to compute. Such an output is allocated directly instead -- quickr
+# rejects an elementwise operation with an empty operand (Fortran has no
+# recycling). `fun` receives a scalar operand broadcast to the output's shape,
+# since the lowerings index their operands element by element, except at the
+# positions `scalar_inputs`, which it takes as they are.
+quickr_register_elementwise_lowerer <- function(primitive, fun, scalar_inputs = integer()) {
   guarded <- function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
     empty <- quickr_emit_known_empty(out_syms[[1L]], out_avals[[1L]])
     if (!is.null(empty)) {
       return(empty)
     }
-    fun(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = ctx)
+    out_shape <- as.integer(shape(out_avals[[1L]]))
+    scalars <- Filter(
+      \(i) length(out_shape) && !naxes(input_nodes[[i]]$aval),
+      setdiff(seq_along(inputs), scalar_inputs)
+    )
+    syms <- lapply(scalars, \(i) ctx$new_tmp_sym())
+    broadcast <- Map(
+      \(sym, i) quickr_emit_full_like(sym, inputs[[i]], out_shape, out_avals[[1L]]),
+      syms,
+      scalars
+    )
+    inputs[scalars] <- syms
+    c(unlist(broadcast, recursive = FALSE), fun(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = ctx))
   }
   quickr_register_prim_lowerer(primitive, guarded)
 }
@@ -1478,8 +1496,8 @@ quickr_register_elementwise_lowerer <- function(primitive, fun) {
 quickr_supported_prims <- function() {
   sort(unlist(
     eapply(primitive_env, function(primitive) {
-      if (inherits(primitive, "JitPrimitive")) {
-        primitive <- attr(primitive, "primitive")
+      if (inherits(primitive, "AnvlPrimitive")) {
+        primitive <- attr(primitive, "definition")
       }
       if (is.null(primitive$rules[["quickr"]])) {
         NULL
@@ -1496,7 +1514,7 @@ quickr_lower_graph_calls <- function(graph, ctx) {
   new_tmp_sym <- ctx$new_tmp_sym
 
   stmts <- list()
-  for (call in graph$calls) {
+  for (call in graph$statements) {
     # quickr rejects NaN / +-Inf as literals, so a literal holding one is bound
     # to a temp that computes it at runtime and the call reads that instead.
     for (node in call$inputs) {
@@ -1574,15 +1592,6 @@ quickr_lower_inline_graph <- function(graph, input_exprs, ctx) {
 
   for (i in seq_along(graph$inputs)) {
     node_expr[[graph$inputs[[i]]]] <- input_exprs[[i]]
-  }
-
-  for (const_node in graph$constants) {
-    if (!is_graph_value(const_node)) {
-      cli_abort("Internal error: subgraph constants must be GraphValue nodes")
-    }
-    if (is.null(node_expr[[const_node]])) {
-      cli_abort("quickr lowering: subgraph constant is not available in parent graph constants")
-    }
   }
 
   quickr_lower_graph_calls(graph, ctx)
@@ -1765,8 +1774,8 @@ local({
       true_graph <- params$true
       false_graph <- params$false
 
-      lowered_true <- quickr_lower_inline_graph(true_graph, list(), ctx)
-      lowered_false <- quickr_lower_inline_graph(false_graph, list(), ctx)
+      lowered_true <- quickr_lower_inline_graph(true_graph, inputs[-1L], ctx)
+      lowered_false <- quickr_lower_inline_graph(false_graph, inputs[-1L], ctx)
 
       if (length(out_syms) != length(lowered_true$out_exprs) || length(out_syms) != length(lowered_false$out_exprs)) {
         cli_abort("if: branch arity mismatch")
@@ -1791,6 +1800,11 @@ local({
       }
       cond_graph <- params$cond
       body_graph <- params$body
+      # The operands past the state are the sub-graphs' captures.
+      n_state <- length(inputs) - params$n_captures
+      state_idx <- seq_len(n_state)
+      captured <- inputs[n_state + seq_len(params$n_captures)]
+      inputs <- inputs[state_idx]
 
       if (length(out_syms) != length(inputs)) {
         cli_abort("while: state arity mismatch between inputs and outputs")
@@ -1803,12 +1817,12 @@ local({
       cond_sym <- as.name(paste0("cond_", as.character(out_syms[[1L]])))
 
       lower_cond <- function() {
-        lowered <- quickr_lower_inline_graph(cond_graph, out_syms, ctx)
+        lowered <- quickr_lower_inline_graph(cond_graph, c(out_syms, captured), ctx)
         c(lowered$stmts, list(rlang::call2("<-", cond_sym, lowered$out_exprs[[1L]])))
       }
 
       lower_body <- function() {
-        lowered <- quickr_lower_inline_graph(body_graph, out_syms, ctx)
+        lowered <- quickr_lower_inline_graph(body_graph, c(out_syms, captured), ctx)
         assigns <- Map(rlang::call2, rep("<-", length(out_syms)), out_syms, lowered$out_exprs)
         c(lowered$stmts, assigns)
       }
@@ -1826,6 +1840,27 @@ local({
         lower_cond(),
         list(as.call(list(as.name("while"), cond_sym, loop_body)))
       )
+    }
+  )
+
+  # `fn` runs in place; `rule` and `forward` took part when a gradient was
+  # traced, if any.
+  quickr_register_prim_lowerer(
+    prim_custom_gradient,
+    function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
+      if (is.null(ctx)) {
+        cli_abort("Internal error: missing quickr lowering context for primitive {.val custom_gradient}")
+      }
+      lowered <- quickr_lower_inline_graph(params$fn, inputs, ctx)
+      c(lowered$stmts, Map(rlang::call2, rep("<-", length(out_syms)), out_syms, lowered$out_exprs))
+    }
+  )
+
+  # quickr does not fuse operations; lower the barrier to plain assignments.
+  quickr_register_prim_lowerer(
+    prim_optimization_barrier,
+    function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
+      Map(rlang::call2, rep("<-", length(out_syms)), out_syms, inputs)
     }
   )
 
@@ -1888,7 +1923,7 @@ local({
       if (!is_graph(update_comp)) {
         cli_abort("scatter: missing update computation graph")
       }
-      if (length(update_comp$inputs) != 2L || length(update_comp$outputs) != 1L) {
+      if (length(update_comp$inputs) != length(inputs) - 1L || length(update_comp$outputs) != 1L) {
         cli_abort("scatter: update computation graph must be a scalar binary function")
       }
 
@@ -1904,7 +1939,7 @@ local({
       upd_expr <- rlang::call2("[", inputs[[3L]], ii)
 
       lower_update_comp <- function() {
-        lowered <- quickr_lower_inline_graph(update_comp, list(old_sym, upd_sym), ctx)
+        lowered <- quickr_lower_inline_graph(update_comp, c(list(old_sym, upd_sym), inputs[-(1:3)]), ctx)
         c(lowered$stmts, list(rlang::call2("<-", new_sym, lowered$out_exprs[[1L]])))
       }
 
@@ -2069,7 +2104,8 @@ local({
         shape(input_nodes[[1L]]$aval),
         out_avals[[1L]]
       )
-    }
+    },
+    scalar_inputs = 1L
   )
 
   quickr_register_elementwise_lowerer(
@@ -2294,7 +2330,7 @@ quickr_abort_unsupported_prims <- function(unsupported_prims, supported_prims) {
 quickr_find_unsupported_prims <- function(graph, supported_prims) {
   unsupported_prims <- character()
 
-  for (call in graph$calls) {
+  for (call in graph$statements) {
     prim_name <- call$primitive$name
     if (!prim_name %in% supported_prims) {
       unsupported_prims <- c(unsupported_prims, prim_name)
@@ -2387,7 +2423,7 @@ graph_to_quickr_r_fun_impl <- function(graph, include_declare = TRUE) {
   if (pjrt::tree_root_kind(graph$out_tree) == "leaf" && length(out_exprs) == 1L) {
     out_node <- graph$outputs[[1L]]
     out_expr <- out_exprs[[1L]]
-    if (is_graph_value(out_node) && length(shape(out_node$aval)) == 1L) {
+    if (is_graph_value(out_node) && naxes(out_node$aval) == 1L) {
       out_expr <- rlang::call2("array", out_expr, dim = as.integer(shape(out_node$aval)))
     }
     stmts <- c(stmts, list(rlang::call2("<-", result_sym, out_expr), result_sym))

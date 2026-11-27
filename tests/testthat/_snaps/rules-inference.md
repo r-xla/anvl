@@ -25,14 +25,31 @@
       ! `initial_state` must have 1 axis.
       x Got (2x3).
 
-# the element-wise rules / refuse operands whose types disagree
+# the element-wise rules / refuse operands whose data types disagree
+
+    Code
+      infer_generic_biv(nv_aval("i32", 4L), nv_aval("i64", integer()))
+    Condition
+      Error in `assert_same_dtype()`:
+      ! `lhs` and `rhs` must have the same data type.
+      x Got "i32" and "i64".
+
+# the element-wise rules / refuse operands whose shapes disagree, naming the two that do
 
     Code
       infer_generic_biv(nv_aval("i32", 4L), nv_aval("i32", 6L))
     Condition
-      Error in `assert_same_type()`:
-      ! `lhs` and `rhs` must have the same array type.
+      Error in `infer_elementwise_shape()`:
+      ! `lhs` and `rhs` must have the same shape, unless one of them is a scalar.
       x Got i32[4] and i32[6].
+      i Use `nv_broadcast_arrays()` for general broadcasting.
+    Code
+      infer_select(nv_aval("bool", 4L), nv_aval("f32", integer()), nv_aval("f32", 6L))
+    Condition
+      Error in `infer_elementwise_shape()`:
+      ! `test` and `no` must have the same shape, unless one of them is a scalar.
+      x Got bool[4] and f32[6].
+      i Use `nv_broadcast_arrays()` for general broadcasting.
 
 # infer_transpose() / reports the permutation it expected in 1-based axes
 
@@ -110,13 +127,13 @@
       x `x` has shape (3); axis 1 would end up at -3.
       i Got `edge_padding_low` = -3, `edge_padding_high` = -3, `interior_padding` = 0.
 
-# infer_top_k() / refuses a k larger than the last axis
+# infer_top_k() / refuses a k larger than axis 1
 
     Code
-      infer_top_k(nv_aval("f32", c(2L, 3L)), k = 4L, indices = TRUE)
+      infer_top_k(nv_aval("f32", c(3L, 5L)), k = 4L, indices = TRUE)
     Condition
       Error in `infer_top_k()`:
-      ! `k` must not exceed the size of the last axis of `x` (3).
+      ! `k` must not exceed the size of axis 1 of `x` (3).
       x Got 4.
 
 # the inference rules as the primitives reach them / reports an axis the primitive itself does not catch in 1-based terms
@@ -199,7 +216,7 @@
       Error in `prim_convert()`:
       ! `dtype` must name a data type.
       x Got "nope".
-      i See `tengen::as_dtype()` for the data types anvl knows.
+      i See `xlamisc::as_dtype()` for the data types anvl knows.
 
 ---
 
@@ -209,7 +226,7 @@
       Error in `prim_convert()`:
       ! `dtype` must name a data type.
       x Got 42.
-      i See `tengen::as_dtype()` for the data types anvl knows.
+      i See `xlamisc::as_dtype()` for the data types anvl knows.
 
 # prim_round
 
@@ -220,14 +237,14 @@
       ! `method` must be one of "nearest_even" or "afz".
       x Got "bogus".
 
-# prim_rng_bit_generator
+# prim_sample_bits
 
     Code
-      prim_rng_bit_generator(state, "MERSENNE", "f32", 3L)
+      prim_sample_bits(3L, "f32")
     Condition
-      Error in `prim_rng_bit_generator()`:
-      ! `rng_algorithm` must be one of "DEFAULT", "THREE_FRY", or "PHILOX".
-      x Got "MERSENNE".
+      Error in `prim_sample_bits()`:
+      ! `dtype` must name an unsigned integer data type.
+      x Got "f32".
 
 # prim_fill
 
@@ -246,7 +263,7 @@
       Error in `prim_fill()`:
       ! `dtype` must name a data type.
       x Got "nope".
-      i See `tengen::as_dtype()` for the data types anvl knows.
+      i See `xlamisc::as_dtype()` for the data types anvl knows.
 
 # prim_iota
 
@@ -365,6 +382,24 @@
       Error in `prim_sort()`:
       ! `decreasing` must be TRUE or FALSE.
       x Got "yes".
+
+# prim_optimization_barrier
+
+    Code
+      prim_optimization_barrier(list())
+    Condition
+      Error in `prim_optimization_barrier()`:
+      ! `xs` must be a non-empty list of arrayish values.
+      x Got nothing to pass through the barrier.
+
+---
+
+    Code
+      prim_optimization_barrier(nv_array(1:4, dtype = "i32"))
+    Condition
+      Error in `prim_optimization_barrier()`:
+      ! `xs` must be a non-empty list of arrayish values.
+      x Got i32[4].
 
 # prim_dot_general
 
@@ -636,7 +671,7 @@
       Error in `prim_fill()`:
       ! `dtype` must name a data type.
       x Got "aaaaaaaaaaaaaaaaaaaaaaaaaaa...".
-      i See `tengen::as_dtype()` for the data types anvl knows.
+      i See `xlamisc::as_dtype()` for the data types anvl knows.
 
 ---
 
@@ -784,4 +819,157 @@
       Error in `prim_if()`:
       ! `false` must be a function.
       x Got "x".
+
+# prim_custom_gradient / refuses an fn, rule or forward that is not a function
+
+    Code
+      prim_custom_gradient(list(x = x), fn = 1, rule = id_rule)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `fn` must be a function.
+      x Got 1.
+
+---
+
+    Code
+      prim_custom_gradient(list(x = x), fn = function(x) x, rule = "r")
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `rule` must be a function.
+      x Got "r".
+
+---
+
+    Code
+      prim_custom_gradient(list(x = x), fn = function(x) x, rule = id_rule, forward = "f")
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `forward` must be a function or `NULL`.
+      x Got "f".
+
+# prim_custom_gradient / refuses args that are not a list with names
+
+    Code
+      prim_custom_gradient(x, fn = function(x) x, rule = id_rule)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `args` must be a non-empty list whose entries all have names.
+      x Got f32[].
+
+---
+
+    Code
+      prim_custom_gradient(list(x), fn = function(x) x, rule = id_rule)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `args` must be a non-empty list whose entries all have names.
+      x Got <list> of length 1.
+
+---
+
+    Code
+      prim_custom_gradient(list(out = x), fn = function(out) out, rule = function(...)
+        list())
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `args` must not have an entry named "out", "grad", "required" or "residuals".
+      x Got an entry named "out".
+      i `rule` receives the result of `fn`, its gradient, which gradients are required and the residuals of `forward` under these names.
+
+---
+
+    Code
+      prim_custom_gradient(list(required = x), fn = function(required) required,
+      rule = function(...) list())
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `args` must not have an entry named "out", "grad", "required" or "residuals".
+      x Got an entry named "required".
+      i `rule` receives the result of `fn`, its gradient, which gradients are required and the residuals of `forward` under these names.
+
+---
+
+    Code
+      prim_custom_gradient(list(residuals = x), fn = function(residuals) residuals,
+      rule = function(...) list())
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `args` must not have an entry named "out", "grad", "required" or "residuals".
+      x Got an entry named "residuals".
+      i `rule` receives the result of `fn`, its gradient, which gradients are required and the residuals of `forward` under these names.
+
+---
+
+    Code
+      prim_custom_gradient(stats::setNames(list(x, x), c("x", "x")), fn = function(x)
+        x, rule = id_rule)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `args` must not have two entries with the same name.
+      x Got more than one entry named "x".
+
+# prim_custom_gradient / refuses args without an array, or with something else than one
+
+    Code
+      prim_custom_gradient(list(d = list()), fn = function(d) x, rule = function(d,
+        out, grad, required) list())
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `args` must contain at least one array.
+      x Got <list> of length 1 without any.
+
+---
+
+    Code
+      jit(function(x) {
+        prim_custom_gradient(list(x = x, p = list(w = x, b = "a")), fn = function(x,
+          p) x, rule = function(x, p, out, grad, required) list(x = grad))
+      })(x)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `args` must hold arrays, or trees of them.
+      x Got "a" at `p$b`.
+
+# prim_custom_gradient / refuses an fn, rule or forward without an argument for a value it receives
+
+    Code
+      prim_custom_gradient(list(y = x), fn = function(x) x, rule = id_rule)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `fn` must have an argument for each value it receives.
+      x Got a function with arguments "x".
+      i It has none for "y".
+
+---
+
+    Code
+      prim_custom_gradient(list(x = x), fn = function(x) x, rule = function(x, grad)
+        list(x = grad))
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `rule` must have an argument for each value it receives.
+      x Got a function with arguments c("x", "grad").
+      i It has none for c("out", "required").
+
+---
+
+    Code
+      prim_custom_gradient(list(x = x), fn = function(x) x, rule = id_rule, forward = function(
+        x, required) x)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `rule` must have an argument for each value it receives.
+      x Got a function with arguments c("x", "out", "grad", "required").
+      i It has none for "residuals".
+
+---
+
+    Code
+      prim_custom_gradient(list(x = x), fn = function(x) x, rule = function(x, out,
+        grad, required, residuals) list(x = grad), forward = function(x) x)
+    Condition
+      Error in `prim_custom_gradient()`:
+      ! `forward` must have an argument for each value it receives.
+      x Got a function with arguments "x".
+      i It has none for "required".
 

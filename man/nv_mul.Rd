@@ -14,7 +14,7 @@ nv_mul(lhs, rhs)
 Two inputs with a \link[=common_dtype]{common data type}. Can be
 any data type. Scalars are broadcast. An R value takes the other
 operand's data type when that is in its own or a higher
-\link[=dtypes]{category}. Otherwise it
+\link[=dtype_categories]{category}. Otherwise it
 settles on its \link[=default_dtypes]{default data type}, and the operands meet
 at their common data type.}
 

@@ -19,12 +19,12 @@ format_literal <- function(node, digits = getOption("digits")) {
   if (is_anvl_array(val)) {
     val <- as_array(val, check = FALSE)
   }
-  sprintf(
-    "%s:%s%s",
-    format(val, trim = TRUE, digits = digits),
-    as.character(dtype(node$aval)),
-    format_shape_suffix(shape(node$aval))
-  )
+  format_value_repr(val, dtype(node$aval), shape(node$aval), digits)
+}
+
+# A value as `<value>:<dtype>[<shape>]`, e.g. `2:i32` or `1:f32[1,1]`.
+format_value_repr <- function(val, dt, shp, digits = getOption("digits")) {
+  sprintf("%s:%s%s", format(val, trim = TRUE, digits = digits), as.character(dt), format_shape_suffix(shp))
 }
 
 # The `[2,3]` a value repr carries after its data type. A scalar carries none,
@@ -51,45 +51,51 @@ format_aval_short <- function(aval, r_type = NA_character_) {
   out
 }
 
-build_node_ids <- function(inputs, constants, calls) {
+build_node_ids <- function(inputs, constants, statements) {
   node_ids <- hashtab()
   counters <- new.env(parent = emptyenv())
   counters$x <- 0L
   counters$c <- 0L
   counters$v <- 0L
-  name_graph_nodes(inputs, constants, calls, node_ids, counters)
+  name_graph_nodes(inputs, constants, statements, node_ids, counters)
   node_ids
 }
 
 # Names the nodes of a graph and then, recursively, of its sub-graphs. One table
-# covers the whole tree: a sub-graph's constants are nodes it captured from the
-# graph around it, so letting them keep the name they already have is what shows
-# the capture. Every node is named by the outermost graph that reaches it.
-name_graph_nodes <- function(inputs, constants, calls, node_ids, counters) {
+# covers the whole tree, so that no two nodes share a name; a node is named by
+# the outermost graph that reaches it. A sub-graph is closed -- what it reads
+# from outside are inputs of its own, which its statement passes operands for --
+# so its nodes are all its own.
+name_graph_nodes <- function(inputs, constants, statements, node_ids, counters) {
+  # A labelled node is named after its label, numbered per label.
   name_node <- function(node, counter, prefix) {
     if (!is.null(node_ids[[node]]) || is_graph_literal(node)) {
       return(invisible(NULL))
     }
+    if (!is.null(node$label)) {
+      counter <- prefix <- node$label
+      counters[[counter]] <- counters[[counter]] %||% 0L
+    }
     counters[[counter]] <- counters[[counter]] + 1L
     node_ids[[node]] <- paste0(prefix, counters[[counter]])
   }
-  # don't use "i" for values, because i1 looks like a the boolean type
+  # don't use "i" for values, because i1 looks like the boolean type
   for (node in inputs) {
     name_node(node, "x", "x")
   }
   for (node in constants) {
     name_node(node, "c", "c")
   }
-  for (call in calls) {
+  for (call in statements) {
     for (node in call$outputs) {
       name_node(node, "v", "")
     }
   }
   # Sub-graphs come after the whole graph holding them, so that a graph's own
-  # values are numbered without a gap where a sub-graph call sits.
-  for (call in calls) {
+  # values are numbered without a gap where a higher-order statement sits.
+  for (call in statements) {
     for (sub in Filter(is_graph, call$params)) {
-      name_graph_nodes(sub$inputs, sub$constants, sub$calls, node_ids, counters)
+      name_graph_nodes(sub$inputs, sub$constants, sub$statements, node_ids, counters)
     }
   }
 }
@@ -171,23 +177,16 @@ format_param_parts <- function(
 # An array param: a scalar shows its value the way a literal does, a larger
 # array only its data type and shape.
 format_array_param <- function(x, digits = getOption("digits")) {
-  dt <- as.character(dtype(x))
   if (nelts(x) == 1L) {
-    sprintf(
-      "%s:%s%s",
-      format(as_array(x, check = FALSE), trim = TRUE, digits = digits),
-      dt,
-      format_shape_suffix(shape(x))
-    )
+    format_value_repr(as_array(x, check = FALSE), dtype(x), shape(x), digits)
   } else {
-    sprintf("%s[%s]", dt, shape2string(shape(x), parenthesize = FALSE))
+    format_aval_short(x)
   }
 }
 
 # A sub-graph as a single line: the data types it takes and returns. This is
-# what a sub-graph comes to where the whole graph cannot go -- printing one
-# outside the graph holding it would name its captures after a node table the
-# reader never sees.
+# what a sub-graph comes to where the whole graph cannot go -- outside the graph
+# holding it, its node names would refer to a table the reader never sees.
 format_graph_signature <- function(g) {
   avals <- function(nodes) {
     paste(vapply(nodes, \(node) format_aval_short(node$aval), character(1L)), collapse = ", ")
@@ -196,9 +195,8 @@ format_graph_signature <- function(g) {
 }
 
 # A sub-graph param, printed in full. `node_ids` is the enclosing graph's table,
-# which is what lets a captured node keep its outer name; a graph formatted on
-# its own gets a table -- and typed captures -- of its own, there being no
-# enclosing graph to read them from.
+# so that the sub-graph's names do not clash with the graph around it; a graph
+# formatted on its own gets a table of its own.
 format_graph_param <- function(
   g,
   node_ids = NULL,
@@ -207,11 +205,11 @@ format_graph_param <- function(
   prefix_width = 0L
 ) {
   alone <- is.null(node_ids)
-  node_ids <- node_ids %||% build_node_ids(g$inputs, g$constants, g$calls)
+  node_ids <- node_ids %||% build_node_ids(g$inputs, g$constants, g$statements)
   lines <- format_graph_lines(
     inputs = g$inputs,
     constants = g$constants,
-    calls = g$calls,
+    statements = g$statements,
     outputs = g$outputs,
     node_ids = node_ids,
     width = width,
@@ -342,21 +340,27 @@ format_call <- function(
   paste(layout_row(chunks, indent, width), collapse = "\n")
 }
 
-# A graph as `[captures] (inputs) { <body> return <outputs> }`, headed by
-# `title` where it has one. The signature line carries what section headings
-# used to: the captures in brackets, the inputs in parens with their data types.
+# A graph as `[constants] (inputs) { <body> return <outputs> }`, headed by
+# `title` where it has one: the arrays it closed over in brackets, the inputs in
+# parens with their data types. A sub-graph has no constants: what it closed
+# over are inputs of its own, which the `n_captures` param of its statement
+# counts.
 #
-# `typed_captures` spells a captured node's data type too. Only a graph with
-# nothing around it needs that -- a sub-graph's captures are nodes of the graph
-# holding it, declared there, so naming them is enough.
+# `typed_captures` spells a constant's data type too, for a graph formatted on
+# its own. The values a graph takes and returns for its side effects come after
+# its own inputs and outputs, e.g. `%key1: ui32[2]`, and what R does after the
+# run for a trace-time side effect is shown in a `then` block after the graph's,
+# as the side effect formats it, e.g. `} then { %counter1 += 2 }`.
+
 format_graph_lines <- function(
   inputs,
   constants,
-  calls,
+  statements,
   outputs,
   node_ids,
   title = "",
   rdata_types = NULL,
+  side_effects = list(),
   width = getOption("width", 80L),
   digits = getOption("digits"),
   typed_captures = FALSE,
@@ -376,6 +380,9 @@ format_graph_lines <- function(
     },
     character(1L)
   )
+  for (node in views_values(side_effects, "inputs")) {
+    input_strs <- c(input_strs, sprintf("%s: %s", format_node_id(node, node_ids, digits), format_aval_short(node$aval)))
+  }
   capture_strs <- vapply(
     constants,
     function(node) {
@@ -399,18 +406,28 @@ format_graph_lines <- function(
   header <- c(add(header, "(", ")", input_strs), " {")
 
   output_ids <- vapply(outputs, format_node_id, character(1L), node_ids = node_ids, digits = digits)
-  ret <- if (length(outputs) == 1L) {
+  ret <- if (length(output_ids) == 1L) {
     paste0(indent, "return ", output_ids)
   } else {
     layout_row(list("return", call_chunk(" (", ")", output_ids)), indent, width)
   }
+  # What R does after the run for each side effect the graph uses, as the side
+  # effect formats it, e.g. `%counter1 += 2`, in a block of its own after the
+  # graph's.
+  advances <- unlist(lapply(side_effects, function(x) {
+    if (x$n > 0) {
+      ids <- vapply(x$value, function(box) format_node_id(box$gnode, node_ids, digits), character(1L))
+      paste0(indent, side_effect_format(x$effect, ids, x$n))
+    }
+  }))
+  end <- if (length(advances)) c("} then {", advances, "}") else "}"
 
   c(
     # Only the signature shares its line with whatever the graph is printed
     # behind -- a `cond = `, say -- so only its budget pays for it.
     layout_row(header, "", width - prefix_width),
     vapply(
-      calls,
+      statements,
       format_call,
       character(1L),
       node_ids = node_ids,
@@ -419,7 +436,7 @@ format_graph_lines <- function(
       digits = digits
     ),
     ret,
-    "}"
+    end
   )
 }
 
@@ -428,22 +445,25 @@ format_graph_lines <- function(
 format_graph_body <- function(
   inputs,
   constants,
-  calls,
+  statements,
   outputs,
   title = "Graph",
   rdata_types = NULL,
+  side_effects = list(),
   width = getOption("width", 80L),
   digits = getOption("digits")
 ) {
-  node_ids <- build_node_ids(inputs, constants, calls)
+  side_effect_inputs <- views_values(side_effects, "inputs")
+  node_ids <- build_node_ids(c(inputs, side_effect_inputs), constants, statements)
   lines <- format_graph_lines(
     inputs = inputs,
     constants = constants,
-    calls = calls,
+    statements = statements,
     outputs = outputs,
     node_ids = node_ids,
     title = sprintf("<%s>", title),
     rdata_types = rdata_types,
+    side_effects = side_effects,
     width = width,
     digits = digits,
     typed_captures = TRUE
@@ -452,7 +472,7 @@ format_graph_body <- function(
 }
 
 #' @export
-format.PrimitiveCall <- function(x, ..., digits = getOption("digits")) {
+format.GraphStatement <- function(x, ..., digits = getOption("digits")) {
   inputs <- paste(
     vapply(
       x$inputs,
@@ -484,10 +504,11 @@ format.AnvlGraph <- function(x, ..., width = getOption("width", 80L), digits = g
   format_graph_body(
     inputs = x$inputs,
     constants = x$constants,
-    calls = x$calls,
+    statements = x$statements,
     outputs = x$outputs,
     title = "AnvlGraph",
     rdata_types = x$rdata_types,
+    side_effects = x$side_effects,
     width = width,
     digits = digits
   )
@@ -501,15 +522,14 @@ print.AnvlGraph <- function(x, ...) {
 
 #' @export
 format.GraphDescriptor <- function(x, ..., width = getOption("width", 80L), digits = getOption("digits")) {
-  # Convert hashtab constants to list
-  constants <- x$constants
   format_graph_body(
     inputs = x$inputs,
-    constants = constants,
-    calls = x$calls$as_list(),
+    constants = x$constants,
+    statements = x$statements$as_list(),
     outputs = x$outputs,
     title = "GraphDescriptor",
     rdata_types = x$rdata_types,
+    side_effects = x$side_effects,
     width = width,
     digits = digits
   )

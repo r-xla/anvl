@@ -14,7 +14,7 @@ of \code{shape}, i.e. \code{-1} refers to the last axis.}
 \item{shape}{(\code{integer()})\cr
 Shape of the output array.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+\item{dtype}{(\code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 Data type of the result. Can be any numeric data type, boolean being the
 one exception.}
 

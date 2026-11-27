@@ -147,12 +147,23 @@ Concretely, the function's execution path -- the specific sequence of primitive 
 1. The *abstract* representation (shape and dtype) of each dynamic input, and
 2. The *value* of each static input.
 
+However, there is currently one exception top this rule, which concerns the handling of the RNG state.
+Stochastic functions, which are those functions that call `prim_sample_bits()` either directly or indirectly, automatically advance the RNG state that was either passed explicitly or implicitly and as such have side effects:
+
+```{r}
+nv_get_rng_state()
+prim_sample_bits(1L, "ui32")
+nv_get_rng_state()
+```
+
+See the [random numbers](random-numbers.html) article for more information.
+
 The next subsections each show what tracing does to particular R code and where its behavior might be surprising.
 
 ### R loops are unrolled
 
 Tracing runs your R code and records primitive operations in the graph.
-Because `for` is not an {anvl} primitive, it will be executed as usual and all the primitive calls encountered will be recorded in the graph.
+Because `for` is not an {anvl} primitive, it will be executed as usual and every primitive call encountered will be recorded in the graph as a statement.
 Here we apply the `linear` function `n` times.
 
 ```{r}
@@ -163,12 +174,12 @@ linear_repeated <- function(x, w, b, n) {
 trace_fn(linear_repeated, args = list(x = f32_scalar, w = f32_vec3, b = f32_vec3, n = 2L))
 ```
 
-The graph contains a single `broadcast_in_axes` (lifting the scalar `x` to `f32[3]`) followed by two `mul`/`add` pairs in sequence -- not a loop construct.
-The broadcast happens only once because by the second iteration `x` is already an `f32[3]` and matches `w` and `b` directly.
-The compiled executable will contain those five operations laid out one after another.
+The graph contains two `mul`/`add` pairs in sequence -- not a loop construct.
+In the first iteration, `mul` takes the scalar `x` as it is, and broadcasts it to the shape of `w` when it is lowered to StableHLO; by the second, `x` is already an `f32[3]`.
+The compiled executable will contain these operations laid out one after another.
 For a different value of `n`, the loop would get unrolled for this specific iteration number.
 Long loops also lead to long compile times and large executables.
-You can instead use `nv_while()`, which records a single higher-order primitive call in the graph regardless of how many iterations the loop runs.
+You can instead use `nv_while()`, which records a single statement in the graph regardless of how many iterations the loop runs.
 
 ### R `if` statements pick one branch
 
@@ -287,7 +298,7 @@ The two most relevant options are:
 
 - **Inferred from inputs (default).** If you don't pass `device =`, {anvl} looks at the devices of the array inputs at call time, requires them to agree, and compiles for that device.
   If there are no array inputs, it falls back to the `default_device()`.
-- **Pinned at `jit()` time.** Passing a concrete device -- e.g. `jit(f, device = "cpu:0")` or `jit(f, device = nv_device("cuda:0"))` -- forces every call to run on that device.
+- **Pinned at `jit()` time.** Passing a concrete device -- e.g. `jit(f, device = "cpu")` or `jit(f, device = nv_device("cuda:0"))` -- forces every call to run on that device.
   Inputs living on a different device are copied over automatically.
 
 See the documentation of the `device` arg in `help(jit)` for more information.

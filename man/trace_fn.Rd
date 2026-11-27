@@ -2,15 +2,15 @@
 % Please edit documentation in R/graph.R
 \name{trace_fn}
 \alias{trace_fn}
-\title{Trace an R function into a Graph}
+\title{Trace an R Function into a Graph}
 \usage{
 trace_fn(
   f,
   args = NULL,
   desc = NULL,
-  mode = NULL,
   args_flat = NULL,
   in_tree = NULL,
+  static_flat = NULL,
   optimize = FALSE
 )
 }
@@ -25,23 +25,16 @@ The (unflattened) arguments to the function. Mutually exclusive with the
 \item{desc}{(\code{NULL} | \code{GraphDescriptor})\cr
 Optional descriptor. When \code{NULL} (default), a new descriptor is created.}
 
-\item{mode}{(\code{NULL} | \code{character(1)})\cr
-How to handle the inputs.
-Options are:
-\itemize{
-\item \code{"toplevel"}: Used for \code{\link[=jit]{jit()}}. Only allowed outside a trace.
-\item \code{"subgraph"}: Use for tracing subgraphs in higher-order primitives like \code{\link[=prim_while]{prim_while()}}.
-\item \code{"inline"}: Use for transformations like \code{\link[=gradient]{gradient()}}, where the graph is
-later inlined into the parent graph.
-}
-
-\code{NULL} (default) means \code{"toplevel"} and is only allowed outside a trace.}
-
 \item{args_flat}{(\code{list})\cr
 Flattened arguments. Must be accompanied by \code{in_tree}.}
 
 \item{in_tree}{(\code{\link[pjrt:build_tree]{RTree}})\cr
 Tree structure describing how \code{args_flat} maps back to \code{f}'s arguments.}
+
+\item{static_flat}{(\code{NULL} | \code{logical()})\cr
+Which of \code{args_flat} are static: passed to \code{f} as they are, even an
+\code{\link{AbstractArray}}, rather than becoming inputs of the graph. \code{NULL}
+(the default) makes every array and abstract array an input.}
 
 \item{optimize}{(\code{logical(1)} | \code{character()})\cr
 Which graph optimization passes to run on the traced graph before returning
@@ -63,7 +56,10 @@ Executes \code{f} with abstract array arguments and records every primitive oper
 an \code{\link{AnvlGraph}}.
 
 The resulting graph can be lowered to StableHLO (via \code{\link[=stablehlo]{stablehlo()}}) or transformed
-(e.g. via \code{\link[=transform_gradient]{transform_gradient()}}).
+(e.g. via \code{\link[=graph_gradient]{graph_gradient()}}).
+
+When \code{f} uses a side effect, the graph records it in its \code{side_effects} field rather
+than among its inputs and outputs (see \code{\link{AnvlGraph}}).
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

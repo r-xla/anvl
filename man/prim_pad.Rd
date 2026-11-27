@@ -16,8 +16,8 @@ prim_pad(
 \item{x}{(\code{\link{arrayish}})\cr
 The array to pad. Can be any data type.
 \code{x} and \code{padding_value} must have the same data type. An R value among
-them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
-of them has one.}
+them assumes the data type of the others when it is in its \link[=dtype_categories]{data type category}, and its \link[=default_dtypes]{default data type}
+when none of them has one.}
 
 \item{padding_value}{(\code{\link{arrayish}})\cr
 Scalar value to use for padding. Shares \code{x}'s data type.}
@@ -45,7 +45,8 @@ Pads an array with a given padding value.
 \itemize{
 \item \code{stablehlo}
 \item \code{quickr}
-\item \code{reverse}
+\item \code{pullback}
+\item \code{vectorize}
 }
 }
 

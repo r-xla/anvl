@@ -5,8 +5,9 @@ exec_compiled_pjrt_for_test <- function(compiled, args_nv) {
   args_unwrapped <- lapply(args_nv, function(a) {
     pjrt::copy_buffer(a$data, compiled$device)
   })
+  # phantom specs carry R shapes; the buffers hold the reversed ones
   phantom_bufs <- lapply(compiled$phantom_specs, function(spec) {
-    pjrt::pjrt_empty(dtype = spec$dtype, shape = spec$shape, device = compiled$device)
+    pjrt::pjrt_empty(dtype = spec$dtype, shape = rev(spec$shape), device = compiled$device)
   })
   out_vals <- rlang::exec(
     pjrt::pjrt_execute,
@@ -16,7 +17,7 @@ exec_compiled_pjrt_for_test <- function(compiled, args_nv) {
     !!!phantom_bufs,
     simplify = FALSE
   )
-  unflatten(compiled$out_tree, lapply(out_vals, nv_array))
+  unflatten(compiled$out_tree, lapply(out_vals, pjrt_anvl_array))
 }
 
 graph_runner_pjrt <- function(graph) {

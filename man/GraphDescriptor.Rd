@@ -5,7 +5,7 @@
 \title{Graph Descriptor}
 \usage{
 GraphDescriptor(
-  calls = list(),
+  statements = list(),
   array_to_gval = NULL,
   gval_to_box = NULL,
   constants = list(),
@@ -17,12 +17,14 @@ GraphDescriptor(
   static_args_flat = NULL,
   devices = character(),
   default_dtypes = NULL,
-  backend
+  backend,
+  side_effects_mode = NULL,
+  parent = NULL
 )
 }
 \arguments{
-\item{calls}{(\code{list(PrimitiveCall)})\cr
-The primitive calls that make up the graph.}
+\item{statements}{(\code{list(GraphStatement)})\cr
+The statements that make up the graph.}
 
 \item{array_to_gval}{(\code{hashtab})\cr
 Mapping: \code{AnvlArray} -> \code{GraphValue}}
@@ -68,10 +70,43 @@ of the \code{anvl.default_dtypes} option applies to the trace, so switching the
 active backend inside a traced body changes nothing.
 \code{\link[=local_descriptor]{local_descriptor()}} fills it in from \code{\link[=active_backend]{active_backend()}}, so only a
 direct call has to name it.}
+
+\item{side_effects_mode}{(\code{NULL} | \code{character(1)})\cr
+Where the trace's view of a side effect starts on its first use:
+\itemize{
+\item \code{"program"}: where the side effect says: an implicit input of the
+program, which the graph records in its \code{side_effects} rather than among
+its inputs, an argument, or a value the program creates. The top level
+of \code{\link[=jit]{jit()}} and \code{\link[=trace_fn]{trace_fn()}} takes side effects this way.
+\item \code{"loop"}: as fresh inputs of the graph, which the graph also returns
+there. The bodies of \code{\link[=nv_while]{nv_while()}} and \code{\link[=nv_scan]{nv_scan()}} take side effects this
+way, and hand them on to the next iteration.
+\item \code{"vectorize"}: as fresh inputs of the graph, which \code{\link[=vectorize]{vectorize()}} binds
+to the values the slices start from.
+\item \code{"capture"}: as the value of \code{parent}'s view, which the graph closes
+over and continues. The branches of \code{\link[=nv_if]{nv_if()}} and the function
+\code{\link[=gradient]{gradient()}} differentiates take side effects this way.
+\item \code{NULL}: not at all. Such a trace cannot hand back what it did, so using
+a side effect there is an error.
+}}
+
+\item{parent}{(\code{NULL} | \code{GraphDescriptor})\cr
+The trace this one is opened in, or \code{NULL} for a trace at the top level.
+\code{\link[=local_descriptor]{local_descriptor()}} fills it in.}
 }
 \value{
 (\code{GraphDescriptor})
 }
 \description{
-Descriptor of an \code{\link{AnvlGraph}}. This is a mutable class.
+The in-progress representation of an \code{\link{AnvlGraph}} during tracing. This is
+a mutable class.
+
+While \code{\link[=trace_fn]{trace_fn()}} runs a function, every primitive call is recorded as a
+\code{\link{GraphStatement}} into the current descriptor (see \code{\link[=graph_desc_add]{graph_desc_add()}} and
+\code{\link[=current_descriptor]{current_descriptor()}}). The descriptor also does the book-keeping the
+trace needs: which \code{\link{GraphValue}} an \code{AnvlArray} or \code{\link{GraphBox}} stands
+for, the constants and devices encountered, and the default data types the
+trace is pinned to. Once tracing finishes, it is converted to an
+\code{\link{AnvlGraph}}, which only keeps what is needed to lower and run the
+program.
 }

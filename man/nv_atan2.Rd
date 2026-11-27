@@ -13,7 +13,7 @@ are first brought to a \link[=common_dtype]{common data type} and that is then
 converted to the default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}) where
 it is not a float already, so the result is always a float. Scalars are
 broadcast. An R value assumes the other operand's data type within its
-\link[=dtypes]{data type category}, and settles on the default float when
+\link[=dtype_categories]{data type category}, and settles on the default float when
 neither operand has one.}
 }
 \value{

@@ -1,14 +1,50 @@
 # `assert_int_param()` reads `NULL` as the empty set of axes, which is how a
 # caller spells `c()`. A shape is not that, so the helpers that resolve one say
-# so first.
-assert_shape_not_null <- function(x, arg) {
+# so first. `hint` is an extra line for the message.
+assert_shape_not_null <- function(x, arg, hint = NULL, call = rlang::current_env()) {
   if (is.null(x)) {
-    cli_abort(c(
-      "{.arg {arg}} must be a whole number vector.",
-      x = "Got {value_repr(x)}."
-    ))
+    cli_abort(
+      c(
+        "{.arg {arg}} must be a whole number vector.",
+        x = "Got {value_repr(x)}.",
+        hint
+      ),
+      call = call
+    )
   }
   invisible(NULL)
+}
+
+shape_null_hint <- c(i = "Use {.code shp()} for the shape of a scalar.")
+
+# A `shape` argument of a constructor that can also work the shape out itself:
+# `"auto"` asks it to, and `auto` is that shape. It is only evaluated then, and
+# in the caller's frame, so an error it raises names the constructor. Anything
+# else is the shape, which `NULL` is not -- `c()` evaluates to `NULL`, so
+# reading it as the empty shape would turn an accidental `NULL` (the `dim()` of
+# a vector) into a scalar.
+resolve_auto_shape <- function(
+  shape,
+  auto,
+  min_len = 0L,
+  arg = rlang::caller_arg(shape),
+  call = rlang::caller_env()
+) {
+  force(arg)
+  if (identical(shape, "auto")) {
+    return(auto)
+  }
+  if (is.null(shape)) {
+    cli_abort(
+      c(
+        "{.arg {arg}} must be {.val auto} or a whole number vector.",
+        x = "Got {value_repr(shape)}.",
+        i = "Leave it at {.val auto} to infer it, or use {.code shp()} for the shape of a scalar."
+      ),
+      call = call
+    )
+  }
+  assert_shapevec(shape, min_len = min_len, var_name = arg, call = call)
 }
 
 #' @title Assert Shape Vector
@@ -20,10 +56,12 @@ assert_shape_not_null <- function(x, arg) {
 #'   Minimum number of axes. Default is 0.
 #' @param var_name (`character(1)`)\cr
 #'   Name of the variable to use in error messages.
+#' @param call (`environment`)\cr
+#'   The frame an error is reported for.
 #' @return (`integer()`)\cr
 #'   `x` as an integer vector.
 #' @keywords internal
-assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
+assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x), call = rlang::current_env()) {
   # Before `x` is rebound below: `caller_arg()` deparses whatever `x` holds
   # when it is first forced, so an unforced default would name the value
   # (`-2L`) rather than the argument (`shape`).
@@ -31,22 +69,32 @@ assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
   # `NULL` is refused rather than read as the empty shape `assert_int_param()`
   # takes it for: a shape is not a set of axes a caller spells with `c()`, and
   # silently building a scalar out of a forgotten argument hides the mistake.
-  assert_shape_not_null(x, var_name)
-  x <- assert_int_param(x, var_name, min_len = if (min_len > 0L) min_len else NULL)
+  assert_shape_not_null(x, var_name, shape_null_hint, call = call)
+  # A `Shape` is its integer vector with a class attached.
+  if (is_shape(x)) {
+    x <- unclass(x)
+  }
+  x <- assert_int_param(x, var_name, min_len = if (min_len > 0L) min_len else NULL, call = call)
   if (any(x < 0L)) {
-    cli_abort(c(
-      "{.arg {var_name}} must not contain a negative axis size.",
-      x = "Got {value_repr(x)}."
-    ))
+    cli_abort(
+      c(
+        "{.arg {var_name}} must not contain a negative axis size.",
+        x = "Got {value_repr(x)}."
+      ),
+      call = call
+    )
   }
   # XLA counts an array's elements in an int64. A shape past that -- easy to
   # type, `1:1000` is one -- is otherwise refused at compile time with a raw
   # "overflow in static extent product" listing every axis size.
   if (prod(as.double(x)) >= 2^63) {
-    cli_abort(c(
-      "{.arg {var_name}} must describe an array with fewer than 2^63 elements.",
-      x = "Got {value_repr(x)}."
-    ))
+    cli_abort(
+      c(
+        "{.arg {var_name}} must describe an array with fewer than 2^63 elements.",
+        x = "Got {value_repr(x)}."
+      ),
+      call = call
+    )
   }
   as.integer(x)
 }
@@ -106,7 +154,7 @@ resolve_axis <- function(axis, max_axis, arg = rlang::caller_arg(axis)) {
 # Returns the resolved shape as an integer vector.
 resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) {
   force(arg)
-  assert_shape_not_null(shape, arg)
+  assert_shape_not_null(shape, arg, shape_null_hint)
   shape <- assert_int_param(shape, arg)
   invalid <- shape < -1L
   if (any(invalid)) {
@@ -143,14 +191,7 @@ resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) 
 # and cannot serve `bf16` or `f16` even though those are float data types.
 # Returns the converted DataType.
 assert_rng_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
-  dt <- as_dtype(x)
-  if (!is_dtype_float(dt)) {
-    cli_abort(c(
-      "{.arg {arg}} must be a float data type.",
-      "x" = "Got {.val {as.character(dt)}}.",
-      "i" = hint
-    ))
-  }
+  dt <- assert_float_dtype(x, arg = arg, hint = hint, call = rlang::current_env())
   if (!dtype_width(dt) %in% c(32L, 64L)) {
     cli_abort(c(
       "{.arg {arg}} must be a 32- or 64-bit float data type.",
@@ -282,7 +323,7 @@ assert_fill_value <- function(value, dtype, arg = rlang::caller_arg(value)) {
 }
 
 # Convert `x` to a DataType via `as_dtype()` and assert it is numeric in the
-# sense `?dtypes` gives the word: integer or float, but not `bool`. Returns the
+# sense `?dtype_categories` gives the word: integer or float, but not `bool`. Returns the
 # converted DataType.
 assert_numeric_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
   dt <- as_dtype(x)
@@ -298,16 +339,17 @@ assert_numeric_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
 
 # Convert `x` to a DataType via `as_dtype()` and assert it belongs to the float
 # category. Returns the converted DataType.
-assert_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
+assert_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL, call = rlang::caller_env()) {
   dt <- as_dtype(x)
-  # The float category, as `?dtypes` defines it, so this and `is_dtype_float()`
-  # agree on what counts as a float.
   if (!is_dtype_float(dt)) {
-    cli_abort(c(
-      "{.arg {arg}} must be a float data type.",
-      "x" = "Got {.val {as.character(dt)}}.",
-      "i" = hint
-    ))
+    cli_abort(
+      c(
+        "{.arg {arg}} must be a float data type.",
+        "x" = "Got {.val {as.character(dt)}}.",
+        "i" = hint
+      ),
+      call = call
+    )
   }
   dt
 }
@@ -322,15 +364,14 @@ assert_some_arrays <- function(..., call = rlang::caller_env()) {
   invisible(NULL)
 }
 
-# `batched = TRUE` accepts leading batch axes and checks only the last two,
-# which is what the operations whose lowering broadcasts over batches take
-# (`prim_chol()`, `prim_triangular_solve()`); the others are strictly 2-D.
+# `batched = TRUE` accepts trailing batch axes and checks only the first two,
+# as `prim_chol()` takes them; the other callers are strictly 2-D.
 assert_linalg_matrix <- function(x, arg, square = FALSE, batched = FALSE) {
   s <- shape(x)
   if (batched) {
     if (length(s) < 2L) {
       cli_abort(c(
-        "{.arg {arg}} must have at least 2 axes, the last two forming a matrix.",
+        "{.arg {arg}} must have at least 2 axes, the first two forming a matrix.",
         "x" = "Got shape {shape_repr(s)}."
       ))
     }
@@ -346,17 +387,17 @@ assert_linalg_matrix <- function(x, arg, square = FALSE, batched = FALSE) {
       "x" = "Got shape {shape_repr(s)}."
     ))
   }
-  mat <- utils::tail(s, 2L)
-  if (square && mat[[1L]] != mat[[2L]]) {
+  if (square && s[[1L]] != s[[2L]]) {
     cli_abort(c(
-      "{.arg {arg}} must be square in its last two axes.",
+      if (batched) "{.arg {arg}} must be square in its first two axes." else "{.arg {arg}} must be square.",
       "x" = "Got shape {shape_repr(s)}."
     ))
   }
-  if (!is_dtype_float(peek_dtype(x))) {
+  dt <- peek_dtype(x)
+  if (!is_dtype_float(dt)) {
     cli_abort(c(
       "{.arg {arg}} must have a float data type.",
-      "x" = "Got {.val {as.character(peek_dtype(x))}}."
+      "x" = "Got {.val {as.character(dt)}}."
     ))
   }
   invisible(NULL)

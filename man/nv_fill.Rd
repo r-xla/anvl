@@ -7,18 +7,19 @@
 \usage{
 nv_fill(value, shape, dtype = NULL, device = NULL)
 
-nv_fill_like(like, value, shape = NULL, dtype = NULL, device = NULL)
+nv_fill_like(like, value, shape = "auto", dtype = NULL, device = NULL)
 }
 \arguments{
-\item{value}{(\code{numeric(1)})\cr
+\item{value}{(\code{numeric(1)} | \code{logical(1)})\cr
 Scalar value to fill the array with. It has to be something \code{dtype} can
 hold: a whole number in its range for an integer data type, a non-negative
 one for an unsigned integer, and a logical or \code{0} / \code{1} for \code{bool}.}
 
-\item{shape}{(\code{integer()})\cr
-Shape of the output array.}
+\item{shape}{(\code{integer()} | \code{"auto"})\cr
+Shape of the output array, e.g. \code{shp(2, 3)}. For \code{nv_fill_like()},
+\code{"auto"} (the default) uses \code{shape(like)}.}
 
-\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[xlamisc:DataType]{DataType}})\cr
 Data type of the result.
 The default (\code{NULL}) uses the \link[=default_dtypes]{default data type} for \code{nv_fill} and
 \code{dtype(like)} for \code{nv_fill_like}.}

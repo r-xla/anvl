@@ -28,7 +28,8 @@ Permutes the axes of an array.
 \itemize{
 \item \code{stablehlo}
 \item \code{quickr}
-\item \code{reverse}
+\item \code{pullback}
+\item \code{vectorize}
 }
 }
 

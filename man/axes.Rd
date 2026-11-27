@@ -2,7 +2,7 @@
 % Please edit documentation in R/array.R
 \name{axes}
 \alias{axes}
-\title{Get the axes of an array}
+\title{Get the Axes of an Array}
 \usage{
 axes(x)
 }

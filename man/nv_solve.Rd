@@ -17,7 +17,7 @@ type: \code{a} and \code{b} are
 converted to the default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}) where
 it is not a float already, since the decomposition is a float one. An R
 value assumes the other operand's data type within its
-\link[=dtypes]{data type category}, and settles on the default float when
+\link[=dtype_categories]{data type category}, and settles on the default float when
 neither has one.}
 
 \item{b}{(\code{\link{arrayish}})\cr
@@ -35,7 +35,8 @@ operands' common data type -- or the default float data type (see
 \description{
 Solves the linear system \code{a \%*\% x = b} for \code{x}. Uses LU decomposition
 with partial pivoting internally, so \code{a} need only be square and
-non-singular.
+non-singular. Unlike \code{\link[base:solve]{base::solve()}}, a singular \code{a} is not an error: the
+result then holds non-finite values.
 }
 \details{
 \deqn{A x = b}

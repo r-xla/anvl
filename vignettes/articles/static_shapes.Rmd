@@ -82,7 +82,7 @@ This is the workaround for `length(x[cond])` more generally: convert the mask to
 
 ### Subset assignment
 
-The static shape restriction also prevents calls of the form `x[mask] <- update`.
+The static shape restriction also prevents calls of the form `x[mask] <- update` inside `jit()` when `mask` is computed from the inputs.
 In some cases, this can be replaced by `nv_ifelse()`.
 For example, you might want to replace all values `< 1` with 1:
 

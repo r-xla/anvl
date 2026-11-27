@@ -57,7 +57,7 @@ test_that("a logical R value is a bool, not an unmaterialized value", {
   # The logical is built at `bool` -- the only dtype that holds it faithfully --
   # and the program converts it to the dtype it met, so the multiply itself sees
   # an i32.
-  mul <- Filter(function(call) call$primitive$name == "mul", graph$calls)[[1L]]
+  mul <- Filter(function(call) call$primitive$name == "mul", graph$statements)[[1L]]
   expect_dtype(mul$inputs[[2L]]$aval, default_int())
 })
 
@@ -124,6 +124,6 @@ describe("a ui64 that meets a signed integer", {
     y <- nv_array(c(3L, 4L), dtype = "i32")
     out <- x + y
     expect_dtype(out, "f64")
-    expect_equal(as.vector(tengen::as_array(out)), c(4, 6))
+    expect_equal(as.vector(xlamisc::as_array(out)), c(4, 6))
   })
 })

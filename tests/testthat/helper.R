@@ -8,9 +8,9 @@ is_cuda <- function() {
 }
 
 # Set the fallback anvl read from `ANVL_DEFAULT_<name>` when it was loaded
-# (`"DTYPES"` or `"DEVICE"`) for the calling scope.
+# (`"dtypes"` or `"device"`) for the calling scope.
 local_env_default <- function(name, value, envir = parent.frame()) {
-  key <- paste0("ENV_DEFAULT_", name)
+  key <- paste0("env_default_", name)
   old <- globals[[key]]
   globals[[key]] <- value
   withr::defer(assign(key, old, envir = globals), envir = envir)
@@ -22,7 +22,7 @@ local_env_default <- function(name, value, envir = parent.frame()) {
 # `ANVL_DEFAULT_DTYPES` sets (see `setup.R`).
 local_registered_default_dtypes <- function(envir = parent.frame()) {
   withr::local_options(list(anvl.default_dtypes = NULL), .local_envir = envir)
-  local_env_default("DTYPES", NULL, envir)
+  local_env_default("dtypes", NULL, envir)
 }
 
 is_cpu <- function() {
@@ -35,7 +35,7 @@ is_cpu <- function() {
 # sets (see `setup.R`).
 local_unset_default_device <- function(envir = parent.frame()) {
   withr::local_options(list(anvl.default_device = NULL), .local_envir = envir)
-  local_env_default("DEVICE", NULL, envir)
+  local_env_default("device", NULL, envir)
 }
 
 if (nzchar(system.file(package = "torch"))) {
@@ -116,4 +116,30 @@ verify_zero_grad_binary <- function(prim_fn, x, y) {
   expected2 <- nv_array(0, shape = shape(y), dtype = "f32")
   testthat::expect_equal(grads[[1L]], expected1)
   testthat::expect_equal(grads[[2L]], expected2)
+}
+
+# The four 32-bit words of the random state `rng_state`, by default the
+# global one: its key's words, then its counter's low and high word (see
+# `rng_state_of_words()`).
+state_words <- function(rng_state = nv_get_rng_state()) {
+  rng_state_words(rng_state)
+}
+
+# The graph of `f` traced with the random states `rng_states` as its
+# arguments, the way jit() traces it: of each, the dispatcher's avals of the
+# words of its key and counter, which a call passes as bare R data. trace_fn()
+# takes the words themselves for static values.
+trace_with_rng_states <- function(f, rng_states) {
+  trace_fn(
+    f,
+    args_flat = rep(list(nv_aval("double", 2L)), 2L * length(rng_states)),
+    in_tree = build_tree(rng_states)
+  )
+}
+
+# Expect the StableHLO lowering of `f`, traced at the abstract arrays `avals`,
+# to hold no `stablehlo.transpose`.
+expect_lowers_without_transpose <- function(f, avals) {
+  graph <- trace_fn(f, avals)
+  expect_no_match(repr(stablehlo(graph)[[1L]]), "stablehlo.transpose", fixed = TRUE)
 }

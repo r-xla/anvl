@@ -10,7 +10,7 @@ IotaArray(shape, dtype, axis, start = 1L)
 \item{shape}{(\code{\link[stablehlo:Shape]{stablehlo::Shape}} | \code{integer()})\cr
 The shape of the array.}
 
-\item{dtype}{(\code{\link[tengen:DataType]{tengen::DataType}})\cr
+\item{dtype}{(\code{\link[xlamisc:DataType]{xlamisc::DataType}})\cr
 The data type.}
 
 \item{axis}{(\code{integer(1)})\cr

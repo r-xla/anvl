@@ -10,16 +10,16 @@ prim_clamp(x, min, max)
 \item{x}{(\code{\link{arrayish}})\cr
 The array to clamp. Can be any data type.
 \code{x}, \code{min} and \code{max} must have the same data type. An R value among them
-assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
-of them has one.}
+assumes the data type of the others when it is in its \link[=dtype_categories]{data type category}, and its \link[=default_dtypes]{default data type}
+when none of them has one.}
 
 \item{min, max}{(\code{\link{arrayish}})\cr
-Lower and upper bound. Each must be scalar or the same shape as \code{x}, and
-shares its data type.}
+Lower and upper bound, sharing \code{x}'s data type. The operands that are not
+scalars have the same shape, and a scalar is broadcast to it.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has \code{x}'s shape and the data type the operands agreed on.
+Has the operands' broadcast shape and the data type they agreed on.
 }
 \description{
 Clamps every element of \code{x} to the range \verb{[min, max]}.
@@ -28,7 +28,8 @@ Clamps every element of \code{x} to the range \verb{[min, max]}.
 
 \itemize{
 \item \code{stablehlo}
-\item \code{reverse}
+\item \code{pullback}
+\item \code{vectorize}
 }
 }
 

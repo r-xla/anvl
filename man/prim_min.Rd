@@ -32,7 +32,8 @@ Finds the minimum of array elements along the specified axes.
 \itemize{
 \item \code{stablehlo}
 \item \code{quickr}
-\item \code{reverse}
+\item \code{pullback}
+\item \code{vectorize}
 }
 }
 

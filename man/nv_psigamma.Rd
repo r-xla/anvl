@@ -17,7 +17,7 @@ the two are \link[=nv_promote_to_common]{promoted to a common data type} and
 that is then converted to the default float data type (see
 \code{\link[=default_dtypes]{default_dtypes()}}) where it is not a float already, since a float is
 all \code{\link[=prim_psigamma]{prim_psigamma()}} takes. An R value assumes the other operand's data
-type within its \link[=dtypes]{data type category}, and settles on the default
+type within its \link[=dtype_categories]{data type category}, and settles on the default
 float when neither has one.
 Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other,
 so \code{nv_psigamma(x, 1)} works for any float \code{x}.}

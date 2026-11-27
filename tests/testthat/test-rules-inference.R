@@ -65,11 +65,31 @@ describe("the element-wise rules", {
     expect_equal(infer_generic_biv(x, x), list(x))
   })
 
-  it("refuse operands whose types disagree", {
+  it("broadcast a scalar operand to the shape of the others", {
+    x <- nv_aval("f32", c(2L, 3L))
+    s <- nv_aval("f32", integer())
+    expect_equal(infer_generic_biv(x, s), list(x))
+    expect_equal(infer_generic_biv(s, x), list(x))
+    expect_equal(infer_generic_biv(s, s), list(s))
+    expect_equal(infer_compare(s, x), list(nv_aval("bool", c(2L, 3L))))
+    expect_equal(infer_polygamma(s, x), list(x))
+    expect_equal(infer_select(nv_aval("bool", c(2L, 3L)), s, s), list(x))
+    expect_equal(infer_select(nv_aval("bool", integer()), x, s), list(x))
+    expect_equal(infer_clamp(s, x, s), list(x))
+  })
+
+  it("refuse operands whose data types disagree", {
     expect_snapshot(
       error = TRUE,
-      infer_generic_biv(nv_aval("i32", 4L), nv_aval("i32", 6L))
+      infer_generic_biv(nv_aval("i32", 4L), nv_aval("i64", integer()))
     )
+  })
+
+  it("refuse operands whose shapes disagree, naming the two that do", {
+    expect_snapshot(error = TRUE, {
+      infer_generic_biv(nv_aval("i32", 4L), nv_aval("i32", 6L))
+      infer_select(nv_aval("bool", 4L), nv_aval("f32", integer()), nv_aval("f32", 6L))
+    })
   })
 
   it("hold the bit shifts to integers, where booleans are not integers", {
@@ -204,19 +224,55 @@ describe("infer_sort()", {
   })
 })
 
+describe("infer_optimization_barrier()", {
+  it("mirrors each input, whatever its data type and shape", {
+    x <- nv_aval("f32", c(2L, 3L))
+    i <- nv_aval("i32", integer())
+    expect_equal(infer_optimization_barrier(x, i), list(x, i))
+  })
+
+  it("names `xs`, the argument the primitive collects the arrays in", {
+    expect_error(
+      infer_optimization_barrier(nv_aval("f32", 3L), 1L),
+      "`xs[[2]]` must be an array",
+      fixed = TRUE
+    )
+    expect_error(
+      infer_optimization_barrier(),
+      "`xs` must be a non-empty list",
+      fixed = TRUE
+    )
+  })
+})
+
 describe("infer_dot_general()", {
-  it("puts the batch axes first, then the free axes of lhs and rhs", {
-    lhs <- nv_aval("f32", c(5L, 2L, 3L))
-    rhs <- nv_aval("f32", c(5L, 3L, 7L))
+  it("puts the free axes of lhs and rhs first, then the batch axes", {
+    lhs <- nv_aval("f32", c(2L, 3L, 5L))
+    rhs <- nv_aval("f32", c(3L, 7L, 5L))
     expect_equal(
       infer_dot_general(
         lhs,
         rhs,
-        contracting_axes = list(3L, 2L),
-        batching_axes = list(1L, 1L),
+        contracting_axes = list(2L, 1L),
+        batching_axes = list(3L, 3L),
         precision = "highest"
       ),
-      list(nv_aval("f32", c(5L, 2L, 7L)))
+      list(nv_aval("f32", c(2L, 7L, 5L)))
+    )
+  })
+
+  it("moves leading batch axes to the end, in the order lhs names them", {
+    lhs <- nv_aval("f32", c(5L, 4L, 2L, 3L))
+    rhs <- nv_aval("f32", c(3L, 4L, 5L, 7L))
+    expect_equal(
+      infer_dot_general(
+        lhs,
+        rhs,
+        contracting_axes = list(4L, 1L),
+        batching_axes = list(c(2L, 1L), c(2L, 3L)),
+        precision = "highest"
+      ),
+      list(nv_aval("f32", c(2L, 7L, 4L, 5L)))
     )
   })
 
@@ -317,20 +373,20 @@ describe("infer_convolution()", {
 
 describe("infer_top_k()", {
   it("returns the values at the input's type and the indices at the default integer", {
-    out <- infer_top_k(nv_aval("f32", c(2L, 8L)), k = 3L, indices = TRUE)
+    out <- infer_top_k(nv_aval("f32", c(8L, 2L)), k = 3L, indices = TRUE)
     expect_named(out, c("values", "indices"))
-    expect_equal(out$values, nv_aval("f32", c(2L, 8L - 5L)))
+    expect_equal(out$values, nv_aval("f32", c(3L, 2L)))
     expect_equal(dtype(out$indices), default_int())
   })
 
   it("returns the values alone when the indices are not asked for", {
-    out <- infer_top_k(nv_aval("f32", c(2L, 8L)), k = 3L, indices = FALSE)
+    out <- infer_top_k(nv_aval("f32", c(8L, 2L)), k = 3L, indices = FALSE)
     expect_named(out, "values")
-    expect_equal(out$values, nv_aval("f32", c(2L, 3L)))
+    expect_equal(out$values, nv_aval("f32", c(3L, 2L)))
   })
 
-  it("refuses a k larger than the last axis", {
-    expect_snapshot(error = TRUE, infer_top_k(nv_aval("f32", c(2L, 3L)), k = 4L, indices = TRUE))
+  it("refuses a k larger than axis 1", {
+    expect_snapshot(error = TRUE, infer_top_k(nv_aval("f32", c(3L, 5L)), k = 4L, indices = TRUE))
   })
 })
 
@@ -487,6 +543,40 @@ describe("infer_triangular_solve()", {
       )
     }
   })
+
+  it("takes the matrices from the first two axes and the batch axes from the trailing ones", {
+    a <- nv_aval("f32", c(3L, 3L, 2L))
+    left <- infer_triangular_solve(a, nv_aval("f32", c(3L, 5L, 2L)), TRUE, TRUE, FALSE, FALSE)
+    expect_shape(left[[1L]], c(3L, 5L, 2L))
+    right <- infer_triangular_solve(a, nv_aval("f32", c(5L, 3L, 2L)), FALSE, TRUE, FALSE, FALSE)
+    expect_shape(right[[1L]], c(5L, 3L, 2L))
+    expect_error(
+      infer_triangular_solve(nv_aval("f32", c(2L, 3L, 3L)), nv_aval("f32", c(2L, 3L, 3L)), TRUE, TRUE, FALSE, FALSE),
+      "must be square in its first two axes",
+      fixed = TRUE
+    )
+    expect_error(
+      infer_triangular_solve(a, nv_aval("f32", c(3L, 5L, 4L)), TRUE, TRUE, FALSE, FALSE),
+      "The batch axes of `a` and `b` must match",
+      fixed = TRUE
+    )
+    expect_error(
+      infer_triangular_solve(a, nv_aval("f32", c(3L, 5L, 2L)), FALSE, TRUE, FALSE, FALSE),
+      "must agree on the axis the solve contracts over",
+      fixed = TRUE
+    )
+  })
+})
+
+describe("infer_cholesky()", {
+  it("takes the matrix from the first two axes and keeps the trailing batch axes", {
+    expect_shape(infer_cholesky(nv_aval("f32", c(3L, 3L, 4L, 2L)), TRUE)[[1L]], c(3L, 3L, 4L, 2L))
+    expect_error(
+      infer_cholesky(nv_aval("f32", c(2L, 3L, 3L)), TRUE),
+      "must be square in its first two axes",
+      fixed = TRUE
+    )
+  })
 })
 
 describe("infer_convolution()", {
@@ -579,9 +669,8 @@ test_that("prim_round", {
   expect_snapshot(error = TRUE, prim_round(nv_array(c(1.5, 2.5)), method = "bogus"))
 })
 
-test_that("prim_rng_bit_generator", {
-  state <- nv_array(c(1, 2), dtype = "ui64")
-  expect_snapshot(error = TRUE, prim_rng_bit_generator(state, "MERSENNE", "f32", 3L))
+test_that("prim_sample_bits", {
+  expect_snapshot(error = TRUE, prim_sample_bits(3L, "f32"))
 })
 
 test_that("prim_fill", {
@@ -640,6 +729,11 @@ test_that("prim_sort", {
   # against `xs[[1L]]`. It answers in the rule's terms instead.
   expect_snapshot(error = TRUE, prim_sort(list(), axis = 1L))
   expect_snapshot(error = TRUE, prim_sort(list(nv_array(1:4)), axis = 1L, decreasing = "yes"))
+})
+
+test_that("prim_optimization_barrier", {
+  expect_snapshot(error = TRUE, prim_optimization_barrier(list()))
+  expect_snapshot(error = TRUE, prim_optimization_barrier(nv_array(1:4, dtype = "i32")))
 })
 
 test_that("prim_dot_general", {
@@ -883,7 +977,9 @@ describe("a result shape a rule computes from the caller's parameters", {
       x_dilation = c(1L, 1L),
       kernel_dilation = c(1L, 1L)
     )
-    do.call(prim_convolution, utils::modifyList(args, list(...)))
+    overrides <- list(...)
+    args[names(overrides)] <- overrides
+    do.call(prim_convolution, args)
   }
 
   it("refuses a negative padding that empties a spatial axis past zero", {
@@ -895,8 +991,8 @@ describe("a result shape a rule computes from the caller's parameters", {
   it("refuses it through the user-facing convolution too", {
     expect_error(
       nv_conv2d(
-        nv_array(array(as.double(1:16), c(1L, 1L, 4L, 4L)), dtype = "f32"),
-        nv_array(array(as.double(1:4), c(1L, 1L, 2L, 2L)), dtype = "f32"),
+        nv_array(array(as.double(1:16), c(4L, 4L, 1L, 1L)), dtype = "f32"),
+        nv_array(array(as.double(1:4), c(2L, 2L, 1L, 1L)), dtype = "f32"),
         padding = -100L
       ),
       "must not remove more than spatial axis",
@@ -971,6 +1067,81 @@ describe("the sub-graph arguments a primitive traces", {
     expect_snapshot(
       error = TRUE,
       prim_if(nv_scalar(TRUE), function() nv_scalar(1L), "x")
+    )
+  })
+})
+
+describe("prim_custom_gradient", {
+  x <- nv_scalar(2, dtype = "f32")
+  id_rule <- function(x, out, grad, required) list(x = grad)
+
+  it("refuses an fn, rule or forward that is not a function", {
+    expect_snapshot(error = TRUE, prim_custom_gradient(list(x = x), fn = 1, rule = id_rule))
+    expect_snapshot(error = TRUE, prim_custom_gradient(list(x = x), fn = function(x) x, rule = "r"))
+    expect_snapshot(
+      error = TRUE,
+      prim_custom_gradient(list(x = x), fn = function(x) x, rule = id_rule, forward = "f")
+    )
+  })
+
+  it("refuses args that are not a list with names", {
+    expect_snapshot(error = TRUE, prim_custom_gradient(x, fn = function(x) x, rule = id_rule))
+    expect_snapshot(error = TRUE, prim_custom_gradient(list(x), fn = function(x) x, rule = id_rule))
+    expect_snapshot(
+      error = TRUE,
+      prim_custom_gradient(list(out = x), fn = function(out) out, rule = function(...) list())
+    )
+    expect_snapshot(
+      error = TRUE,
+      prim_custom_gradient(list(required = x), fn = function(required) required, rule = function(...) list())
+    )
+    expect_snapshot(
+      error = TRUE,
+      prim_custom_gradient(list(residuals = x), fn = function(residuals) residuals, rule = function(...) list())
+    )
+    expect_snapshot(
+      error = TRUE,
+      prim_custom_gradient(stats::setNames(list(x, x), c("x", "x")), fn = function(x) x, rule = id_rule)
+    )
+  })
+
+  it("refuses args without an array, or with something else than one", {
+    expect_snapshot(
+      error = TRUE,
+      prim_custom_gradient(list(d = list()), fn = function(d) x, rule = function(d, out, grad, required) list())
+    )
+    # Under `jit()`: an eager call's arguments are refused by `jit()` already.
+    expect_snapshot(
+      error = TRUE,
+      jit(function(x) {
+        prim_custom_gradient(
+          list(x = x, p = list(w = x, b = "a")),
+          fn = function(x, p) x,
+          rule = function(x, p, out, grad, required) list(x = grad)
+        )
+      })(x)
+    )
+  })
+
+  it("refuses an fn, rule or forward without an argument for a value it receives", {
+    expect_snapshot(error = TRUE, prim_custom_gradient(list(y = x), fn = function(x) x, rule = id_rule))
+    expect_snapshot(
+      error = TRUE,
+      prim_custom_gradient(list(x = x), fn = function(x) x, rule = function(x, grad) list(x = grad))
+    )
+    # with a forward pass, rule also receives the residuals
+    expect_snapshot(
+      error = TRUE,
+      prim_custom_gradient(list(x = x), fn = function(x) x, rule = id_rule, forward = function(x, required) x)
+    )
+    expect_snapshot(
+      error = TRUE,
+      prim_custom_gradient(
+        list(x = x),
+        fn = function(x) x,
+        rule = function(x, out, grad, required, residuals) list(x = grad),
+        forward = function(x) x
+      )
     )
   })
 })

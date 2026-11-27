@@ -2,7 +2,7 @@
 % Please edit documentation in R/backend-pjrt.R
 \name{AnvlBackendPjrt}
 \alias{AnvlBackendPjrt}
-\title{PJRT backend}
+\title{PJRT Backend}
 \usage{
 AnvlBackendPjrt()
 }
@@ -20,7 +20,9 @@ backend.
 
 An \code{\link{AnvlArray}} with \code{backend = "pjrt"} wraps a \code{\link[pjrt:pjrt_buffer]{pjrt::pjrt_buffer()}}
 stored in the \verb{$data} field. The buffer owns the memory holding the array
-values and may live on any device supported by PJRT (CPU, CUDA, ...).
+values and may live on any device supported by PJRT (CPU, CUDA, ...). It
+holds the array's column-major bytes as an XLA array of the reversed shape,
+so that uploads and read-backs copy the bytes without reordering them.
 Calling \code{\link[=as_array]{as_array()}} transfers the buffer contents back to an R
 array; calling \code{\link[=nv_array]{nv_array()}} on an R object uploads it to the requested
 device.
@@ -50,17 +52,6 @@ a mode that replaces subnormal inputs and results with zero. The exact
 behavior depends on the platform, backend, and operation.
 
 See the \href{https://r-xla.github.io/anvl/articles/gotchas.html}{Gotchas} article for an explanation and examples.
-}
-
-\section{PJRT JIT arguments}{
-
-\itemize{
-\item \code{donate} (\code{character()}, default \code{character()}): names of arguments whose
-underlying buffers may be donated to (i.e., reused/consumed by) the
-compiled XLA executable. Donated buffers must not be used again by the
-caller after the call; this can reduce memory usage and copies for large
-inputs. Must not overlap with \code{static}.
-}
 }
 
 \seealso{

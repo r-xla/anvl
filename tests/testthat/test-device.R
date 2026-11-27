@@ -40,6 +40,8 @@ test_that("is_device recognizes backend device objects", {
   expect_false(is_device("cpu"))
   expect_false(is_device(NULL))
   expect_false(is_device(1L))
+  # the device of a backend that a package registers
+  expect_true(is_device(structure("cpu", class = c("ToyDevice", "AnvlDevice"))))
   skip_if_no_quickr()
   expect_true(is_device(with_backend("quickr", nv_device("cpu"))))
   skip_if(!pjrt::plugins_downloaded())
@@ -54,13 +56,13 @@ describe("default_device()", {
 
   it("falls back to the device ANVL_DEFAULT_DEVICE names", {
     local_unset_default_device()
-    local_env_default("DEVICE", "cpu:1")
+    local_env_default("device", "cpu:1")
     expect_equal(default_device(), nv_device("cpu:1"))
   })
 
   it("prefers the `anvl.default_device` option over ANVL_DEFAULT_DEVICE", {
     local_unset_default_device()
-    local_env_default("DEVICE", "cpu:1")
+    local_env_default("device", "cpu:1")
     with_default_device("cpu:0", expect_equal(default_device(), nv_device("cpu:0")))
   })
 

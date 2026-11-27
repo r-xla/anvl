@@ -63,6 +63,12 @@ describe("nv_broadcast_arrays()", {
       "not broadcastable"
     )
   })
+
+  it("broadcasts a size-1 axis to a size-0 one", {
+    xs <- nv_broadcast_arrays(nv_array(numeric(), shape = c(0L, 3L)), nv_array(1:3, shape = c(1L, 3L)))
+    expect_shape(xs[[1L]], c(0L, 3L))
+    expect_shape(xs[[2L]], c(0L, 3L))
+  })
 })
 
 test_that("broadcasting scalars", {
@@ -141,6 +147,16 @@ test_that("nv_ifelse broadcasts scalars and promotes branches to a common dtype"
     nv_ifelse(pred, nv_scalar(1L), nv_array(c(0.5, 0.5, 0.5), dtype = "f32")),
     nv_array(c(1, 0.5, 1), dtype = "f32")
   )
+})
+
+describe("nv_ifelse", {
+  it("gives no NaN gradient when the branch input is masked", {
+    x <- nv_array(c(0, 4), dtype = "f32")
+    masked <- function(x) sum(nv_ifelse(x > 0, sqrt(nv_ifelse(x > 0, x, 0)), 0))
+    expect_equal(jit(gradient(masked))(x)$x, nv_array(c(0, 0.25), dtype = "f32"))
+    second <- function(x) sum(gradient(masked)(x)$x)
+    expect_equal(jit(gradient(second))(x)$x, nv_array(c(0, -1 / 32), dtype = "f32"))
+  })
 })
 
 describe("nv_concatenate", {
@@ -1093,6 +1109,18 @@ describe("the cumulative ops' axis default", {
   })
 })
 
+describe("nv_cumsum / nv_cumprod / nv_cummax / nv_cummin", {
+  it("returns an empty result for a size-0 axis", {
+    x <- nv_array(double(0), shape = 0L)
+    for (f in list(nv_cumsum, nv_cumprod, nv_cummax, nv_cummin)) {
+      expect_equal(as.numeric(f(x)), numeric(0))
+    }
+    m <- nv_array(double(0), shape = c(2L, 0L))
+    expect_equal(shape(nv_cumsum(m, axis = 2L)), c(2L, 0L))
+    expect_equal(shape(nv_cummax(m, axis = 2L, indices = TRUE)$indices), c(2L, 0L))
+  })
+})
+
 describe("nv_cumsum / nv_cumprod nan_rm", {
   it("propagates NaN forward by default", {
     x <- nv_array(c(1, NaN, 3))
@@ -1111,6 +1139,13 @@ describe("nv_cumsum / nv_cumprod nan_rm", {
     x <- nv_array(c(1L, 2L, 3L))
     expect_equal(as_array(nv_cumsum(x)), as_array(nv_cumsum(x, nan_rm = TRUE)))
     expect_equal(as_array(nv_cumprod(x)), as_array(nv_cumprod(x, nan_rm = TRUE)))
+  })
+  it("reports a bad axis as the primitive's error when nan_rm = TRUE", {
+    x <- nv_array(c(1, NaN, 3))
+    call_of <- function(expr) deparse(conditionCall(tryCatch(expr, error = identity)))
+    expect_identical(call_of(nv_cumsum(x, axis = 2L, nan_rm = TRUE)), "prim_cumsum()")
+    expect_identical(call_of(nv_cumprod(x, axis = 2L, nan_rm = TRUE)), "prim_cumprod()")
+    expect_identical(call_of(nv_cummax(x, axis = 2L, nan_rm = TRUE)), "prim_cummax()")
   })
 })
 
@@ -1182,6 +1217,18 @@ describe("nv_which_max / nv_which_min nan_rm", {
   })
 })
 
+describe("nv_mean", {
+  it("averages an integer input at the default float, without overflowing the sum", {
+    x <- nv_array(c(2000000000L, 2000000000L))
+    out <- nv_mean(x)
+    expect_dtype(out, default_float())
+    expect_equal(as.vector(as_array(out)), 2e9)
+    m <- nv_array(rep(2000000000L, 4L), shape = c(2L, 2L))
+    expect_equal(as.vector(as_array(nv_mean(m, axes = 1L))), c(2e9, 2e9))
+    expect_equal(as.vector(as_array(nv_mean(x, nan_rm = TRUE))), 2e9)
+  })
+})
+
 describe("nv_var", {
   it("computes variance with Bessel's correction", {
     vals <- c(2, 4, 4, 4, 5, 5, 7, 9)
@@ -1226,6 +1273,11 @@ describe("nv_var", {
     expect_error(nv_var(nv_array(c(1, 2, 3, 4)), axes = 5L))
     expect_error(nv_var(nv_array(c(1, 2, 3, 4)), axes = c(1L, 1L)))
   })
+  it("does not overflow on a large integer input", {
+    x <- nv_array(c(2000000000L, 2000000000L))
+    expect_dtype(nv_var(x), default_float())
+    expect_equal(as.vector(as_array(nv_var(x))), 0)
+  })
   it("accepts negative dims", {
     m <- nv_matrix(c(2, 4, 4, 4, 5, 5), nrow = 2)
     expect_equal(nv_var(m, axes = -1L), nv_var(m, axes = 2L))
@@ -1254,6 +1306,11 @@ describe("nv_sd", {
       nv_scalar(sd(vals)),
       tolerance = 1e-5
     )
+  })
+  it("does not overflow on a large integer input", {
+    x <- nv_array(c(2000000000L, 2000000000L))
+    expect_dtype(nv_sd(x), default_float())
+    expect_equal(as.vector(as_array(nv_sd(x))), 0)
   })
   it("accepts negative dims", {
     m <- nv_matrix(c(2, 4, 4, 4, 5, 5), nrow = 2)
@@ -1292,6 +1349,10 @@ describe("nv_squeeze", {
       },
       nv_array(1:6, shape = c(6, 1))
     )
+  })
+  it("is a no-op for no axes", {
+    x <- nv_array(1:6, shape = c(1, 6, 1))
+    expect_equal(shape(nv_squeeze(x, axes = integer(0L))), c(1L, 6L, 1L))
   })
   it("errors when squeezing non-1 axis", {
     expect_error(
@@ -1443,6 +1504,12 @@ describe("nv_seq", {
     expect_error(nv_seq(0, 10, by = -2), "Wrong sign")
     expect_error(nv_seq(10, 0, by = 2), "Wrong sign")
   })
+  it("counts down at an unsigned dtype", {
+    x <- nv_seq(5, 1, dtype = "ui8")
+    expect_dtype(x, "ui8")
+    expect_equal(as.integer(as_array(x)), 5:1)
+    expect_equal(as.integer(as_array(nv_seq(10, 0, by = -3, dtype = "ui32"))), c(10L, 7L, 4L, 1L))
+  })
 })
 
 describe("nv_outer", {
@@ -1489,6 +1556,9 @@ describe("nv_extract_diag", {
       nv_array(c(1, 4), dtype = "f32")
     )
   })
+  it("returns an empty vector for a matrix with a size-0 axis", {
+    expect_equal(as.integer(nv_extract_diag(nv_array(integer(0), shape = c(0L, 3L)))), integer(0))
+  })
 })
 
 describe("nv_trace", {
@@ -1505,6 +1575,9 @@ describe("nv_trace", {
       nv_scalar(4),
       tolerance = 1e-6
     )
+  })
+  it("is 0 for a 0x0 matrix", {
+    expect_equal(as_array(nv_trace(nv_array(double(0), shape = c(0L, 0L)))), 0)
   })
 })
 
@@ -1634,6 +1707,29 @@ describe("nv_triu with quickr backend", {
   })
 })
 
+describe("nv_matmul", {
+  it("multiplies the matrices along the trailing batch axes", {
+    withr::local_seed(1L)
+    x <- array(rnorm(72L), c(2L, 3L, 4L, 3L))
+    y <- array(rnorm(120L), c(3L, 5L, 4L, 3L))
+    out <- as_array(nv_array(x, dtype = "f64") %*% nv_array(y, dtype = "f64"))
+    expect_equal(dim(out), c(2L, 5L, 4L, 3L))
+    for (i in seq_len(4L)) {
+      for (j in seq_len(3L)) {
+        expect_equal(out[,, i, j], x[,, i, j] %*% y[,, i, j])
+      }
+    }
+  })
+
+  it("reports a non-conformable pair in terms of axis 2 of x and axis 1 of y", {
+    x <- nv_array(array(1, c(2L, 3L, 2L)))
+    expect_error(
+      nv_matmul(x, nv_array(array(1, c(2L, 3L, 2L)))),
+      "Axis 2 of `x` has size 3, but axis 1 of `y` has size 2"
+    )
+  })
+})
+
 describe("nv_crossprod", {
   it("computes t(x) %*% y", {
     expect_equal(
@@ -1667,11 +1763,11 @@ describe("nv_crossprod", {
     )
   })
   it("transposes only the matrix axes of a batched array", {
-    a <- array(as.numeric(1:12), c(2, 3, 2))
+    a <- array(as.numeric(1:12), c(3, 2, 2))
     out <- as_array(nv_crossprod(nv_array(a, dtype = "f64")))
     expect_equal(dim(out), c(2L, 2L, 2L))
-    expect_equal(out[1, , ], crossprod(a[1, , ]))
-    expect_equal(out[2, , ], crossprod(a[2, , ]))
+    expect_equal(out[,, 1L], crossprod(a[,, 1L]))
+    expect_equal(out[,, 2L], crossprod(a[,, 2L]))
   })
 })
 
@@ -1708,11 +1804,11 @@ describe("nv_tcrossprod", {
     )
   })
   it("transposes only the matrix axes of a batched array", {
-    a <- array(as.numeric(1:12), c(2, 3, 2))
+    a <- array(as.numeric(1:12), c(3, 2, 2))
     out <- as_array(nv_tcrossprod(nv_array(a, dtype = "f64")))
-    expect_equal(dim(out), c(2L, 3L, 3L))
-    expect_equal(out[1, , ], tcrossprod(a[1, , ]))
-    expect_equal(out[2, , ], tcrossprod(a[2, , ]))
+    expect_equal(dim(out), c(3L, 3L, 2L))
+    expect_equal(out[,, 1L], tcrossprod(a[,, 1L]))
+    expect_equal(out[,, 2L], tcrossprod(a[,, 2L]))
   })
 })
 
@@ -2161,6 +2257,21 @@ describe("nv_median", {
 })
 
 describe("nv_quantile", {
+  it("errors when a reduced axis has size 0", {
+    x <- nv_array(double(0), shape = 0L)
+    expect_error(nv_quantile(x, 0.5), "at least one element")
+    expect_error(nv_quantile(x, array(c(0.25, 0.5))), "at least one element")
+    m <- nv_array(double(0), shape = c(2L, 0L))
+    expect_error(nv_quantile(m, 0.5, axes = 2L), "size 0 along axis 2\\.")
+    expect_error(nv_median(m, axes = 2L, nan_rm = TRUE), "size 0 along axis 2\\.")
+    expect_error(nv_quantile(nv_array(double(0), shape = c(0L, 0L)), 0.5), "size 0 along axes 1 and 2\\.")
+  })
+  it("returns an empty result when a kept axis has size 0", {
+    x <- nv_array(double(0), shape = c(0L, 3L))
+    expect_equal(shape(nv_quantile(x, 0.5, axes = 2L)), 0L)
+    expect_equal(shape(nv_quantile(x, array(c(0.25, 0.5)), axes = 2L)), c(2L, 0L))
+    expect_equal(shape(nv_median(x, axes = 2L, drop = FALSE)), c(0L, 1L))
+  })
   it("matches base R quantile (default linear / type 7) for scalar probs", {
     xr <- c(3, 1, 4, 1, 5, 9, 2, 6)
     x <- nv_array(xr)
@@ -2544,6 +2655,52 @@ describe("nv_triangular_solve", {
       tolerance = 1e-5
     )
   })
+
+  lower_triangular_batch <- function() {
+    withr::local_seed(1L)
+    a <- array(rnorm(18L), c(3L, 3L, 2L))
+    for (i in 1:2) {
+      diag(a[,, i]) <- 3
+      a[,, i][upper.tri(a[,, i])] <- 0
+    }
+    a
+  }
+
+  it("solves a batch of systems along the trailing axes, on either side", {
+    withr::local_seed(2L)
+    a <- lower_triangular_batch()
+    b_left <- array(rnorm(30L), c(3L, 5L, 2L))
+    b_right <- array(rnorm(30L), c(5L, 3L, 2L))
+    x_left <- nv_triangular_solve(nv_array(a, dtype = "f64"), nv_array(b_left, dtype = "f64"))
+    x_right <- nv_triangular_solve(nv_array(a, dtype = "f64"), nv_array(b_right, dtype = "f64"), left = FALSE)
+    expect_shape(x_left, c(3L, 5L, 2L))
+    expect_shape(x_right, c(5L, 3L, 2L))
+    for (i in 1:2) {
+      expect_equal(as_array(x_left)[,, i], solve(a[,, i], b_left[,, i]), tolerance = 1e-10)
+      expect_equal(as_array(x_right)[,, i], b_right[,, i] %*% solve(a[,, i]), tolerance = 1e-10)
+    }
+  })
+
+  it("takes a vector per batch as a column on the left and a row on the right", {
+    withr::local_seed(2L)
+    a <- lower_triangular_batch()
+    b <- array(rnorm(6L), c(3L, 2L))
+    x_left <- nv_triangular_solve(nv_array(a, dtype = "f64"), nv_array(b, dtype = "f64"))
+    x_right <- nv_triangular_solve(nv_array(a, dtype = "f64"), nv_array(b, dtype = "f64"), left = FALSE)
+    expect_shape(x_left, c(3L, 2L))
+    expect_shape(x_right, c(3L, 2L))
+    for (i in 1:2) {
+      expect_equal(as_array(x_left)[, i], solve(a[,, i], b[, i]), tolerance = 1e-10)
+      expect_equal(as_array(x_right)[, i], drop(b[, i] %*% solve(a[,, i])), tolerance = 1e-10)
+    }
+  })
+
+  it("requires the batch axes to trail and to match", {
+    a <- nv_array(lower_triangular_batch(), dtype = "f64")
+    expect_error(nv_triangular_solve(a, nv_fill(0, c(3L, 5L, 3L), dtype = "f64")), "batch axes")
+    expect_error(nv_triangular_solve(a, nv_fill(0, c(2L, 3L, 2L), dtype = "f64")), "must agree on the axis")
+    expect_error(nv_triangular_solve(a, nv_fill(0, c(2L, 3L), dtype = "f64")), "size 3 in its first axis")
+  })
 })
 
 describe("nv_lu", {
@@ -2605,6 +2762,31 @@ describe("nv_lu", {
     expect_equal(diag(L), c(1, 1))
     expect_equal(L %*% U, A_mat[permutation, , drop = FALSE], tolerance = 1e-5)
   })
+
+  it("rejects a batch of matrices", {
+    expect_error(nv_lu(nv_array(rnorm(12L), shape = c(2L, 2L, 3L), dtype = "f64")), "must be a 2-D matrix")
+  })
+})
+
+describe("nv_qr", {
+  it("decomposes a batch of matrices, whose batch axes trail them", {
+    x <- nv_array(rnorm(24L), shape = c(4L, 2L, 3L), dtype = "f64")
+    expect_shape(nv_qr(x)$Q, c(4L, 2L, 3L))
+  })
+})
+
+describe("nv_svd", {
+  it("decomposes a batch of matrices, whose batch axes trail them", {
+    x <- nv_array(rnorm(24L), shape = c(4L, 2L, 3L), dtype = "f64")
+    expect_shape(nv_svd(x)$vt, c(2L, 2L, 3L))
+  })
+})
+
+describe("nv_eigh", {
+  it("decomposes a batch of matrices, whose batch axes trail them", {
+    x <- nv_array(rnorm(12L), shape = c(2L, 2L, 3L), dtype = "f64")
+    expect_shape(nv_eigh(x)$values, c(2L, 3L))
+  })
 })
 
 describe("nv_chol", {
@@ -2615,6 +2797,22 @@ describe("nv_chol", {
     # `lower = TRUE` should give the corresponding lower-triangular factor.
     L <- as_array(nv_chol(nv_array(A_mat, dtype = "f64"), lower = TRUE))
     expect_equal(L %*% t(L), A_mat, tolerance = 1e-5)
+  })
+
+  it("factors every matrix of a batch along the trailing axes", {
+    spd <- matrix(c(4, 1, 1, 1, 4, 1, 1, 1, 4), nrow = 3)
+    out <- nv_chol(nv_array(array(c(spd, spd * 2), c(3L, 3L, 2L)), dtype = "f64"))
+    expect_shape(out, c(3L, 3L, 2L))
+    got <- as_array(out)
+    expect_equal(got[,, 1L], chol(spd), tolerance = 1e-8)
+    expect_equal(got[,, 2L], chol(spd * 2), tolerance = 1e-8)
+  })
+
+  it("takes the matrix from the first two axes", {
+    expect_error(nv_chol(nv_array(matrix(1:6 / 1, 2), dtype = "f32")), "square in its first two axes")
+    expect_error(nv_chol(nv_array(array(1:18 / 1, c(2L, 3L, 3L)), dtype = "f32")), "square in its first two axes")
+    expect_error(nv_chol(nv_array(c(1, 2), dtype = "f32")), "at least 2 axes")
+    expect_error(nv_chol(nv_array(matrix(TRUE, 2, 2))), "must be a numeric data type")
   })
 })
 
@@ -2631,6 +2829,11 @@ describe("nv_det", {
   it("returns 1 for the empty 0x0 matrix", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 0, dtype = "f64")
     expect_equal(as_array(nv_det(empty)), 1)
+  })
+
+  it("returns 0 for a singular matrix", {
+    A_mat <- matrix(c(1, 2, 2, 4), nrow = 2)
+    expect_equal(as_array(nv_det(nv_array(A_mat, dtype = "f64"))), det(A_mat))
   })
 })
 
@@ -2658,6 +2861,16 @@ describe("nv_determinant", {
     expect_equal(as_array(out_lin$modulus), 1)
     expect_equal(as_array(out_lin$sign), 1)
   })
+
+  it("returns sign 0 for a singular matrix", {
+    A_mat <- matrix(c(1, 2, 2, 4), nrow = 2)
+    out_log <- nv_determinant(nv_array(A_mat, dtype = "f64"), logarithm = TRUE)
+    expect_equal(as_array(out_log$modulus), -Inf)
+    expect_equal(as_array(out_log$sign), 0)
+    out_lin <- nv_determinant(nv_array(A_mat, dtype = "f64"), logarithm = FALSE)
+    expect_equal(as_array(out_lin$modulus), 0)
+    expect_equal(as_array(out_lin$sign), 0)
+  })
 })
 
 describe("nv_inv", {
@@ -2674,6 +2887,11 @@ describe("nv_inv", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 0, dtype = "f64")
     out <- nv_inv(empty)
     expect_shape(out, c(0L, 0L))
+  })
+
+  it("returns non-finite values for a singular matrix", {
+    A_mat <- matrix(c(1, 2, 2, 4), nrow = 2)
+    expect_false(any(is.finite(as_array(nv_inv(nv_array(A_mat, dtype = "f64"))))))
   })
 })
 
@@ -2833,6 +3051,47 @@ describe("nv_mod", {
   })
 })
 
+describe("nv_optimization_barrier", {
+  it("returns a single array as an array", {
+    x <- nv_array(c(1, 2, 3), dtype = "f64")
+    expect_equal(nv_optimization_barrier(x), x)
+    expect_equal(jit(nv_optimization_barrier)(x), x)
+  })
+
+  it("returns a nested tree with its structure", {
+    x <- list(a = nv_array(c(1, 2), dtype = "f32"), b = list(nv_array(1:3, dtype = "i32"), c = nv_scalar(TRUE)))
+    expect_equal(nv_optimization_barrier(x), x)
+    expect_equal(jit(nv_optimization_barrier)(x), x)
+  })
+
+  it("lowers one barrier for all arrays of the tree", {
+    f <- function(x) nv_optimization_barrier(list(a = x, b = list(x * 2)))
+    mlir <- repr(stablehlo(trace_fn(f, list(x = nv_aval("f32", 3L))))[[1L]])
+    expect_length(gregexpr("stablehlo.optimization_barrier", mlir, fixed = TRUE)[[1L]], 1L)
+  })
+
+  it("materializes R values at their default data type", {
+    out <- nv_optimization_barrier(list(a = 1, b = 2L))
+    expect_equal(dtype(out$a), default_float())
+    expect_equal(dtype(out$b), default_int())
+  })
+
+  it("returns a tree without any elements to pass through as it is", {
+    expect_equal(nv_optimization_barrier(list()), list())
+    expect_equal(nv_optimization_barrier(list(a = list())), list(a = list()))
+  })
+
+  it("refuses a random state without pointing at a loop", {
+    x <- list(a = nv_array(1), rng = nv_rng_state(1L))
+    expect_error(nv_optimization_barrier(x), "must not contain a side effect")
+    expect_error(nv_optimization_barrier(x), "pass the arrays drawn from it")
+    expect_no_match(
+      tryCatch(nv_optimization_barrier(x), error = conditionMessage),
+      "loop"
+    )
+  })
+})
+
 describe("nv_scan", {
   cumsum_body <- function(carry, x) {
     s <- carry + x
@@ -2847,6 +3106,13 @@ describe("nv_scan", {
     res <- nv_scan(nv_scalar(0), nv_array(x), cumsum_body)
     expect_equal(as.numeric(res$out), as.numeric(nv_cumsum(nv_array(x))))
     expect_equal(as.numeric(res$carry), sum(x))
+  })
+
+  it("reads the trip count off the last axis of xs and stacks along a new last axis", {
+    m <- matrix(c(1, 2, 3, 4, 5, 6, 7, 8), nrow = 2L)
+    res <- nv_scan(nv_array(c(0, 0)), nv_array(m), cumsum_body)
+    expect_equal(as_array(res$out), t(apply(m, 1L, cumsum)))
+    expect_equal(as.numeric(res$carry), rowSums(m))
   })
 
   it("runs fori-style with xs = NULL and an explicit trip count", {
@@ -2894,7 +3160,7 @@ describe("nv_scan", {
     expect_error(nv_scan(nv_scalar(0), body = cumsum_body, steps = -1L), "not >= 0")
     expect_error(
       nv_scan(nv_scalar(0), x, cumsum_body, steps = 9L),
-      "size 9 along axis 1, not 4"
+      "size 9 along its last axis, not 4"
     )
   })
 })
@@ -2992,32 +3258,115 @@ test_that("the floating-point nv_* functions refuse a boolean", {
 test_that("nv_conv1d/2d/3d promote their operands", {
   # The `nv_*` layer promotes, as `nv_matmul()` does; `prim_convolution()`
   # underneath still requires operands that already agree.
-  x32 <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f32")
-  x64 <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f64")
-  w32 <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
-  w64 <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f64")
+  x32 <- nv_array(1:5, shape = c(5, 1, 1), dtype = "f32")
+  x64 <- nv_array(1:5, shape = c(5, 1, 1), dtype = "f64")
+  w32 <- nv_array(c(1, 0, -1), shape = c(3, 1, 1), dtype = "f32")
+  w64 <- nv_array(c(1, 0, -1), shape = c(3, 1, 1), dtype = "f64")
   expect_equal(dtype(nv_conv1d(x32, w64)), as_dtype("f64"))
   expect_equal(dtype(nv_conv1d(x64, w32)), as_dtype("f64"))
   expect_equal(dtype(nv_conv1d(x32, w32)), as_dtype("f32"))
   # An integer input meets a float kernel at the float; it used to be refused.
   expect_equal(
-    dtype(nv_conv1d(nv_array(1:5, shape = c(1, 1, 5)), w32)),
+    dtype(nv_conv1d(nv_array(1:5, shape = c(5, 1, 1)), w32)),
     as_dtype("f32")
   )
   expect_equal(
     dtype(nv_conv2d(
-      nv_array(1:16, shape = c(1, 1, 4, 4), dtype = "f32"),
-      nv_fill(1, shape = c(1, 1, 3, 3), dtype = "f64")
+      nv_array(1:16, shape = c(4, 4, 1, 1), dtype = "f32"),
+      nv_fill(1, shape = c(3, 3, 1, 1), dtype = "f64")
     )),
     as_dtype("f64")
   )
   expect_equal(
     dtype(nv_conv3d(
-      nv_array(1:18, shape = c(1, 1, 2, 3, 3), dtype = "f32"),
-      nv_fill(1, shape = c(1, 1, 1, 2, 2), dtype = "f64")
+      nv_array(1:18, shape = c(3, 3, 2, 1, 1), dtype = "f32"),
+      nv_fill(1, shape = c(2, 2, 1, 1, 1), dtype = "f64")
     )),
     as_dtype("f64")
   )
+})
+
+describe("nv_conv2d", {
+  # A 1x1 kernel of ones copies each input element, so the strides, padding
+  # and dilations below can be read off the result's values.
+  x_r <- array(as.double(seq_len(9L * 8L)), c(9L, 8L, 1L, 1L))
+  x <- nv_array(x_r, dtype = "f32")
+  ones <- nv_fill(1, shape = c(1L, 1L, 1L, 1L), dtype = "f32")
+
+  it("reports invalid per-axis arguments in the order they were given", {
+    k <- nv_fill(1, shape = c(3L, 3L, 1L, 1L), dtype = "f32")
+    expect_error(nv_conv2d(x, k, stride = c(0L, 1L)), "stride.*0 and 1")
+    expect_error(nv_conv2d(x, k, dilation = c(1L, 0L)), "dilation.*1 and 0")
+    expect_error(
+      nv_conv2d(nv_fill(1, shape = c(4L, 6L, 1L, 1L), dtype = "f32"), k, padding = c(-3L, 0L)),
+      "spatial axis 1"
+    )
+  })
+
+  it("puts the spatial axes first, then the channels, and the batch last", {
+    out <- nv_conv2d(
+      nv_fill(1, shape = c(9L, 8L, 3L, 2L), dtype = "f32"),
+      nv_fill(1, shape = c(3L, 3L, 3L, 4L), dtype = "f32")
+    )
+    expect_shape(out, c(7L, 6L, 4L, 2L))
+    expect_equal(as_array(out), array(27, c(7L, 6L, 4L, 2L)))
+  })
+
+  it("takes the stride in the order (W, H)", {
+    out <- nv_conv2d(x, ones, stride = c(2L, 1L))
+    expect_equal(as_array(out), x_r[c(1L, 3L, 5L, 7L, 9L), , , , drop = FALSE])
+  })
+
+  it("takes the padding in the order (W, H)", {
+    out <- nv_conv2d(x, ones, padding = c(1L, 0L))
+    expect_equal(as_array(out)[,, 1L, 1L], rbind(0, x_r[,, 1L, 1L], 0))
+  })
+
+  it("takes the dilation in the order (W, H)", {
+    # a width-2 kernel spread over three columns of the width
+    kernel <- nv_array(c(1, -1), shape = c(2L, 1L, 1L, 1L), dtype = "f32")
+    out <- nv_conv2d(x, kernel, dilation = c(2L, 1L))
+    expect_equal(as_array(out)[,, 1L, 1L], x_r[1:7, , 1L, 1L] - x_r[3:9, , 1L, 1L])
+  })
+
+  it("splits the second-to-last axis into the channel groups", {
+    # two input channels, each feeding a block of two output channels
+    x_r <- array(as.double(seq_len(4L * 3L * 2L * 2L)), c(4L, 3L, 2L, 2L))
+    kernel <- nv_array(c(1, 2, 3, 4), shape = c(1L, 1L, 1L, 4L), dtype = "f32")
+    out <- as_array(nv_conv2d(nv_array(x_r, dtype = "f32"), kernel, groups = 2L))
+    expect_equal(dim(out), c(4L, 3L, 4L, 2L))
+    expect_equal(out[,, 1L, ], x_r[,, 1L, ])
+    expect_equal(out[,, 2L, ], 2 * x_r[,, 1L, ])
+    expect_equal(out[,, 3L, ], 3 * x_r[,, 2L, ])
+    expect_equal(out[,, 4L, ], 4 * x_r[,, 2L, ])
+  })
+
+  it("checks the channel axes against `groups`", {
+    x4 <- nv_fill(1, shape = c(5L, 5L, 4L, 2L), dtype = "f32")
+    expect_error(
+      nv_conv2d(x4, nv_fill(1, shape = c(3L, 3L, 4L, 6L), dtype = "f32"), groups = 2L),
+      "`kernel`'s second-to-last axis"
+    )
+    expect_error(
+      nv_conv2d(x4, nv_fill(1, shape = c(3L, 3L, 2L, 6L), dtype = "f32"), groups = 3L),
+      "must divide the number of input channels"
+    )
+    expect_error(
+      nv_conv2d(x4, nv_fill(1, shape = c(3L, 3L, 2L, 5L), dtype = "f32"), groups = 2L),
+      "must divide the number of output channels"
+    )
+  })
+})
+
+describe("nv_conv3d", {
+  it("takes the stride in the order (W, H, D)", {
+    out <- nv_conv3d(
+      nv_fill(1, shape = c(7L, 6L, 5L, 1L, 1L), dtype = "f32"),
+      nv_fill(1, shape = c(1L, 1L, 1L, 1L, 1L), dtype = "f32"),
+      stride = c(1L, 2L, 3L)
+    )
+    expect_shape(out, c(7L, 3L, 2L, 1L, 1L))
+  })
 })
 
 test_that("nv_top_k checks `k` before coercing it", {
@@ -3093,7 +3442,7 @@ test_that("the API layer checks what its pages promise", {
     "same number of axes"
   )
   expect_error(
-    nv_matmul(nv_array(array(1, c(2, 2, 2))), nv_array(array(1, c(3, 2, 2)))),
+    nv_matmul(nv_array(array(1, c(2, 2, 2))), nv_array(array(1, c(2, 2, 3)))),
     "must have the same batch axes"
   )
   expect_equal(shape(nv_matmul(f23, nv_array(matrix(1:6, 3, 2) + 0))), c(2L, 2L))
@@ -3108,16 +3457,16 @@ test_that("the API layer checks what its pages promise", {
   # `nv_conv*` reported `kernel_input_feature_dimension` and `N`, neither of
   # which is an argument of theirs.
   expect_error(
-    nv_conv1d(nv_array(array(1, c(1, 2, 4))), nv_array(array(1, c(1, 3, 2)))),
-    "`kernel`'s second axis"
+    nv_conv1d(nv_array(array(1, c(4, 2, 1))), nv_array(array(1, c(2, 3, 1)))),
+    "`kernel`'s second-to-last axis"
   )
   expect_error(
     nv_conv1d(nv_array(matrix(1, 2, 2)), nv_array(matrix(1, 2, 2))),
     "must have 3 axes for a 1-D convolution"
   )
   expect_equal(
-    shape(nv_conv1d(nv_array(array(1, c(1, 1, 5))), nv_array(array(1, c(1, 1, 3))))),
-    c(1L, 1L, 3L)
+    shape(nv_conv1d(nv_array(array(1, c(5, 1, 1))), nv_array(array(1, c(3, 1, 1))))),
+    c(3L, 1L, 1L)
   )
 })
 
@@ -3140,28 +3489,6 @@ test_that("a constructor that fills internally works at every data type", {
   b <- nv_array(rep(TRUE, 4L), shape = c(2L, 2L))
   expect_equal(as.vector(nv_tril(b)), c(TRUE, TRUE, FALSE, TRUE))
   expect_equal(as.vector(nv_triu(b)), c(TRUE, FALSE, TRUE, TRUE))
-})
-
-test_that("prim_chol and nv_chol accept batched inputs", {
-  # The lowering broadcasts its triangle mask over the batch axes, and both
-  # pages promise batch support.
-  spd <- matrix(c(4, 1, 1, 1, 4, 1, 1, 1, 4), nrow = 3)
-  bx <- array(NA_real_, dim = c(2L, 3L, 3L))
-  bx[1L, , ] <- spd
-  bx[2L, , ] <- spd * 2
-  out <- nv_chol(nv_array(bx, dtype = "f64"))
-  expect_equal(shape(out), c(2L, 3L, 3L))
-  got <- as_array(out)
-  expect_equal(got[1L, , ], chol(spd), tolerance = 1e-8)
-  expect_equal(got[2L, , ], chol(spd * 2), tolerance = 1e-8)
-
-  # A single matrix still works, and the constraints still fire, on the last
-  # two axes.
-  expect_equal(shape(nv_chol(nv_array(spd, dtype = "f32"))), c(3L, 3L))
-  expect_error(nv_chol(nv_array(matrix(1:6 / 1, 2), dtype = "f32")), "square in its last two axes")
-  expect_error(nv_chol(nv_array(c(1, 2), dtype = "f32")), "at least 2 axes")
-  expect_error(nv_chol(nv_array(spd)), NA)
-  expect_error(nv_chol(nv_array(matrix(TRUE, 2, 2))), "must be a numeric data type")
 })
 
 describe("the linear algebra functions", {

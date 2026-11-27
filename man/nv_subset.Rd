@@ -15,19 +15,31 @@ One input. Can be any data type. An R value materializes at its
 \link[=default_dtypes]{default data type}.}
 
 \item{...}{Subset specifications, one per axis. Omitted trailing
-axes select all elements. See
-the \href{https://r-xla.github.io/anvl/articles/subsetting.html}{Subsetting} article for details.}
+axes select all elements.
+
+A boolean mask (an R logical array such as \code{arr(TRUE, FALSE)}, or an
+arrayish value of dtype \code{bool}) selects the elements at the \code{TRUE}
+positions. A mask for one axis must have as many elements as the size of
+that axis. A mask that is the only subscript and has the same shape as
+\code{x} selects across the whole array, yielding a 1-D result. Under \code{\link[=jit]{jit()}},
+the values of a mask must be known at compile time, because the number of
+selected elements determines the output shape: R logical arrays and
+arrays created in or closed over by the function work, a mask computed
+from the function's inputs does not.
+
+See the \href{https://r-xla.github.io/anvl/articles/subsetting.html}{Subsetting} article for details.}
 }
 \value{
 (\code{\link{arrayish}})\cr
 Has the input's data type, and the shape the specifications select --
-a scalar index drops its axis, a range or an index array keeps it.
+a scalar index drops its axis, a range, an index array or an axis mask
+keeps it, and a whole-array mask yields a 1-D result.
 }
 \description{
 Extracts a subset from an array. You can also use the \code{[} operator.
 Supports R-style indexing including scalar indices (which drop axes),
-ranges (\code{a:b}), and \code{array(c(...))} for selecting multiple elements along a
-axis.
+ranges (\code{a:b}), \code{array(c(...))} for selecting multiple elements along an
+axis, and boolean masks.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
@@ -40,6 +52,12 @@ x[2, ]
 # select rows 1 to 2, all columns
 nv_subset(x, 1:2)
 x[1:2, ]
+
+# Select rows 1 and 3 with a mask
+x[arr(TRUE, FALSE, TRUE), ]
+
+# Select all elements greater than 6 (not in `jit()`, see above)
+x[x > 6]
 \dontshow{\}) # examplesIf}
 }
 \seealso{

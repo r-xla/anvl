@@ -2,7 +2,7 @@
 % Please edit documentation in R/graph.R
 \name{graph_desc_add}
 \alias{graph_desc_add}
-\title{Add a Primitive Call to a Graph Descriptor}
+\title{Add a Statement to a Graph Descriptor}
 \usage{
 graph_desc_add(
   primitive,
@@ -14,9 +14,9 @@ graph_desc_add(
 )
 }
 \arguments{
-\item{primitive}{(\code{\link{AnvlPrimitive}} | \code{JitPrimitive})\cr
-The primitive the call is for. A \code{JitPrimitive} is accepted and unwrapped
-to its underlying \code{AnvlPrimitive} metadata.}
+\item{primitive}{(\code{\link{AnvlPrimitiveDef}} | \code{\link{AnvlPrimitive}})\cr
+The primitive the statement applies. An \code{AnvlPrimitive} is accepted and
+unwrapped to its underlying \code{AnvlPrimitiveDef}.}
 
 \item{args}{(\code{list} of \code{\link{arrayish}})\cr
 The arguments to the primitive: \code{\link{GraphBox}}es, \code{\link{AnvlArray}}s (registered
@@ -31,8 +31,8 @@ The inference function to use.
 Must output a list of \code{\link{AbstractArray}}s.}
 
 \item{desc}{(\code{\link{GraphDescriptor}} | \code{NULL})\cr
-The graph descriptor to add the primitive call to.
-Uses the \link[=.current_descriptor]{current descriptor} if \code{NULL}.}
+The graph descriptor to add the statement to.
+Uses the \link[=current_descriptor]{current descriptor} if \code{NULL}.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | device object)\cr
 The device the call places its result on, for a primitive that constructs
@@ -47,7 +47,7 @@ this \code{NULL}.}
 (\code{list} of \code{\link{GraphBox}})
 }
 \description{
-Add a primitive call to a graph descriptor. Inside a primitive body created
+Record a call of a primitive as a \code{\link{GraphStatement}} in a graph descriptor. Inside a primitive body created
 with \code{\link[=new_primitive]{new_primitive()}}, pass the lexically-bound \code{self} as the primitive
 argument.
 }

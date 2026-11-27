@@ -21,7 +21,8 @@ one.
 }
 \description{
 Computes \code{x^-1}, the inverse of a square non-singular matrix \code{x}, by
-solving \code{x \%*\% y = I} for \code{y}.
+solving \code{x \%*\% y = I} for \code{y}. Unlike \code{\link[base:solve]{base::solve()}}, a singular \code{x} is
+not an error: the result then holds non-finite values.
 
 For most use cases prefer \code{\link[=nv_solve]{nv_solve()}} directly: forming the explicit
 inverse is both slower and less numerically stable than solving against

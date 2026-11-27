@@ -37,6 +37,8 @@ navbar:
         href: articles/jit.html
       - text: Automatic Differentiation
         href: articles/autodiff.html
+      - text: Vectorization
+        href: articles/vectorize.html
       - text: Static Shape Restriction
         href: articles/static_shapes.html
       - text: Subsetting
@@ -66,11 +68,16 @@ navbar:
         href: articles/extending_api.html
       - text: "Custom Calls"
         href: articles/custom_calls.html
+      - text: "Custom Calls on CUDA"
+        href: articles/custom_calls_cuda.html
       - text: Other
       - text: Internals
         href: articles/internals.html
       - text: Available Primitives
         href: articles/primitives.html
+      - text: Packages
+      - text: "Depending on anvl"
+        href: articles/depending-on-anvl.html
 
 reference:
   - title: Array
@@ -84,6 +91,8 @@ reference:
       - nv_matrix
       - nv_scalar
       - nv_empty
+      - nv_dtype_constructors
+      - shp
       - nv_fill
       - nv_iota
       - nv_seq
@@ -109,13 +118,11 @@ reference:
       - as_array
       - as_raw
       - as-AnvlArray
-      - await
 
-  - subtitle: Serialization
-    desc: Functions for serializing and deserializing arrays
+  - subtitle: Miscellaneous
     contents:
-      - nv_save
-      - nv_serialize
+      - is_arrayish
+      - await
 
   - subtitle: Base R Generics
     desc: >
@@ -125,7 +132,7 @@ reference:
       - dim.AnvlArray
       - length.AnvlArray
 
-  - title: API Functions
+  - title: Array API
     desc: User-facing `nv_*` functions for array operations
 
   - subtitle: Type Conversion and Broadcasting
@@ -324,22 +331,33 @@ reference:
     contents:
       - nv_normal
       - nv_uniform
+      - nv_binomial
+      - nv_poisson
+      - nv_exponential
       - nv_rbinom
       - nv_sample
       - nv_sample_int
 
+  - subtitle: Random Numbers
+    desc: Seeding, saving and restoring the global random state the samplers draw from
+    contents:
+      - nv_set_seed
+      - nv_rng_state
+      - nv_split_rng_states
+      - local_nv_rng_state
+
   - subtitle: Utilities
     desc: Helpers supporting the API functions
     contents:
-      - nv_rng_state
       - nv_print
+      - nv_optimization_barrier
 
   - title: Data Types and Promotion
     desc: Data types, their defaults, and the rules for promoting inputs to a common one
 
   - subtitle: Data Types
     contents:
-      - dtypes
+      - dtype_categories
       - as_dtype
       - is_dtype
       - common_dtype
@@ -373,26 +391,29 @@ reference:
     desc: Code transformations
     contents:
       - jit
-      - jit_cache_size
       - gradient
-      - value_and_gradient
+      - pullback
+      - vectorize
 
   - title: Backend
     desc: Backend-related functionality and implementations
     contents:
       - backend
-      - active_backend
       - local_backend
-      - with_backend
-      - install_anvl
+      - AnvlBackendPjrt
+      - AnvlBackendQuickr
+      - AnvlBackend
+      - register_backend
+      - register_rule_type
+
+  - title: Device
+    desc: Devices of the active backend and the default device
+    contents:
       - nv_device
       - default_device
       - local_default_device
       - is_device
       - quickr_device
-      - AnvlBackend
-      - AnvlBackendPjrt
-      - AnvlBackendQuickr
 
   - title: Miscellaneous
     desc: General-purpose helpers
@@ -400,6 +421,7 @@ reference:
       - arr
       - eq_type
       - neq_type
+      - map_tree
 
   - title: Internals
     desc: Internal data structures and functions
@@ -412,17 +434,10 @@ reference:
       - GraphValue
       - GraphBox
       - GraphLiteral
-      - AnvlBox
-      - graph_desc_add
+      - GraphStatement
       - local_descriptor
-      - .current_descriptor
+      - current_descriptor
       - subgraphs
-
-  - subtitle: Primitives
-    contents:
-      - new_primitive
-      - AnvlPrimitive
-      - PrimitiveCall
 
   - subtitle: Abstract Types
     contents:
@@ -438,8 +453,7 @@ reference:
   - subtitle: Transformations
     contents:
       - trace_fn
-      - transform_gradient
-      - rule_reverse
+      - graph_gradient
       - graph_to_quickr_r_function
       - compile_pjrt
       - stablehlo
@@ -454,21 +468,34 @@ reference:
       - build_tree
       - tree_size
       - tree_path
-      - map_tree
-      - pmap_tree
 
   - subtitle: Miscellaneous
     contents:
-      - at2vt
-      - vt
-      - is_arrayish
-      - Shape
+      - active_backend
+      - jit_cache_size
 
   - title: Primitives
     desc: Low-level primitive operations (prim_* functions)
+
+  - subtitle: Construction
+    contents:
+      - new_primitive
+      - AnvlPrimitiveDef
+      - graph_desc_add
+      - rule_pullback
+      - rule_vectorize
+      - vec_shape
+
+  - subtitle: Implemented Primitives
     contents:
       - starts_with("prim_")
 
   - title: Package
     contents:
       - anvl-package
+      - install_anvl
+
+  - title: Testing
+    desc: Helpers for the tests of packages that depend on anvl
+    contents:
+      - skip_if_no_plugin

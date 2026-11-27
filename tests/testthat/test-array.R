@@ -7,6 +7,58 @@ test_that("array", {
   expect_equal(as_array(x), array(1:4, c(4, 1)))
 })
 
+describe("nv_array()'s shape", {
+  it("infers the shape from the data at \"auto\"", {
+    expect_shape(nv_array(1:3), 3L)
+    expect_shape(nv_array(1L), 1L)
+    expect_shape(nv_array(matrix(1:6, 2L)), c(2L, 3L))
+    expect_shape(nv_float32(matrix(1:6, 2L)), c(2L, 3L))
+  })
+
+  it("takes a shape from shp()", {
+    expect_shape(nv_array(1:6, shape = shp(2, 3)), c(2L, 3L))
+    expect_shape(nv_array(1L, shape = shp()), integer())
+    expect_shape(nv_int32(1L, shape = shp()), integer())
+  })
+
+  it("refuses NULL rather than inferring the shape or building a scalar", {
+    # `dim()` of a vector is `NULL`, and so is `c()`: neither may silently pick a shape.
+    x <- 1:6
+    expect_snapshot(error = TRUE, nv_array(x, shape = dim(x)))
+    expect_error(nv_float64(1, shape = c()), "Leave it at \"auto\"")
+    expect_error(nv_array(nv_array(1:3), shape = NULL), "Leave it at \"auto\"")
+  })
+
+  it("refuses a shape that is not one", {
+    expect_error(nv_array(1:6, shape = c(2, -3)), "negative axis size")
+    expect_error(nv_array(1:6, shape = c(2.5, 3)), "whole numbers")
+    expect_error(nv_array(1:6, shape = "a"), "whole number vector")
+  })
+
+  it("checks an explicit shape of an existing array", {
+    x <- nv_array(1:6, shape = shp(2, 3))
+    expect_identical(nv_array(x, shape = shp(2, 3)), x)
+    expect_error(nv_array(x, shape = shp(3, 2)), "Cannot change the shape")
+  })
+
+  it("takes a <Shape>, as every shape argument does", {
+    expect_shape(nv_array(1:6, shape = Shape(c(2L, 3L))), c(2L, 3L))
+    expect_shape(nv_empty(Shape(c(2L, 3L)), dtype = "f32"), c(2L, 3L))
+    expect_shape(nv_fill(0, shape = Shape(2L)), 2L)
+  })
+
+  it("names the constructor, not a helper, in its errors", {
+    expect_snapshot(error = TRUE, nv_array(1:6, shape = c(2, -3)))
+    expect_snapshot(error = TRUE, nv_empty(c(2.5, 3), dtype = "f32"))
+  })
+
+  it("refuses byrow for a PJRTBuffer", {
+    buf <- pjrt::pjrt_buffer(matrix(1:6, 2L))
+    expect_error(nv_array(buf, byrow = TRUE), "only applies when constructing")
+    expect_shape(nv_array(buf), c(2L, 3L))
+  })
+})
+
 test_that("nv_array asks for a shape when the data is empty", {
   # Which axis is empty is not in the data: `0`, `c(2, 0)` and `c(0, 3)` all
   # hold no elements.
@@ -28,11 +80,128 @@ test_that("await on an AnvlArray returns the array invisibly", {
   expect_identical(out$value, x)
 })
 
+describe("AnvlArray serialization", {
+  roundtrip <- function(x) {
+    path <- withr::local_tempfile(fileext = ".rds")
+    saveRDS(x, path)
+    readRDS(path)
+  }
+
+  it("round-trips an array through saveRDS()", {
+    x <- nv_array(array(as.double(1:6), c(2L, 3L)), dtype = "f32")
+    y <- roundtrip(x)
+    expect_identical(dtype(y), dtype(x))
+    expect_identical(shape(y), shape(x))
+    expect_identical(as_array(y), as_array(x))
+  })
+
+  it("loads a pjrt array onto the default device", {
+    skip_if(!is_cpu())
+    x <- nv_array(c(1, 2, 3))
+    local_default_device("cpu:1")
+    y <- roundtrip(x)
+    expect_identical(device(y), default_device())
+    expect_identical(device(y), nv_device("cpu:1"))
+  })
+
+  it("can compute with a reloaded array", {
+    y <- roundtrip(nv_array(c(1, 2, 3), dtype = "f32"))
+    expect_identical(as_array(y + y), array(c(2, 4, 6)))
+  })
+
+  it("round-trips the outputs of a jitted function", {
+    f <- jit(function(x) list(a = x * 2, b = x + 1))
+    out <- f(nv_array(c(1, 2), dtype = "f32"))
+    y <- roundtrip(out)
+    expect_identical(as_array(y$a), as_array(out$a))
+    expect_identical(as_array(y$b), as_array(out$b))
+  })
+
+  it("round-trips a quickr array", {
+    skip_if_no_quickr()
+    local_backend("quickr")
+    x <- nv_array(c(1, 2, 3))
+    y <- roundtrip(x)
+    expect_identical(as_array(y), as_array(x))
+    expect_equal(device(y), device(x))
+  })
+})
+
 test_that("nv_scalar", {
   x <- nv_scalar(1L, dtype = "f32", device = "cpu")
   x
   expect_class(x, "AnvlArray")
   expect_snapshot(x)
+})
+
+describe("a missing value in nv_array()", {
+  it("becomes NaN at a float, without a word", {
+    for (dt in c("f32", "f64")) {
+      expect_no_warning(x <- nv_scalar(NA_real_, dtype = dt))
+      expect_dtype(x, dt)
+      expect_true(is.na(as_array(x)))
+    }
+    expect_true(is.nan(as_array(nv_scalar(NaN, dtype = "f64"))))
+    expect_true(is.nan(as_array(nv_scalar(NA_integer_, dtype = "f32"))))
+  })
+
+  it("is kept at i32, with a warning", {
+    expect_warning(x <- nv_scalar(NA_integer_, dtype = "i32"), "-2147483648")
+    expect_true(is.na(as_array(x, check = FALSE)))
+    expect_warning(x <- nv_array(c(1L, NA), dtype = "i32"), "-2147483648")
+    expect_identical(as.vector(as_array(x, check = FALSE)), c(1L, NA))
+    expect_warning(nv_matrix(NA_integer_, 2L, 2L, dtype = "i32"), "-2147483648")
+  })
+
+  it("is an error at every other data type", {
+    expect_error(nv_scalar(NA_integer_, dtype = "i64"), "cannot be converted to \"i64\"")
+    expect_error(nv_scalar(NA_integer_, dtype = "i16"), "cannot be converted to \"i16\"")
+    expect_error(nv_scalar(NA_real_, dtype = "i32"), "cannot be converted to \"i32\"")
+    expect_error(nv_scalar(NA), "cannot be converted to \"bool\"")
+  })
+
+  it("warns for an array created inside jit() when the program is compiled", {
+    f <- jit(function(x) x + nv_scalar(NA_integer_, dtype = "i32"))
+    expect_warning(f(nv_scalar(1L, dtype = "i32")), "-2147483648")
+  })
+})
+
+describe("nv_dtype_constructors", {
+  it("create an array of the data type in their name", {
+    constructors <- list(
+      bool = nv_bool,
+      i8 = nv_int8,
+      i16 = nv_int16,
+      i32 = nv_int32,
+      i64 = nv_int64,
+      ui8 = nv_uint8,
+      ui16 = nv_uint16,
+      ui32 = nv_uint32,
+      ui64 = nv_uint64,
+      f32 = nv_float32,
+      f64 = nv_float64
+    )
+    for (dt in names(constructors)) {
+      data <- if (dt == "bool") c(TRUE, FALSE, TRUE, TRUE) else 1:4
+      x <- constructors[[dt]](data)
+      expect_dtype(x, dt)
+      expect_shape(x, 4L)
+    }
+  })
+
+  it("forward shape and byrow to nv_array", {
+    x <- nv_float64(1:6, shape = c(2L, 3L), byrow = TRUE)
+    expect_dtype(x, "f64")
+    expect_equal(as_array(x), matrix(as.double(1:6), 2L, 3L, byrow = TRUE))
+  })
+
+  it("refuse values the data type cannot hold", {
+    expect_error(nv_uint8(-1L))
+  })
+
+  it("refuse an existing array of another data type", {
+    expect_error(nv_float32(nv_array(1:3, dtype = "i32")), "Cannot change dtype")
+  })
 })
 
 test_that("AbstractArray", {
@@ -81,7 +250,7 @@ test_that("from DataType", {
 
 test_that("nv_array from nv_array", {
   skip_if(!is_cuda())
-  x <- nv_array(1, device = "cuda")
+  x <- nv_array(1, dtype = "f32", device = "cuda")
   expect_equal(platform(x), "cuda")
   expect_error(nv_array(x, device = "cpu"))
   expect_error(nv_array(x, shape = c(1, 1)))
@@ -95,43 +264,75 @@ test_that("format", {
   )
 })
 
-test_that("nv_array(byrow = TRUE) fills row-major from a flat vector", {
-  expect_equal(
-    as_array(nv_array(1:6, shape = c(2L, 3L), byrow = TRUE)),
-    matrix(1:6, nrow = 2, ncol = 3, byrow = TRUE)
-  )
+describe("print.AnvlArray", {
+  it("passes print options on to the backend's printer", {
+    x <- nv_array(1:100, dtype = "i32")
+    expect_output(print(x), "truncated")
+    out <- capture.output(print(x, max_rows = 100L))
+    expect_false(any(grepl("truncated", out, fixed = TRUE)))
+    expect_true(any(grepl("^ *100$", out)))
+  })
 })
 
-test_that("nv_array(byrow = TRUE) extends to higher-rank shapes", {
-  # data values fill last axis fastest, mirroring row-major storage
-  x <- nv_array(1:24, shape = c(2L, 3L, 4L), byrow = TRUE)
-  expected <- aperm(array(1:24, dim = c(4L, 3L, 2L)), 3:1)
-  expect_equal(as_array(x), expected)
-  expect_shape(x, c(2, 3, 4))
-})
+describe("nv_array(byrow = TRUE)", {
+  it("fills row-major from a flat vector", {
+    expect_equal(
+      as_array(nv_array(1:6, shape = c(2L, 3L), byrow = TRUE)),
+      matrix(1:6, nrow = 2, ncol = 3, byrow = TRUE)
+    )
+  })
 
-test_that("nv_array(byrow = TRUE) is a no-op for shapes with < 2 axes", {
-  expect_equal(
-    as_array(nv_array(1:4, byrow = TRUE)),
-    as_array(nv_array(1:4))
-  )
-  expect_equal(
-    as_array(nv_array(1L, shape = integer(), byrow = TRUE)),
-    as_array(nv_array(1L, shape = integer()))
-  )
-})
+  it("extends to higher-rank shapes", {
+    # data values fill last axis fastest, mirroring row-major storage
+    x <- nv_array(1:24, shape = c(2L, 3L, 4L), byrow = TRUE)
+    expected <- aperm(array(1:24, dim = c(4L, 3L, 2L)), 3:1)
+    expect_equal(as_array(x), expected)
+    expect_shape(x, c(2, 3, 4))
+  })
 
-test_that("nv_array(byrow = TRUE) re-fills a matrix input row-major", {
-  # input is column-major matrix(1:6, 2, 3) but byrow re-interprets values
-  expect_equal(
-    as_array(nv_array(matrix(1:6, nrow = 2L), byrow = TRUE)),
-    matrix(1:6, nrow = 2L, ncol = 3L, byrow = TRUE)
-  )
-})
+  it("is a no-op for shapes with < 2 axes", {
+    expect_equal(
+      as_array(nv_array(1:4, byrow = TRUE)),
+      as_array(nv_array(1:4))
+    )
+    expect_equal(
+      as_array(nv_array(1L, shape = integer(), byrow = TRUE)),
+      as_array(nv_array(1L, shape = integer()))
+    )
+  })
 
-test_that("nv_array(byrow = TRUE) errors when data is an AnvlArray", {
-  x <- nv_array(1:6, shape = c(2L, 3L))
-  expect_error(nv_array(x, byrow = TRUE), "byrow")
+  it("re-fills a matrix input row-major", {
+    # input is column-major matrix(1:6, 2, 3) but byrow re-interprets values
+    expect_equal(
+      as_array(nv_array(matrix(1:6, nrow = 2L), byrow = TRUE)),
+      matrix(1:6, nrow = 2L, ncol = 3L, byrow = TRUE)
+    )
+  })
+
+  it("errors when data is an AnvlArray", {
+    x <- nv_array(1:6, shape = c(2L, 3L))
+    expect_error(nv_array(x, byrow = TRUE), "byrow")
+  })
+
+  it("refuses data that does not fill the shape, as without byrow", {
+    expect_error(nv_array(1:4, shape = c(2L, 3L)), "Data has length 4")
+    expect_error(nv_array(1:4, shape = c(2L, 3L), byrow = TRUE), "Data has length 4")
+  })
+
+  it("recycles a single value", {
+    expect_equal(
+      as_array(nv_array(7L, shape = c(2L, 3L), byrow = TRUE)),
+      matrix(7L, nrow = 2L, ncol = 3L)
+    )
+  })
+
+  it("keeps the values of a bit64::integer64", {
+    # Through `array()`, the integer64 lost its class and its bits were read as
+    # doubles.
+    x <- nv_int64(bit64::as.integer64(1:6), shape = c(2L, 3L), byrow = TRUE)
+    expect_shape(x, c(2L, 3L))
+    expect_equal(as.integer(as_array(x)), as.integer(matrix(1:6, nrow = 2L, ncol = 3L, byrow = TRUE)))
+  })
 })
 
 test_that("nv_matrix() infers ncol from nrow and data length", {
@@ -270,19 +471,22 @@ test_that("to_abstract", {
 
   # pure -- an R value contributes the dtype it would materialize at
   x <- nv_scalar(1)
-  expect_equal(to_abstract(x, pure = TRUE), AbstractArray(default_float(), c()))
-  expect_equal(to_abstract(1L, pure = TRUE), AbstractArray(default_int(), c()))
+  expect_equal(to_abstract(x, pure = TRUE), AbstractArray(default_float(), shp()))
+  expect_equal(to_abstract(1L, pure = TRUE), AbstractArray(default_int(), shp()))
   expect_error(to_abstract(list(1, 2)), "is not an array-like object")
 })
 
 
-test_that("as_shape for c() (i.e., NULL)", {
-  expect_equal(as_shape(c()), Shape(integer()))
+describe("as_shape()", {
+  it("refuses NULL rather than reading it as the shape of a scalar", {
+    expect_equal(as_shape(shp()), Shape(integer()))
+    expect_error(as_shape(c()), "Use `shp\\(\\)` for the shape of a scalar")
+  })
 })
 
 test_that("nv_aval creates AbstractArray", {
   expect_equal(
-    nv_aval("f32", c()),
+    nv_aval("f32", shp()),
     AbstractArray("f32", Shape(integer()))
   )
   expect_equal(
@@ -292,11 +496,11 @@ test_that("nv_aval creates AbstractArray", {
 })
 
 test_that("nv_aval creates RData from an R storage type", {
-  expect_equal(nv_aval("double", c()), RData(integer(), "double"))
+  expect_equal(nv_aval("double", shp()), RData(integer(), "double"))
   expect_equal(nv_aval("integer", 1:2), RData(1:2, "integer"))
-  expect_equal(nv_aval("logical", c()), RData(integer(), "logical"))
+  expect_equal(nv_aval("logical", shp()), RData(integer(), "logical"))
   # the value is deliberately unknown, and there is no dtype to report
-  expect_error(dtype(nv_aval("double", c())), "no data type of its own")
+  expect_error(dtype(nv_aval("double", shp())), "no data type of its own")
   expect_shape(nv_aval("double", 1:2), 1:2)
   # it traces like any other input aval
   graph <- trace_fn(function(x) x + nv_scalar(1, dtype = "f64"), list(x = nv_aval("double", integer())))
@@ -304,11 +508,6 @@ test_that("nv_aval creates RData from an R storage type", {
   expect_dtype(graph$inputs[[1L]]$aval, "f64")
   expect_equal(graph$rdata_types, "double")
 })
-
-test_that("as_shape for c() (i.e., NULL)", {
-  expect_equal(as_shape(c()), Shape(integer()))
-})
-
 
 test_that("stablehlo dtype is printed", {
   skip_if(!is_cpu())
@@ -467,6 +666,16 @@ describe("as_anvl_array", {
   it("rejects non-arrayish inputs", {
     expect_error(as_anvl_array("foo"), "Expected arrayish")
     expect_error(as_anvl_array(list()), "Expected arrayish")
+  })
+
+  it("rejects a classed R value rather than reading its storage type", {
+    expect_error(as_anvl_array(structure(1, class = "myclass")), "Expected arrayish")
+    # Inside a trace too: an integer64 is a double underneath, so reading it as
+    # one would silently compute on its bit pattern.
+    i64 <- bit64::as.integer64(2:3)
+    dim(i64) <- 2L
+    f <- jit(function(x) nv_mul(x, i64))
+    expect_error(f(nv_array(1:2, dtype = "i64")), "Expected arrayish")
   })
 
   it("passes traced boxes through unchanged under jit()", {
@@ -894,6 +1103,59 @@ describe("arr", {
   it("errors when shape is not integerish", {
     expect_error(arr(1, 2, shape = "foo"))
   })
+
+  it("refuses NULL and the shape of a scalar", {
+    expect_error(arr(1, 2, shape = NULL), "Leave it at \"auto\"")
+    # an R array has at least one axis
+    expect_error(arr(1, shape = shp()), "at least 1 entry")
+  })
+})
+
+describe("shp()", {
+  it("builds a shape from axis sizes", {
+    expect_identical(shp(2, 3), c(2L, 3L))
+    expect_identical(shp(2L), 2L)
+    expect_identical(shp(0, 3), c(0L, 3L))
+  })
+
+  it("returns an empty integer vector, not NULL, for the shape of a scalar", {
+    expect_identical(shp(), integer())
+    expect_identical(shape(nv_scalar(1)), shp())
+  })
+
+  it("splices vectors in", {
+    expect_identical(shp(c(2, 3), 4), c(2L, 3L, 4L))
+    x <- nv_array(1:6, shape = c(2L, 3L))
+    expect_identical(shp(shape(x), 1L), c(2L, 3L, 1L))
+  })
+
+  it("is accepted by every shape argument", {
+    expect_shape(nv_fill(0, shape = shp(2, 3)), c(2L, 3L))
+    expect_shape(nv_empty(shp(2), dtype = "f32"), 2L)
+    expect_shape(nv_reshape(nv_array(1:6), shape = shp(3, 2)), c(3L, 2L))
+  })
+
+  it("refuses NULL, so the dim() of a vector does not become the shape of a scalar", {
+    expect_snapshot(error = TRUE, shp(2, NULL))
+    expect_error(shp(dim(1:3)), "Argument 1 is NULL")
+  })
+
+  it("refuses what is not an axis size", {
+    expect_snapshot(error = TRUE, shp(-1))
+    expect_error(shp(1.5), "whole numbers")
+    expect_error(shp("a"), "Argument 1 is \"a\"")
+    expect_error(shp(NA_integer_), "missing values")
+  })
+
+  it("refuses a logical or a factor rather than reading it as a number", {
+    expect_error(shp(TRUE), "Argument 1 is TRUE")
+    expect_error(shp(2, factor("7")), "Argument 2 is <factor>")
+    expect_error(shp(NA), "Argument 1 is NA")
+  })
+
+  it("splices in a <Shape>", {
+    expect_identical(shp(Shape(c(2L, 3L)), 4), c(2L, 3L, 4L))
+  })
 })
 
 describe("as_array", {
@@ -1104,9 +1366,8 @@ describe("the default float", {
     expect_dtype(nv_fill(0, 3), "f64")
     expect_dtype(nv_linspace(0, 1, length_out = 3L), "f64")
     expect_dtype(nv_eye(2), "f64")
-    state <- nv_rng_state(1L)
-    expect_dtype(nv_rnorm(3, state)[[2L]], "f64")
-    expect_dtype(nv_runif(3, state)[[2L]], "f64")
+    expect_dtype(nv_rnorm(3), "f64")
+    expect_dtype(nv_runif(3), "f64")
     expect_equal(peek_dtype(1.5), as_dtype("f64"))
     expect_error(dtype(1.5), "no data type of its own")
     # An explicit dtype still wins, and the other categories are untouched.
@@ -1117,7 +1378,7 @@ describe("the default float", {
 
   it("leaves data that is not an R value alone", {
     local_default_dtypes(c(float = "f64", int = "i64"))
-    # A buffer already has its dtype; nv_minval() builds one from raw bytes.
+    # A buffer already has its dtype, and nv_minval() names the dtype of its raw bytes.
     expect_dtype(nv_scalar(pjrt::pjrt_scalar(1L, dtype = "i32")), "i32")
     expect_equal(as.integer(nv_max(nv_array(1:3, dtype = "i32"))), 3L)
     expect_equal(as.integer(jit(function(x) nv_min(x))(nv_array(1:3, dtype = "i32"))), 1L)
@@ -1131,9 +1392,8 @@ describe("the default integer", {
     expect_dtype(nv_scalar(1L), "i64")
     expect_dtype(nv_seq(1, 3), "i64")
     expect_dtype(nv_fill(0L, 3), "i64")
-    state <- nv_rng_state(1L)
-    expect_dtype(nv_rbinom(3, state)[[2L]], "i64")
-    expect_dtype(nv_sample_int(3, state, 6L)[[2L]], "i64")
+    expect_dtype(nv_rbinom(3), "i64")
+    expect_dtype(nv_sample_int(3, 6L), "i64")
     expect_equal(peek_dtype(1L), as_dtype("i64"))
     expect_dtype(nv_array(1.5), default_float())
   })
@@ -1150,15 +1410,17 @@ test_that("nv_array forwards raw payloads to pjrt_buffer()", {
   expect_equal(as_array(x_row), matrix(1:6, 2L, 3L, byrow = TRUE))
 })
 
-test_that("raw payloads require dtype and shape and are pjrt-only", {
-  skip_if(!is_cpu())
-  expect_error(nv_array(as.raw(1:4), shape = 4L, device = "cpu"), "dtype")
-  expect_error(nv_array(as.raw(1:4), dtype = "ui8", device = "cpu"), "shape")
-  f <- jit(function() nv_array(as.raw(1:4), dtype = "ui8", shape = 4L))
-  expect_error(f(), "not supported inside")
-  skip_if_no_quickr()
-  local_backend("quickr")
-  expect_error(nv_array(as.raw(1:4), dtype = "ui8", shape = 4L), "quickr")
+describe("nv_array() of a raw payload", {
+  it("requires dtype and shape", {
+    skip_if(!is_cpu())
+    expect_error(nv_array(as.raw(1:4), shape = 4L, device = "cpu"), "dtype")
+    expect_error(nv_array(as.raw(1:4), dtype = "ui8", device = "cpu"), "shape")
+  })
+
+  it("is refused inside jit()", {
+    f <- jit(function() nv_array(as.raw(1:4), dtype = "ui8", shape = 4L))
+    expect_error(f(), "not supported inside")
+  })
 })
 
 describe("axes", {

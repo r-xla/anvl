@@ -3,16 +3,19 @@
 
 library(anvl)
 
+# a fixed seed keeps the statistical thresholds below from failing at random
+nv_set_seed(1L)
+
 test_rnorm_statistical <- function() {
   cat("Testing rnorm statistical properties...\n")
 
   # Test normality with large sample
   f <- function() {
-    nv_rnorm(nv_array(c(1, 2), dtype = "ui64"), dtype = "f64", shape = c(200L, 300L, 400L))
+    nv_rnorm(dtype = "f64", shape = c(200L, 300L, 400L))
   }
   g <- jit(f)
   out <- g()
-  Z <- as_array(out[[2]])
+  Z <- as_array(out)
 
   # Check no non-finite values
   stopifnot(all(is.finite(Z)))
@@ -32,7 +35,6 @@ test_rnorm_mean_sd <- function() {
 
   f <- function() {
     nv_rnorm(
-      nv_array(c(3, 83), dtype = "ui64"),
       dtype = "f64",
       shape = c(10L, 10L, 10L, 10L, 10L),
       mean = 10,
@@ -41,7 +43,7 @@ test_rnorm_mean_sd <- function() {
   }
   g <- jit(f)
   out <- g()
-  values <- as_array(out[[2]])
+  values <- as_array(out)
 
   sample_mean <- mean(values)
   sample_sd <- sd(values)
@@ -60,7 +62,6 @@ test_runif_statistical <- function() {
 
   f <- function() {
     nv_runif(
-      nv_array(c(1, 2), dtype = "ui64"),
       dtype = "f32",
       shape = c(10, 20, 30, 40, 50),
       min = -1,
@@ -69,7 +70,7 @@ test_runif_statistical <- function() {
   }
   g <- jit(f)
   out <- g()
-  values <- as_array(out[[2]])
+  values <- as_array(out)
 
   # Check bounds (should be open interval)
   stopifnot(!any(values == -1))
@@ -94,14 +95,13 @@ test_rbinom_statistical <- function() {
   cat("  Testing Bernoulli (n=1)...\n")
   f <- function() {
     nv_rbinom(
-      nv_array(c(1, 2), dtype = "ui64"),
       dtype = "i32",
       shape = c(100L, 100L, 100L)
     )
   }
   g <- jit(f)
   out <- g()
-  values <- as_array(out[[2]])
+  values <- as_array(out)
 
   # All values should be 0 or 1
   stopifnot(all(values %in% c(0L, 1L)))
@@ -119,7 +119,6 @@ test_rbinom_statistical <- function() {
   cat("  Testing Binomial (n=20, prob=0.5)...\n")
   f2 <- function() {
     nv_rbinom(
-      nv_array(c(3, 4), dtype = "ui64"),
       size = 20L,
       dtype = "i32",
       shape = c(100L, 100L, 100L)
@@ -127,7 +126,7 @@ test_rbinom_statistical <- function() {
   }
   g2 <- jit(f2)
   out2 <- g2()
-  values2 <- as_array(out2[[2]])
+  values2 <- as_array(out2)
 
   # All values should be in [0, 20]
   stopifnot(all(values2 >= 0L & values2 <= 20L))
@@ -145,7 +144,6 @@ test_rbinom_statistical <- function() {
   cat("  Testing Binomial (n=10, prob=0.3)...\n")
   f3 <- function() {
     nv_rbinom(
-      nv_array(c(5, 6), dtype = "ui64"),
       size = 10L,
       prob = 0.3,
       dtype = "i32",
@@ -154,7 +152,7 @@ test_rbinom_statistical <- function() {
   }
   g3 <- jit(f3)
   out3 <- g3()
-  values3 <- as_array(out3[[2]])
+  values3 <- as_array(out3)
 
   # All values should be in [0, 10]
   stopifnot(all(values3 >= 0L & values3 <= 10L))
@@ -172,7 +170,6 @@ test_rbinom_statistical <- function() {
   cat("  Testing Bernoulli (prob=0.7)...\n")
   f4 <- function() {
     nv_rbinom(
-      nv_array(c(7, 8), dtype = "ui64"),
       prob = 0.7,
       dtype = "i32",
       shape = c(100L, 100L, 100L)
@@ -180,7 +177,7 @@ test_rbinom_statistical <- function() {
   }
   g4 <- jit(f4)
   out4 <- g4()
-  values4 <- as_array(out4[[2]])
+  values4 <- as_array(out4)
 
   # All values should be 0 or 1
   stopifnot(all(values4 %in% c(0L, 1L)))
@@ -202,13 +199,12 @@ test_sample_statistical <- function() {
   f1 <- function() {
     nv_sample_int(
       n = 6L,
-      shape = 60000L,
-      state = nv_array(c(1, 2), dtype = "ui64")
+      shape = 60000L
     )
   }
   g1 <- jit(f1)
   out1 <- g1()
-  values1 <- as_array(out1[[2]])
+  values1 <- as_array(out1)
 
   stopifnot(all(values1 >= 1L & values1 <= 6L))
 
@@ -224,12 +220,11 @@ test_sample_statistical <- function() {
   f2 <- function() {
     nv_sample(
       x = nv_array(population),
-      shape = 60000L,
-      state = nv_array(c(7, 11), dtype = "ui64")
+      shape = 60000L
     )
   }
   g2 <- jit(f2)
-  values2 <- as_array(g2()[[2]])
+  values2 <- as_array(g2())
 
   stopifnot(all(values2 %in% population))
 

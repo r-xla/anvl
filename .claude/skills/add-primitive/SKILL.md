@@ -1,12 +1,12 @@
 ---
 name: add-primitive
-description: Add a new primitive operation to anvl (prim_* function with stablehlo, reverse rules, and tests)
+description: Add a new primitive operation to anvl (prim_* function with stablehlo, pullback rules, and tests)
 user_invocable: true
 ---
 
 # Add a New Primitive to anvl
 
-Read `vignettes/extending_primitive.Rmd` first — it is the primary guide with a complete walkthrough (primitive creation via `new_primitive()`, stablehlo rule, reverse rule, nv\_\* API, file organization). This skill covers additional details not in the vignette.
+Read `vignettes/extending_primitive.Rmd` first — it is the primary guide with a complete walkthrough (primitive creation via `new_primitive()`, stablehlo rule, pullback rule, nv\_\* API, file organization). This skill covers additional details not in the vignette.
 
 ## Before Starting: Check StableHLO Support
 
@@ -70,6 +70,8 @@ prim_<name> <- new_primitive("<name>", make_binary_op(infer_generic_biv))
 
 The shared rules are `infer_{generic,numeric,float,integer,integerish}_{uni,biv}()`; the prefix names the dtype group the op accepts (see `?dtypes`).
 
+An elementwise primitive with more than one operand broadcasts a scalar operand to the shape of the others: its inference rule takes the output shape from `infer_elementwise_shape()`, its StableHLO rule broadcasts while lowering (`elementwise_rule()`, or `hlo_broadcast_scalar()` for a single operand), and its pullback rule sums the gradient of a scalar operand back down with `unbroadcast()`.
+
 ## Inference Rule
 
 Every primitive has an inference rule `infer_<name>()` in `R/rules-inference.R`, passed to `graph_desc_add(..., infer_fn = infer_<name>)`. It maps the incoming `AbstractArray`s plus the static params to the outgoing `AbstractArray`s, and it is **the** place where the primitive's arguments are checked. Read the header comment of `R/rules-inference.R` before writing one; the rules below summarize it.
@@ -110,7 +112,7 @@ cli_abort(c(
 - **Never print a caller's value with a bare `{x}` / `{.val {x}}`** unless its length is already checked to be 1. A caller can pass anything (`prim_fill(1:1000, ...)`, a 5000-character string, a list), and the helpers above are what keep the message short and quick to build: they show at most 8 entries (`c(1, 2, 3, 4, 5, 6, 7, 8, ...) of length 1000`) and cut strings at 30 characters; `shape_repr()` stops after 8 axes. Don't paste a vector into a message yourself (`paste0(x, collapse = ", ")`).
 - **Refuse input that would fail later with a worse message.** Examples: a shape whose element count overflows int64 (`assert_shapevec()` checks this), and a whole number outside the integer range, which `as.integer()` would silently turn into `NA` (`assert_int_param()` checks this). Some of these abort the process rather than raising: XLA `CHECK`-fails on a negative window bound, so `infer_convolution()` refuses a negative padded input itself.
 - **Point at the offending entries** when only some are wrong: `Got {value_repr(start[bad])} at {cli::qty(length(bad))}ax{?is/es} {value_repr(bad)}.`
-- **An `i` bullet** adds context that isn't the offending value: the full set of params on a clash (`i = "Got {params_repr(parts)}."`), or where to look (`i = "See {.fn tengen::as_dtype} ..."`).
+- **An `i` bullet** adds context that isn't the offending value: the full set of params on a clash (`i = "Got {params_repr(parts)}."`), or where to look (`i = "See {.fn xlamisc::as_dtype} ..."`).
 - **Operands without their own formal** are named by the argument the caller used: `..2` for operands passed through `...` (`prim_concatenate()`), `xs[[2]]` for ones collected in a list (`prim_sort()`). `assert_arrays(..., .arg = "xs")` does this for you. When operands disagree, name the first one *and* the one that disagrees: `` `..1` has shape (2x3), `..2` has shape (2x4). ``
 - Pluralize with `cli::qty()` (`{cli::qty(n)}ax{?is/es}`, `entr{?y/ies}`). Don't write "axis(es)".
 - Don't describe a range the caller could satisfy but that doesn't exist: at rank 0 say there is no axis to select, not "between 1 and 0" (see `assert_axes_in_range()`).
@@ -123,7 +125,8 @@ Reach for the shared helpers at the top of `R/rules-inference.R` before writing 
 | --- | --- |
 | `assert_array()` / `assert_arrays()` | operand is an `AbstractArray` |
 | `assert_array_dtype(x, "float", "int", shape =, naxes =)` | dtype category, shape, rank |
-| `assert_same_type()` / `assert_same_dtype()` | two operands agree |
+| `assert_same_dtype()` | two operands share a data type |
+| `infer_elementwise_shape(avals)` | the shapes of an elementwise primitive's operands agree, scalars aside; returns that shape |
 | `assert_int_param(x, arg, len =, min_len =)` | whole-number param, no `NA`, length |
 | `assert_size_param()` | as above, plus non-negative |
 | `assert_flag_param()` | `TRUE` / `FALSE` |
@@ -139,12 +142,12 @@ If a new check will be needed by more than one rule, add a helper next to these,
 
 Snapshot every refusal through the **primitive itself** in `tests/testthat/test-rules-inference.R` (`test_that("prim_<name>", { expect_snapshot(error = TRUE, prim_<name>(...)) })`), so the snapshot holds the message a caller actually sees, including the rewritten call. Cover each distinct `cli_abort()` of the rule, and read the generated `_snaps/rules-inference.md` entries: every one should name the argument and show the value.
 
-## Reverse Rule: Additional Guidance
+## Pullback Rule: Additional Guidance
 
 Beyond what the vignette covers:
 
 - Build gradient expressions using `prim_*` primitives — never use R arithmetic directly.
-- For non-differentiable points (e.g. `abs` at 0, `floor` everywhere), follow PyTorch conventions (subgradients, zero gradients, etc.). Read existing rules in `R/rules-reverse.R` for examples.
+- For non-differentiable points (e.g. `abs` at 0, `floor` everywhere), follow PyTorch conventions (subgradients, zero gradients, etc.). Read existing rules in `R/rules-pullback.R` for examples.
 
 ## Optional: Quickr Rule
 
@@ -162,8 +165,8 @@ The vignette covers file organization and the torch-vs-manual decision. This sec
 
 ### Decision: Torch comparison vs. manual R tests
 
-- **Use torch comparison** (`inst/extra-tests/`) when the operation has a torch equivalent and the reverse rule is non-trivial.
-- **Use manual R tests** (`tests/testthat/test-primitives-stablehlo.R` and `tests/testthat/test-primitives-reverse.R`) when no torch equivalent exists or the expected output can be stated analytically.
+- **Use torch comparison** (`inst/extra-tests/`) when the operation has a torch equivalent and the pullback rule is non-trivial.
+- **Use manual R tests** (`tests/testthat/test-primitives-stablehlo.R` and `tests/testthat/test-primitives-pullback.R`) when no torch equivalent exists or the expected output can be stated analytically.
 
 Choose one approach, not both.
 
@@ -204,7 +207,7 @@ describe("prim_foo", {
 
 For binary ops, use `expect_jit_torch_binary` with `gen_x` / `gen_y`.
 
-### Reverse test example (torch comparison in `inst/extra-tests/test-primitives-reverse-torch.R`)
+### Pullback test example (torch comparison in `inst/extra-tests/test-primitives-pullback-torch.R`)
 
 ```r
 describe("prim_foo", {
@@ -225,25 +228,25 @@ describe("prim_foo", {
 })
 ```
 
-For binary reverse tests, use `verify_grad_biv` / `verify_grad_biv_array` with `gen_lhs` / `gen_rhs`.
+For binary pullback tests, use `verify_grad_biv` / `verify_grad_biv_array` with `gen_lhs` / `gen_rhs`.
 
 ### Key testing helpers
 
-| Helper                    | File                                               | Purpose                                  |
-| ------------------------- | -------------------------------------------------- | ---------------------------------------- |
-| `expect_jit_torch_unary`  | `inst/extra-tests/torch-helpers.R`                 | Compare unary forward with torch         |
-| `expect_jit_torch_binary` | `inst/extra-tests/torch-helpers.R`                 | Compare binary forward with torch        |
-| `verify_grad_uni`         | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare unary gradient (scalar + array)  |
-| `verify_grad_uni_array`   | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare unary gradient (array only)      |
-| `verify_grad_biv`         | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare binary gradient (scalar + array) |
-| `verify_grad_biv_array`   | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare binary gradient (array only)     |
-| `generate_test_data`      | `inst/extra-tests/torch-helpers.R`                 | Random input sampling by dtype           |
+| Helper                    | File                                                | Purpose                                  |
+| ------------------------- | --------------------------------------------------- | ---------------------------------------- |
+| `expect_jit_torch_unary`  | `inst/extra-tests/torch-helpers.R`                  | Compare unary forward with torch         |
+| `expect_jit_torch_binary` | `inst/extra-tests/torch-helpers.R`                  | Compare binary forward with torch        |
+| `verify_grad_uni`         | `inst/extra-tests/test-primitives-pullback-torch.R` | Compare unary gradient (scalar + array)  |
+| `verify_grad_uni_array`   | `inst/extra-tests/test-primitives-pullback-torch.R` | Compare unary gradient (array only)      |
+| `verify_grad_biv`         | `inst/extra-tests/test-primitives-pullback-torch.R` | Compare binary gradient (scalar + array) |
+| `verify_grad_biv_array`   | `inst/extra-tests/test-primitives-pullback-torch.R` | Compare binary gradient (array only)     |
+| `generate_test_data`      | `inst/extra-tests/torch-helpers.R`                  | Random input sampling by dtype           |
 
 Custom generators (`gen`, `gen_x`, `gen_y`, `gen_lhs`, `gen_rhs`) have signature `function(shp, dtype)` and return an R array (or scalar for `integer()` shape).
 
 ### Meta-test coverage
 
-`tests/testthat/test-primitives-meta.R` automatically checks that every `prim_*` primitive has corresponding stablehlo and reverse tests. Your new primitive will be flagged if tests are missing. Tests must use the full `prim_<name>` identifier as the `describe()` / `test_that()` label (e.g. `describe("prim_foo", { ... })`).
+`tests/testthat/test-primitives-meta.R` automatically checks that every `prim_*` primitive has corresponding stablehlo and pullback tests. Your new primitive will be flagged if tests are missing. Tests must use the full `prim_<name>` identifier as the `describe()` / `test_that()` label (e.g. `describe("prim_foo", { ... })`).
 
 ## Verify
 
@@ -256,12 +259,12 @@ devtools::test()  # or run specific test files
 ## Checklist
 
 - [ ] Can be expressed in StableHLO
-- [ ] Primitive defined: `prim_<name> <- new_primitive("<name>", function(...) { graph_desc_add(self, ...) })` with roxygen docs and `@export` (auto-registered into the internal primitive registry). For simple shapes, use `make_unary_op()` / `make_binary_op()` / `make_reduce_op()` / `make_compare_op()` instead of writing the body by hand.
+- [ ] Primitive defined: `prim_<name> <- new_primitive("<name>", function(...) { graph_desc_add(self, ...) })` with roxygen docs and `@export` (auto-registered into the internal primitive registry). For simple shapes, use `make_unary_op()` / `make_binary_op()` / `make_reduce_op()` / `compare_op` instead of writing the body by hand.
 - [ ] Inference rule: `infer_<name>()` in `R/rules-inference.R` (or a shared one), with every refusal naming the argument and showing its value, snapshotted in `test-rules-inference.R`
 - [ ] StableHLO rule: `prim_<name>[["stablehlo"]]` in `R/rules-stablehlo.R`
-- [ ] Reverse rule: `prim_<name>[["reverse"]]` in `R/rules-reverse.R`
+- [ ] Pullback rule: `prim_<name>[["pullback"]]` in `R/rules-pullback.R`
 - [ ] Quickr rule (optional): `quickr_register_prim_lowerer(prim_<name>, ...)` in `R/rules-quickr.R`
 - [ ] API wrapper: `nv_<name>` added via `/add-api-function` skill
-- [ ] Tests: primitive forward + reverse, property-based with edge cases (use `describe("prim_<name>", { ... })`)
+- [ ] Tests: primitive forward + pullback, property-based with edge cases (use `describe("prim_<name>", { ... })`)
 - [ ] `devtools::document()` run
 - [ ] `devtools::test()` passes

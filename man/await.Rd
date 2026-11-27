@@ -2,7 +2,7 @@
 % Please edit documentation in R/reexports.R
 \name{await}
 \alias{await}
-\title{Block until an async operation completes}
+\title{Block Until an Async Operation Completes}
 \usage{
 await(x, ...)
 }

@@ -2,14 +2,13 @@
 % Please edit documentation in R/backend.R
 \name{install_anvl}
 \alias{install_anvl}
-\title{Install what a backend needs to run}
+\title{Install What a Backend Needs to Run}
 \usage{
 install_anvl(backend = active_backend(), ...)
 }
 \arguments{
 \item{backend}{(\code{character(1)})\cr
-Backend to install for. Defaults to \code{\link[=active_backend]{active_backend()}}. The \code{"plain"}
-backend has nothing to install and is not accepted.}
+Backend to install for. Defaults to \code{\link[=active_backend]{active_backend()}}.}
 
 \item{...}{Passed to the underlying installer: \code{\link[pjrt:install_pjrt]{pjrt::install_pjrt()}} for
 \code{"pjrt"}, \code{\link[utils:install.packages]{utils::install.packages()}} for \code{"quickr"}.}
@@ -33,7 +32,9 @@ own or at the start of a script that later runs unattended. The \code{PJRT_INSTA
 environment variable overrides the prompt: \code{"1"} always downloads without
 asking, \code{"0"} never downloads.
 
-Which plugins you get -- and whether CUDA is available at all -- is decided
-by the repository anvl was installed from, not by this call. See
-the \href{https://r-xla.github.io/anvl/articles/installation.html}{Installation} article.
+For \code{"pjrt"}, the CPU plugin is always installed, and the CUDA plugin too
+when an NVIDIA GPU is detected on Linux (or \code{cuda = TRUE} is passed). The
+CUDA plugin additionally needs the CUDA libraries, which come in the
+\code{pjrt.cuda} R package from the r-xla r-universe; \code{install_anvl()} installs
+it along with the CUDA plugin. See \code{\link[pjrt:install_pjrt]{pjrt::install_pjrt()}} for details.
 }

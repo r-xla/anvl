@@ -30,7 +30,8 @@ does.
 \itemize{
 \item \code{stablehlo}
 \item \code{quickr}
-\item \code{reverse}
+\item \code{pullback}
+\item \code{vectorize}
 }
 }
 
@@ -38,9 +39,9 @@ does.
 
 Lowers to \code{\link[stablehlo:hlo_reshape]{hlo_reshape()}}, specified under
 \href{https://openxla.org/stablehlo/spec#reshape}{reshape}.
-The lowering wraps it in two \code{\link[stablehlo:hlo_transpose]{hlo_transpose()}} calls that reverse every
-axis, which is what turns stablehlo's row-major reshape into a column-major
-one; each is skipped where that side has at most one axis.
+The lowering represents an array by the reversed shape, so stablehlo's
+row-major reshape of the reversed shapes is exactly a column-major reshape
+of the R shapes.
 }
 
 \examples{
