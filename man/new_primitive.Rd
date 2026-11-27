@@ -10,6 +10,7 @@ new_primitive(
   fn,
   subgraphs = character(),
   static = character(),
+  tags = character(),
   register = TRUE
 )
 }
@@ -28,6 +29,11 @@ Names of parameters that are subgraphs (for higher-order primitives).}
 
 \item{static}{(\code{character()} | \code{integer()})\cr
 Passed to \code{\link[=jit]{jit()}}.}
+
+\item{tags}{(\code{character()})\cr
+Tags for anvl's internal use, which say what kind of operation the
+primitive is, e.g. \code{"elementwise"}, so that rules shared by the
+primitives of one kind can be derived from them.}
 
 \item{register}{(\code{logical(1)})\cr
 Whether to add the primitive to anvl's internal registry of primitives,

@@ -15,7 +15,7 @@ We refer to such a rewriting of code as a **transformation**, of which there are
 1. `AnvlGraph` $\rightarrow$ `AnvlGraph`:
    It is possible to transform `AnvlGraph`s into other `AnvlGraph`s.
    Their purpose is to change the functionality of the code.
-   At the time of writing, there is essentially only one such transformation, namely reverse-mode automatic differentiation via `gradient()`.
+   At the time of writing, there are two such transformations: reverse-mode automatic differentiation via `gradient()`, and batching via `vectorize()`.
 1. `AnvlGraph` $\rightarrow$ executable:
    In order to perform the actual computation, the `AnvlGraph` needs to be converted into an executable.
    The main backend is `"pjrt"` (via {stablehlo} and {pjrt}, compiling with XLA). There is also an experimental [quickr](https://github.com/t-kalinowski/quickr) backend.
@@ -277,6 +277,87 @@ h_graph
 
 Afterwards, this graph is lowered to StableHLO and subsequently compiled.
 
+### `vectorize()`
+
+`vectorize()` rewrites the operations of `f` one by one, in two functions.
+`vectorize_call()` traces `f` on a single slice of the arguments it maps over and puts the batch axis of each output where `out_axes` says.
+In between, `graph_vectorize()` replays that graph into the enclosing trace statement by statement, swapping every operation that touches the batch for its batched version.
+In pseudocode:
+
+```
+vectorize_call(f, args, in_axes, out_axes):
+  mapped <- the leaves of args that in_axes maps over, and their batch axes
+  graph  <- trace_fn(f, args with every mapped leaf replaced by one slice of it)
+  inputs <- args, every mapped leaf with its batch axis moved last
+  outs   <- graph_vectorize(graph, inputs, batched = which inputs are mapped over)
+  for out in outs:
+    batched,   out_axes gives an axis -> move its trailing batch axis there
+    unbatched, out_axes gives an axis -> broadcast a batch axis in there
+    unbatched, out_axes is NULL       -> return it as it is
+    batched,   out_axes is NULL       -> error
+
+graph_vectorize(graph, inputs, batched):
+  values <- inputs, one per input of graph
+  for stmt in graph$statements:
+    operands <- values[stmt$inputs]
+    if no operand is batched:
+      values[stmt$outputs]  <- stmt$primitive(operands, stmt$params)   # as it is
+      batched[stmt$outputs] <- FALSE
+    else:
+      rule <- stmt$primitive[["vectorize"]]
+      values[stmt$outputs]  <- rule(operands, batched[stmt$inputs], stmt$params, size)
+      batched[stmt$outputs] <- TRUE
+  return values[graph$outputs], batched[graph$outputs]
+```
+
+For example, `weigh()` multiplies a vector `x` with weights `w` and returns the product, its sum, and the sum of the weights.
+Traced on one slice, it is a graph of three statements:
+
+```{r}
+weigh <- function(x, w) {
+  y <- x * w
+  list(scaled = y, dot = sum(y), total = sum(w))
+}
+trace_fn(weigh, list(x = nv_aval("f32", 2L), w = nv_aval("f32", 2L)))
+```
+
+Vectorized over the rows of a `3x2` matrix `x`, with the scaled rows stacked as rows again, the same three statements become this graph:
+
+```{r}
+weigh_vec <- vectorize(
+  weigh,
+  in_axes = list(x = 1L),
+  out_axes = list(scaled = 1L, dot = -1L, total = NULL)
+)
+trace_fn(weigh_vec, list(x = nv_aval("f32", c(3L, 2L)), w = nv_aval("f32", 2L)))
+```
+
+1. `%1`: `vectorize_call()` moves the batch axis of `x`, its first axis, last.
+2. `%2`, `%3`: `mul` has a batched input, so `graph_vectorize()` runs its vectorize rule.
+   It broadcasts the unbatched `w` to the batch (`batch_operands()`) and multiplies.
+3. `%4`: `sum` has a batched input too.
+   As the batch axis is the last one, axis 1 is still the axis to sum over, and the rule calls `sum` with the same parameters.
+4. `%5`: `sum(w)` has no batched input, so `graph_vectorize()` replays it as it is, and `vectorize_call()` returns `total` as it is.
+5. `%6`: `scaled` is batched along its last axis, and `vectorize_call()` moves the batch first, as `out_axes` says.
+
+Because the batch axis comes last, every axis a primitive's parameters name keeps its number in the batched operands.
+So for the element-wise primitives, the reductions and the cumulative primitives, the rule is the primitive itself, called with the same parameters once the unbatched operands are broadcast: `rule_vectorize()` without arguments builds it, and every primitive of these kinds gets it from its tag.
+Other rules adapt a parameter to the extra axis -- `transpose` appends it to its permutation (`vec_axis_map()`), `reshape` to its shape (`vec_shape()`) -- or are functions of their own: `dot_general`, `gather` and `scatter` turn the batch axes into batching axes of their own, so that the whole batch is a single operation.
+A primitive without a vectorize rule only takes unbatched inputs.
+Batch axes last is also what XLA's kernels want (see [axis reversal](#axis-reversal)).
+
+Whether a value is batched follows from the graph alone: every output of a statement with a batched input is batched.
+So `out_axes` can return an output as it is only if no batched value reaches it -- no argument mapped over and, with `randomness = "independent"`, no random draw -- even if the output happens to be the same for every slice.
+
+The replay goes into the enclosing trace, which an outer `vectorize()` may in turn replay, so nested calls compose: the rules of the outer call see the primitives the inner one left, such as a `dot_general` with the batching axes its rule added.
+A primitive whose rule turns the batch axis into a batching axis of its own must therefore take any number of them, as every level of nesting appends one more: vectorizing a dot product twice gives a `dot_general` with `batching_axes = list(c(2, 3), c(2, 3))`.
+`dot_general`, `gather` and `scatter` take a vector of batching axes for this reason.
+The random state is an input like any other; with `randomness = "independent"`, it is batched, so a draw has a batched input and its rule draws for every slice (see the [loops and branches](#loops-and-branches) section).
+
+The rules of the primitives that trace functions of their own -- `prim_if()`, `prim_while()` and `prim_scan()` -- call the primitive anew, with functions that replay its sub-graphs the same way (`graph_vectorize_as()`).
+Every output of the call is batched, but inside a loop only the values the loop carries from a batched one are: `carry_batched()` follows the body until no more of them become batched, so that, e.g., a counter that no argument mapped over reaches keeps the condition the same for every slice.
+A condition that is batched nonetheless runs the loop until it fails for every slice, carried along with the state, and a predicate of `prim_if()` that is batched runs every branch some slice takes, each slice keeping the result of its own.
+
 ## More Internals
 
 ### Constant Handling
@@ -527,6 +608,7 @@ Where a view starts is decided by the trace's `side_effects_mode` (see `?GraphDe
 |---|---|---|
 | `"program"` | the outermost trace of `jit()` or `trace_fn()` | wherever the side effect says (`side_effect_start()`): implicit inputs from the host, an argument, or a value the program creates |
 | `"loop"` | the body of `nv_while()` or `nv_scan()` | fresh inputs, which the loop carries |
+| `"vectorize"` | the function `vectorize()` maps | fresh inputs, which `vectorize()` binds to the values the slices start from |
 | `"capture"` | a branch of `nv_if()`, the function `gradient()` differentiates | the enclosing trace's view: its value, and its count |
 | `NULL` | the condition of `nv_while()`, the function of a reduction, a scatter or a sort | nowhere: using a side effect is an error, as such a function cannot hand back what it did |
 
@@ -560,6 +642,7 @@ Out of a loop, a branch, a differentiated function or the program, it hands back
 | `nv_while()` | the body starts from a fork (`side_effect_fork()`), one use of the enclosing trace; the loop adds nothing else |
 | `nv_if()` | continues after the larger of the branches' counts |
 | `gradient()` | continues after the differentiated function's count |
+| `vectorize()` | adds the number of slices times the function's count, or the function's count with `randomness = "common"` |
 | the program | no output; `side_effect_advance()` adds the count on the host |
 
 The figure follows a draw in the body of an `nv_scan()` of three steps, and one after the loop.
@@ -598,6 +681,7 @@ A side effect only provides a few S3 methods on its handle:
 | `side_effect_input(effect, object, name)` | the buffer of the key or the counter, built from the words R holds |
 | `side_effect_after(effect, value, n)` | the key and the counter plus `n` |
 | `side_effect_fork(effect, value)` | a call of `prim_fork_rng_state()` |
+| `side_effect_stack(effect, value, n, size)` | the key for every slice, and the counter plus $(i - 1) n$ for slice $i$; the default refuses `randomness = "independent"` |
 | `side_effect_advance(effect, object, n)` | advances the object's counter by `n` |
 | `side_effect_format(effect, ids, n)` | the `then` line of a printed graph, `%counter1 += n`; the default says `n` uses |
 
@@ -625,7 +709,7 @@ trace_fn(
 ```
 
 Fixing every advance when the function is traced, rather than when it runs, is what lets every draw compute its counter from the counter the program starts from, and the host advance the random state after a call by a number known in advance.
-The same property will let a future `vmap()` or `parallel_map()` of a function give each element the counter a hand-written loop over the elements would give it.
+The same property lets `vectorize()` give each slice the counters a hand-written loop over the slices would give it, and will let a future `parallel_map()` do the same for its elements.
 
 So a compiled function draws exactly what the same calls made one after the other without `jit()` would draw, and leaves the global random state where they would leave it:
 
@@ -677,7 +761,7 @@ In a trace, a random state is not a value: it cannot be returned, carried throug
 A random state among the arguments is not special to the dispatcher: `AnvlRngState` is registered as a node of pjrt's argument tree (`pjrt::register_tree_node()`), whose children are its key and its counter.
 R holds them as their 32-bit words, two numbers each, so the arguments are flattened into leaves, a random state contributing two of bare R data, which the program takes as ordinary inputs that the dispatcher uploads to the device of the call's other inputs.
 Every random state gives leaves of the same type, so one compiled program serves every random state passed there.
-`gradient()` flattens its arguments with `pjrt::flatten(is_leaf = )`, which stops at a random state, so that the function it differentiates receives it as it is and its draws continue those of the enclosing trace.
+`gradient()` and `vectorize()` flatten their arguments with `pjrt::flatten(is_leaf = )`, which stops at a random state, so that the function they transform receives it as it is and its draws continue those of the enclosing trace.
 After the run, pjrt hands the call's arguments to the entry's `on_success()`, which finds the random states among them the same way and advances the one at the handle's place among them (`rng_state_argument()`).
 
 ```{r, echo = FALSE, out.width = "100%"}
@@ -725,6 +809,7 @@ knitr::include_graphics("figures/se-subgraphs.png")
 - `nv_if()` lets both branches start from the enclosing trace's view and continue its count; the enclosing trace then continues after the larger of the two branches' draws, whichever branch ran (`desc_end_capture()`).
 - `nv_while()` runs its body a number of times not known when it is traced, so the body cannot continue the enclosing count. Instead the loop *forks* the random state: it splits it once, like a draw, but makes the fresh key a child random state with the counter 0, which the body carries through the loop and advances as often as it runs. The enclosing trace advances by one, the fork, however often the body ran, and drops the child after the loop (`side_effect_fork()`).
 - The function `gradient()` differentiates runs once, so its draws continue the enclosing count like straight-line code; its graph starts from the enclosing trace's view, and hands its draws to the enclosing trace like a branch does (`desc_end_capture()`).
+- The function `vectorize()` maps runs once per slice, all slices at once. It takes the random state as fresh inputs, which are bound to a batch of random states once its $m$ draws are counted (`desc_bind_vectorized()`): with `randomness = "independent"`, slice $i$ starts at the counter $c + (i - 1) m$, where a loop over the slices would start it (`side_effect_stack()`), and the enclosing trace continues after $m$ times the number of slices; with `"common"`, every slice starts at $c$, and the enclosing trace continues after $m$. A draw from a batch of random states draws from each of them: the vectorize rule of `prim_sample_bits()` passes it the batch of keys and counters.
 
 ```{r}
 trace_fn(

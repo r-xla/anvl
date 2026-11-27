@@ -28,6 +28,8 @@ NULL
 #'   A value of the side effect in the current trace.
 #' @param n (`numeric(1)`)\cr
 #'   A number of uses.
+#' @param size (`integer(1)`)\cr
+#'   A number of applications.
 #' @param ids (named `character()`)\cr
 #'   The ids of the nodes of a value in a printed graph, e.g. `"%counter1"`.
 #' @return
@@ -45,6 +47,10 @@ NULL
 #' - `side_effect_fork()`: a value of its own, derived from `value` by adding
 #'   calls to the current trace, for the body of a loop whose number of
 #'   iterations is not known when it is traced.
+#' - `side_effect_stack()`: the values `size` applications of a function that
+#'   uses it `n` times start from when they run one after the other from
+#'   `value`, the i-th `(i - 1) * n` uses after it, stacked along a new last
+#'   axis of every box, for [vectorize()] with `randomness = "independent"`.
 #' - `side_effect_advance()`: `NULL`; after a run, advances `object` by `n`
 #'   uses.
 #' - `side_effect_format()`: the line a printed graph shows after its body for
@@ -81,6 +87,18 @@ side_effect_fork.default <- function(effect, value) {
   cli_abort(c(
     "This side effect cannot be used in the body of {.fn nv_while}.",
     i = "Its uses are counted, which needs a loop whose number of iterations is known when it is traced."
+  ))
+}
+
+side_effect_stack <- function(effect, value, n, size) {
+  UseMethod("side_effect_stack")
+}
+
+#' @export
+side_effect_stack.default <- function(effect, value, n, size) {
+  cli_abort(c(
+    "This side effect cannot differ between the slices of {.fn vectorize}.",
+    i = "Use it with {.code randomness = \"common\"}."
   ))
 }
 
@@ -145,7 +163,7 @@ desc_view <- function(desc, effect) {
   mode <- desc$side_effects_mode %||% ""
   x <- if (mode == "program") {
     side_effect_start(effect, desc)
-  } else if (mode == "loop") {
+  } else if (mode %in% c("loop", "vectorize")) {
     enclosing <- desc_view(desc$parent, effect)
     inputs <- lapply(enclosing$value, function(box) {
       GraphValue(AbstractArray(dtype = dtype(box$gnode), shape = shape(box$gnode)), label = box$gnode$label)

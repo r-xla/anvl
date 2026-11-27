@@ -31,14 +31,15 @@ Imports:
     fastmap,
     jsonlite,
     methods,
-    pjrt (>= 0.8.0.9002),
+    pjrt (>= 0.8.0.9004),
     rlang,
-    stablehlo (>= 0.6.0.9001),
+    stablehlo (>= 0.7.0.9000),
     withr,
     xlamisc (>= 0.5.0)
 Suggests:
     bit64,
     knitr,
+    lifecycle,
     quarto,
     rmarkdown,
     quickr (>= 0.3.0),
@@ -46,7 +47,7 @@ Suggests:
     testthat (>= 3.0.0)
 Remotes:
     r-xla/pjrt@develop,
-    r-xla/stablehlo@feat/custom-call-string-backend-config
+    r-xla/stablehlo@develop
 Additional_repositories: https://r-xla.r-universe.dev
 Config/testthat/edition: 3
 Encoding: UTF-8
@@ -82,16 +83,19 @@ Collate:
     'rules-quickr.R'
     'graph-to-quickr.R'
     'lowering-axes.R'
+    'pullback.R'
     'quickr.R'
     'rdata.R'
     'reexports.R'
-    'reverse.R'
     'rng.R'
     'rng-trace.R'
     'roxygen.R'
     'rules-pullback.R'
     'rules-stablehlo.R'
+    'vectorize.R'
+    'rules-vectorize.R'
     'safetensors.R'
     'stablehlo.R'
+    'transformation.R'
     'zzz.R'
 Config/roxygen2/version: 8.1.0

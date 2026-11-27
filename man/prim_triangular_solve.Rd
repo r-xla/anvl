@@ -45,15 +45,12 @@ The first two axes form the matrices, and any trailing axes are batch axes,
 which must match between \code{a} and \code{b} (no broadcasting).
 Here \code{op} is \code{A} or \code{A^T} depending on \code{transpose_a}.
 }
-\details{
-Differentiation is only implemented for a single system: the \code{pullback} rule
-errors on batched operands (operands with more than 2 axes).
-}
 \section{Implemented Rules}{
 
 \itemize{
 \item \code{stablehlo}
 \item \code{pullback}
+\item \code{vectorize}
 }
 }
 

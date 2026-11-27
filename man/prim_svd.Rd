@@ -8,13 +8,14 @@ prim_svd(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-One input, with exactly 2 axes. Can be any float data type. An R value materializes at its
+One input, with at least 2 axes, the first two forming the matrix; any trailing axes are batch axes. Can be any float data type. An R value materializes at its
 \link[=default_dtypes]{default data type}.}
 }
 \value{
 (named \code{list} of three \code{\link{arrayish}})\cr
-Elements \code{d} (length \code{k}), \code{u} (shape
-\verb{(m, k)}), and \code{vt} (shape \verb{(k, n)}). All have the input's data type.
+Elements \code{d} (shape \verb{(k, ...)}), \code{u} (shape
+\verb{(m, k, ...)}), and \code{vt} (shape \verb{(k, n, ...)}), where
+\verb{(m, n, ...) = shape(x)}. All have the input's data type.
 }
 \description{
 Computes the reduced ("economy") singular value decomposition of a
@@ -33,11 +34,14 @@ extra transpose).
 Supports any matrix shape on both the host (LAPACK \code{gesdd}) and CUDA
 (cuSOLVER \code{gesvd}) backends. cuSOLVER's \code{m >= n} requirement is handled
 transparently via a layout flip for wide matrices.
+
+The first two axes form the matrix, and any trailing axes are batch axes.
 }
 \section{Implemented Rules}{
 
 \itemize{
 \item \code{stablehlo}
+\item \code{vectorize}
 }
 }
 

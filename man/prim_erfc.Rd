@@ -23,6 +23,7 @@ Element-wise complementary error function \code{erfc(x) = 1 - erf(x)}.
 \itemize{
 \item \code{stablehlo}
 \item \code{pullback}
+\item \code{vectorize}
 }
 }
 

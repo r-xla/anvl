@@ -254,6 +254,8 @@ AnvlGraph <- function(
 #'   - `"loop"`: as fresh inputs of the graph, which the graph also returns
 #'     there. The bodies of [nv_while()] and [nv_scan()] take side effects this
 #'     way, and hand them on to the next iteration.
+#'   - `"vectorize"`: as fresh inputs of the graph, which [vectorize()] binds
+#'     to the values the slices start from.
 #'   - `"capture"`: as the value of `parent`'s view, which the graph closes
 #'     over and continues. The branches of [nv_if()] and the function
 #'     [gradient()] differentiates take side effects this way.
@@ -478,7 +480,9 @@ maybe_box_arrayish <- function(x, desc = current_descriptor()) {
 # jit it is one of the args declared static (R data it was called with arrives
 # as an `RData`), a primitive whose sub-graph takes its operands (prim_while's
 # state, prim_scan's carry) materializes them itself, and gradient() does not
-# know which of its args are static.
+# know which of its args are static. jit's static args do not get here at all
+# (see `static_flat` of trace_fn()), so an `AbstractArray` among them stays a
+# value.
 maybe_box_input <- function(x, desc) {
   if (is_anvl_array(x)) {
     desc$devices <- c(desc$devices, placement_device(x))
@@ -574,6 +578,7 @@ get_box_or_register_const <- function(desc, x) {
   # it, so an array `desc` already holds is matched by itself: the box returned
   # may then be of another GraphValue than `x`.
   if (is_concrete_array(x$aval)) {
+    desc$devices <- c(desc$devices, placement_device(x$aval$data))
     known <- desc$array_to_gval[[x$aval$data]]
     if (!is.null(known)) {
       return(desc$gval_to_box[[known]])
@@ -701,6 +706,38 @@ register_consts <- function(desc, consts) {
   lapply(consts, get_box_or_register_const, desc = desc)
 }
 
+# Records `call` into `desc` unchanged, reading the gnodes `inputs` in place of
+# its own and writing `outputs`, and returns the boxes of its outputs.
+replay_statement <- function(desc, call, inputs, outputs) {
+  desc$statements$add(GraphStatement(call$primitive, inputs, call$params, outputs))
+  register_gvals(desc, outputs)
+}
+
+# Binds the inputs and constants of `graph`, which is about to be replayed into
+# `desc` as a function of `inputs` (boxes, one per graph input, or `NULL` for
+# one the replay must not read). Returns `trans`, a hashtab from each input to
+# the gnode of its box -- a box of an enclosing trace is captured by `desc` --
+# and from each constant to the gnode `desc` holds for its array where that is
+# another GraphValue, and `unbound`, a hashtab of the inputs passed as `NULL`.
+bind_graph <- function(graph, desc, inputs) {
+  trans <- hashtab()
+  unbound <- hashtab()
+  for (i in seq_along(inputs)) {
+    if (is.null(inputs[[i]])) {
+      unbound[[graph$inputs[[i]]]] <- TRUE
+    } else {
+      trans[[graph$inputs[[i]]]] <- maybe_box_arrayish(inputs[[i]], desc = desc)$gnode
+    }
+  }
+  const_boxes <- register_consts(desc, graph$constants)
+  for (i in seq_along(const_boxes)) {
+    if (!identical(const_boxes[[i]]$gnode, graph$constants[[i]])) {
+      trans[[graph$constants[[i]]]] <- const_boxes[[i]]$gnode
+    }
+  }
+  list(trans = trans, unbound = unbound)
+}
+
 register_inputs <- function(desc, inputs) {
   for (input in inputs) {
     register_input(desc, input)
@@ -753,6 +790,10 @@ name_failing_primitive <- function(e) {
 #'   Flattened arguments. Must be accompanied by `in_tree`.
 #' @param in_tree ([`RTree`][pjrt::build_tree])\cr
 #'   Tree structure describing how `args_flat` maps back to `f`'s arguments.
+#' @param static_flat (`NULL` | `logical()`)\cr
+#'   Which of `args_flat` are static: passed to `f` as they are, even an
+#'   [`AbstractArray`], rather than becoming inputs of the graph. `NULL`
+#'   (the default) makes every array and abstract array an input.
 #' @template param_optimize
 #' @return ([`AnvlGraph`])
 #'   Contains the traced operations.
@@ -769,6 +810,7 @@ trace_fn <- function(
   desc = NULL,
   args_flat = NULL,
   in_tree = NULL,
+  static_flat = NULL,
   optimize = FALSE
 ) {
   if (is.null(args)) {
@@ -794,7 +836,11 @@ trace_fn <- function(
   parent_desc <- maybe_previous_descriptor()
 
   # box arrays and add them as inputs to the current graph
-  inputs_flat <- lapply(args_flat, maybe_box_input, desc = desc)
+  inputs_flat <- if (is.null(static_flat)) {
+    lapply(args_flat, maybe_box_input, desc = desc)
+  } else {
+    Map(\(x, is_static) if (is_static) x else maybe_box_input(x, desc), args_flat, static_flat)
+  }
   # Track which flat args are static (non-array) values vs. graph inputs
   desc$is_static_flat <- vapply(inputs_flat, Negate(is_graph_box), logical(1L))
   # A higher-order primitive traces its sub-graphs here and then goes on to

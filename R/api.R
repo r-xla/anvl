@@ -665,6 +665,16 @@ nv_optimization_barrier <- function(x) {
 #'
 #' [`nv_if()`] is the other conditional: it mirrors R's `if` construct and
 #' branches between two *functions*, evaluating only the selected one.
+#' @section Gradients:
+#' Both `yes` and `no` are computed everywhere, and the gradient flows through
+#' both: the one not selected receives a zero cotangent, which its own
+#' derivative multiplies. Where that derivative is infinite, the gradient is
+#' `NaN`, e.g. for `nv_ifelse(x > 0, sqrt(x), 0)` at `x = 0`. To guard
+#' against this, also mask the input of the branch, so that it sees a value of
+#' no consequence where it is not selected:
+#' `nv_ifelse(x > 0, sqrt(nv_ifelse(x > 0, x, 0)), 0)`. The reverse rule
+#' of `nv_ifelse()` then hands the `NaN` to the constant instead of `x`, at
+#' any order of differentiation.
 #' @param test ([`arrayish`])\cr
 #'   Predicate array. Must be a boolean or an R logical, and scalar or the same
 #'   shape as the non-scalar arguments.
@@ -2370,9 +2380,6 @@ nv_matmul <- jit(
 #' Computes the Cholesky decomposition of a symmetric positive-definite matrix.
 #' Supports batched inputs: the first two axes form the square matrix and any
 #' trailing ones are batch axes.
-#' @details
-#' Differentiation is only implemented for a single matrix: a [gradient()] of a
-#' batched decomposition errors.
 #' @templateVar shapes a symmetric positive-definite matrix with at least 2 axes, the first two forming the square matrix and any trailing ones batch axes
 #' @template param_unary_x_tofloat
 #' @param lower (`logical(1)`)\cr
@@ -2488,9 +2495,6 @@ nv_solve <- jit(function(a, b) {
 #' `(n, n, b1, ..., bk)`). It is reshaped internally to a column (`left =
 #' TRUE`) or row (`left = FALSE`) and reshaped back on the way out.
 #' Because we don't broadcast, this is not ambiguous (as it would be for NumPy).
-#'
-#' Differentiation is only implemented for a single system: a [gradient()] of a
-#' batched solve errors.
 #' @param a ([`arrayish`])\cr
 #'   Triangular coefficient matrix with at least 2 axes. The first two
 #'   axes must be of equal size; any trailing axes are batch axes. Can be any
@@ -2739,11 +2743,11 @@ nv_inv <- jit(function(x) {
 
 #' @title QR Decomposition
 #' @inherit prim_qr description details
-#' @templateVar shapes with exactly 2 axes
+#' @templateVar shapes with at least 2 axes, the first two forming the matrix; any trailing axes are batch axes
 #' @template param_unary_x_tofloat
 #' @return (named `list` of two [`arrayish`])\cr
-#'   Elements `Q` (shape `(m, k)`) and `R` (shape `(k, n)`), where
-#'   `(m, n) = shape(x)` and `k = min(m, n)`. Both have the input's data type
+#'   Elements `Q` (shape `(m, k, ...)`) and `R` (shape `(k, n, ...)`), where
+#'   `(m, n, ...) = shape(x)` and `k = min(m, n)`. Both have the input's data type
 #'   -- or the default float data type (see [`default_dtypes()`]) where the
 #'   input was an integer one.
 #' @seealso [prim_qr()]
@@ -2792,6 +2796,10 @@ nv_qr <- jit(function(x) {
 #' @export
 nv_lu <- jit(function(x) {
   x <- as_anvl_array(int_to_float(x))
+  # `prim_lu()` takes a batch, but `L` and `U` are cut from a single matrix.
+  if (naxes(x) != 2L) {
+    cli_abort(c("{.arg x} must be a 2-D matrix.", x = "Got shape {shape_repr(shape(x))}."))
+  }
   out <- prim_lu(x)
   LU <- out$LU
   shp <- shape(LU)
@@ -2826,12 +2834,13 @@ nv_lu <- jit(function(x) {
 
 #' @title Singular Value Decomposition
 #' @inherit prim_svd description details
-#' @templateVar shapes with exactly 2 axes
+#' @templateVar shapes with at least 2 axes, the first two forming the matrix; any trailing axes are batch axes
 #' @template param_unary_x_tofloat
 #' @return (named `list` of three [`arrayish`])\cr
-#'   Elements `d` (length `k`), `u` (shape `(m, k)`), and `vt` (shape
-#'   `(k, n)`). All have the input's data type -- or the default float data
-#'   type (see [`default_dtypes()`]) where the input was an integer one.
+#'   Elements `d` (shape `(k, ...)`), `u` (shape `(m, k, ...)`), and `vt`
+#'   (shape `(k, n, ...)`), where `(m, n, ...) = shape(x)`. All have the
+#'   input's data type -- or the default float data type (see
+#'   [`default_dtypes()`]) where the input was an integer one.
 #' @seealso [prim_svd()], [base::svd()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # all three outputs have the input's data type
@@ -2844,12 +2853,13 @@ nv_svd <- jit(function(x) {
 
 #' @title Symmetric Eigendecomposition
 #' @inherit prim_eigh description details
-#' @templateVar shapes a symmetric square matrix with exactly 2 axes
+#' @templateVar shapes with at least 2 axes, the first two forming a symmetric square matrix; any trailing axes are batch axes
 #' @template param_unary_x_tofloat
 #' @return (named `list` of two [`arrayish`])\cr
-#'   Elements `values` (length `n`) and `vectors` (shape `(n, n)`). Both have
-#'   the input's data type -- or the default float data type (see
-#'   [`default_dtypes()`]) where the input was an integer one.
+#'   Elements `values` (shape `(n, ...)`) and `vectors` (shape `(n, n, ...)`),
+#'   where `(n, n, ...) = shape(x)`. Both have the input's data type -- or the
+#'   default float data type (see [`default_dtypes()`]) where the input was an
+#'   integer one.
 #' @seealso [prim_eigh()], [base::eigen()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # values and vectors both have the input's data type

@@ -149,6 +149,16 @@ test_that("nv_ifelse broadcasts scalars and promotes branches to a common dtype"
   )
 })
 
+describe("nv_ifelse", {
+  it("gives no NaN gradient when the branch input is masked", {
+    x <- nv_array(c(0, 4), dtype = "f32")
+    masked <- function(x) sum(nv_ifelse(x > 0, sqrt(nv_ifelse(x > 0, x, 0)), 0))
+    expect_equal(jit(gradient(masked))(x)$x, nv_array(c(0, 0.25), dtype = "f32"))
+    second <- function(x) sum(gradient(masked)(x)$x)
+    expect_equal(jit(gradient(second))(x)$x, nv_array(c(0, -1 / 32), dtype = "f32"))
+  })
+})
+
 describe("nv_concatenate", {
   it("needs at least one array", {
     # An empty `...` never reaches stablehlo, so nothing downstream caught it:
@@ -2751,6 +2761,31 @@ describe("nv_lu", {
     permutation <- as.integer(as_array(out$permutation))
     expect_equal(diag(L), c(1, 1))
     expect_equal(L %*% U, A_mat[permutation, , drop = FALSE], tolerance = 1e-5)
+  })
+
+  it("rejects a batch of matrices", {
+    expect_error(nv_lu(nv_array(rnorm(12L), shape = c(2L, 2L, 3L), dtype = "f64")), "must be a 2-D matrix")
+  })
+})
+
+describe("nv_qr", {
+  it("decomposes a batch of matrices, whose batch axes trail them", {
+    x <- nv_array(rnorm(24L), shape = c(4L, 2L, 3L), dtype = "f64")
+    expect_shape(nv_qr(x)$Q, c(4L, 2L, 3L))
+  })
+})
+
+describe("nv_svd", {
+  it("decomposes a batch of matrices, whose batch axes trail them", {
+    x <- nv_array(rnorm(24L), shape = c(4L, 2L, 3L), dtype = "f64")
+    expect_shape(nv_svd(x)$vt, c(2L, 2L, 3L))
+  })
+})
+
+describe("nv_eigh", {
+  it("decomposes a batch of matrices, whose batch axes trail them", {
+    x <- nv_array(rnorm(12L), shape = c(2L, 2L, 3L), dtype = "f64")
+    expect_shape(nv_eigh(x)$values, c(2L, 3L))
   })
 })
 

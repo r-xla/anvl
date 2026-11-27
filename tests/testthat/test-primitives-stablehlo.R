@@ -1273,6 +1273,23 @@ describe("prim_triangular_solve", {
 # All of these custom calls are already properly tested in pjrt.
 # Here we just test the anvl wiring.
 
+# `prim` on a batch of matrices `x`, of shape (m, n, 2, 3), gives what it gives
+# on each matrix alone, at the matrix's position in the trailing batch axes.
+expect_decomposes_batch <- function(prim, x) {
+  out <- lapply(prim(nv_array(x, dtype = "f64")), as_array)
+  for (i in 1:2) {
+    for (j in 1:3) {
+      one <- lapply(prim(nv_array(x[,, i, j], dtype = "f64")), as_array)
+      for (nm in names(one)) {
+        expect_equal(dim(out[[nm]]), c(dim(one[[nm]]) %||% length(one[[nm]]), 2L, 3L))
+        n <- length(dim(out[[nm]]))
+        slice <- do.call(`[`, c(list(out[[nm]]), rep(list(TRUE), n - 2L), list(i, j)))
+        expect_equal(as.numeric(slice), as.numeric(one[[nm]]), tolerance = 1e-10, info = nm)
+      }
+    }
+  }
+}
+
 describe("prim_qr", {
   it("decomposes a tall matrix", {
     # Use a rectangular (m > n) matrix so the reduced-QR shapes (m, k) and
@@ -1305,14 +1322,21 @@ describe("prim_qr", {
     expect_equal(R[lower.tri(R)], rep(0, sum(lower.tri(R))))
   })
 
+  it("decomposes a batch of matrices, tall and wide", {
+    withr::local_seed(1L)
+    expect_decomposes_batch(prim_qr, array(rnorm(4L * 2L * 6L), c(4L, 2L, 2L, 3L)))
+    expect_decomposes_batch(prim_qr, array(rnorm(2L * 4L * 6L), c(2L, 4L, 2L, 3L)))
+  })
+
   it("lowers without a transpose", {
     expect_lowers_without_transpose(prim_qr, list(x = nv_aval("f64", c(4L, 2L))))
     expect_lowers_without_transpose(prim_qr, list(x = nv_aval("f64", c(2L, 4L))))
+    expect_lowers_without_transpose(prim_qr, list(x = nv_aval("f64", c(2L, 4L, 5L))))
   })
 
   it("rejects invalid inputs", {
     vec <- nv_array(c(1, 2, 3), dtype = "f32")
-    expect_error(prim_qr(vec), "must be a 2-D matrix")
+    expect_error(prim_qr(vec), "must have at least 2 axes")
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 2, dtype = "f32")
     expect_error(prim_qr(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
@@ -1347,14 +1371,21 @@ describe("prim_lu", {
     expect_equal(L %*% U, A_mat[permutation, , drop = FALSE], tolerance = 1e-5)
   })
 
+  it("decomposes a batch of matrices, tall and wide", {
+    withr::local_seed(1L)
+    expect_decomposes_batch(prim_lu, array(rnorm(4L * 2L * 6L), c(4L, 2L, 2L, 3L)))
+    expect_decomposes_batch(prim_lu, array(rnorm(2L * 4L * 6L), c(2L, 4L, 2L, 3L)))
+  })
+
   it("lowers without a transpose", {
     expect_lowers_without_transpose(prim_lu, list(x = nv_aval("f64", c(4L, 2L))))
     expect_lowers_without_transpose(prim_lu, list(x = nv_aval("f64", c(2L, 4L))))
+    expect_lowers_without_transpose(prim_lu, list(x = nv_aval("f64", c(2L, 4L, 5L))))
   })
 
   it("rejects invalid inputs", {
     vec <- nv_array(c(1, 2, 3), dtype = "f32")
-    expect_error(prim_lu(vec), "must be a 2-D matrix")
+    expect_error(prim_lu(vec), "must have at least 2 axes")
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 2, dtype = "f32")
     expect_error(prim_lu(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
@@ -1396,14 +1427,21 @@ describe("prim_svd", {
     expect_thin_svd(A)
   })
 
+  it("decomposes a batch of matrices, tall and wide", {
+    withr::local_seed(1L)
+    expect_decomposes_batch(prim_svd, array(rnorm(4L * 2L * 6L), c(4L, 2L, 2L, 3L)))
+    expect_decomposes_batch(prim_svd, array(rnorm(2L * 4L * 6L), c(2L, 4L, 2L, 3L)))
+  })
+
   it("lowers without a transpose", {
     expect_lowers_without_transpose(prim_svd, list(x = nv_aval("f64", c(4L, 2L))))
     expect_lowers_without_transpose(prim_svd, list(x = nv_aval("f64", c(2L, 4L))))
+    expect_lowers_without_transpose(prim_svd, list(x = nv_aval("f64", c(2L, 4L, 5L))))
   })
 
   it("rejects invalid inputs", {
     vec <- nv_array(c(1, 2, 3), dtype = "f32")
-    expect_error(prim_svd(vec), "must be a 2-D matrix")
+    expect_error(prim_svd(vec), "must have at least 2 axes")
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 2, dtype = "f32")
     expect_error(prim_svd(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
@@ -1431,13 +1469,19 @@ describe("prim_eigh", {
     expect_equal(t(vectors) %*% vectors, diag(ncol(vectors)), tolerance = 1e-5)
   })
 
+  it("decomposes a batch of matrices", {
+    withr::local_seed(1L)
+    expect_decomposes_batch(prim_eigh, array(rnorm(3L * 3L * 6L), c(3L, 3L, 2L, 3L)))
+  })
+
   it("lowers without a transpose", {
     expect_lowers_without_transpose(prim_eigh, list(x = nv_aval("f64", c(3L, 3L))))
+    expect_lowers_without_transpose(prim_eigh, list(x = nv_aval("f64", c(3L, 3L, 5L))))
   })
 
   it("rejects invalid inputs", {
     vec <- nv_array(c(1, 2, 3), dtype = "f32")
-    expect_error(prim_eigh(vec), "must be a 2-D matrix")
+    expect_error(prim_eigh(vec), "must have at least 2 axes")
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 0, dtype = "f32")
     expect_error(prim_eigh(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")

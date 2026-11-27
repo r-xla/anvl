@@ -11,7 +11,8 @@ with_backend(backend, code)
 }
 \arguments{
 \item{backend}{(\code{character(1)})\cr
-Backend to use (\code{"pjrt"} or \code{"quickr"}).}
+Backend to use: \code{"pjrt"}, \code{"quickr"}, or one a package added with
+\code{\link[=register_backend]{register_backend()}}.}
 
 \item{envir}{(\code{environment})\cr
 The environment to scope the change to.}

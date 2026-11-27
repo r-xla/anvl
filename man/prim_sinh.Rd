@@ -23,6 +23,7 @@ Element-wise hyperbolic sine.
 \itemize{
 \item \code{stablehlo}
 \item \code{pullback}
+\item \code{vectorize}
 }
 }
 
