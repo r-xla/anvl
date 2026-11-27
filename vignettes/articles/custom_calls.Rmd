@@ -467,25 +467,26 @@ Everything the handler enqueues must go on *that* stream.
 
 ### You do not need a system CUDA toolkit
 
-Installing {pjrt}'s CUDA plugin also installs the
-[`cuda12.8`](https://mlverse.r-universe.dev/cuda12.8) R package, which
-downloads the CUDA redistributables from PyPI at install time -- and it keeps
-the `include/` directory of every component it unpacks, plus `nvcc` itself:
+On a machine with an NVIDIA GPU, `pjrt::install_pjrt()` installs the
+[{pjrt.cuda}](https://github.com/r-xla/pjrt.cuda) R package along with the
+CUDA plugin.
+The first time it is loaded, {pjrt.cuda} downloads NVIDIA's CUDA
+redistributables from PyPI and unpacks them, `nvcc` and every component's
+headers included, into one tree under `pjrt.cuda::cuda_home()`:
 
 ```r
-cuda12.8::bin_path("nvcc")           # nvcc, ptxas, cicc
-cuda12.8::include_path("runtime")    # cuda_runtime.h and friends
-cuda12.8::include_path("cublas")     # likewise for cublas, cusolver, cudnn, ...
-cuda12.8::lib_path()                 # all the .so files, libcudart.so included
+pjrt.cuda::bin_path("nvcc")          # nvcc and ptxas
+pjrt.cuda::include_path("runtime")   # cuda_runtime.h, and the headers of the other components
+pjrt.cuda::lib_path()                # all the .so files, libcudart.so.13 included
 ```
 
 So everything the kernel above needs to compile and link is already on the
 machine that runs the plugin, and a package can find it from R instead of
 guessing at `/usr/local/cuda`.
-Two caveats: the package is Linux and Windows only (no macOS), and its
-version is pinned -- {pjrt} defaults to `cuda12.8` and only that version is
-known to match the plugin, though `PJRT_CUDA_R_PACKAGE` can point at another
-one.
+Two caveats: {pjrt.cuda} is Linux only (x86_64 and aarch64), as is the CUDA
+plugin, and it pins CUDA 13.3, the version the plugin is built against.
+`PJRT_CUDA_R_PACKAGE` points {pjrt} at another package, but other versions
+may not work with the plugin.
 
 ### Teaching `R CMD INSTALL` about `.cu`
 
@@ -493,23 +494,26 @@ R has no rule for `.cu`, so `src/Makevars` supplies one and lists every
 object explicitly:
 
 ```make
-CUDA_BIN = $(shell "$(R_HOME)/bin/Rscript" -e 'cat(cuda12.8::bin_path("nvcc"))')
-CUDA_INC = $(shell "$(R_HOME)/bin/Rscript" -e 'cat(cuda12.8::include_path("runtime"))')
-CUDA_LIB = $(shell "$(R_HOME)/bin/Rscript" -e 'cat(cuda12.8::lib_path())')
+CUDA_BIN = $(shell "$(R_HOME)/bin/Rscript" -e 'cat(pjrt.cuda::bin_path("nvcc"))')
+CUDA_INC = $(shell "$(R_HOME)/bin/Rscript" -e 'cat(pjrt.cuda::include_path("runtime"))')
+CUDA_LIB = $(shell "$(R_HOME)/bin/Rscript" -e 'cat(pjrt.cuda::lib_path())')
 
 NVCC = $(CUDA_BIN)/nvcc
 
 OBJECTS = hypot.o hypot_cuda.o hypot_kernel.o
-PKG_LIBS = -L$(CUDA_LIB) -lcudart -Wl,-rpath,$(CUDA_LIB)
+PKG_LIBS = -L$(CUDA_LIB) -l:libcudart.so.13 -Wl,-rpath,$(CUDA_LIB)
 
 %.o: %.cu
 	$(NVCC) -std=c++17 -O2 -I$(CUDA_INC) -Xcompiler "$(CXXPICFLAGS)" -c $< -o $@
 ```
 
-`nvcc` finds its own CRT headers next to its `bin/`, so only the runtime
-headers have to be named explicitly.
+`nvcc` finds its own headers and tools relative to its `bin/`, so only the
+include directory has to be named explicitly.
+The runtime comes as the versioned `libcudart.so.13` alone, without the
+unversioned `libcudart.so` that `-lcudart` looks for, hence `-l:` with the
+file name; the rpath lets the loaded package find it again.
 A package meant to install on machines without a GPU wants a `configure` that
-checks whether `cuda12.8` (or a system `nvcc`) is there at all, and generates
+checks whether {pjrt.cuda} (or a system `nvcc`) is there at all, and generates
 a `Makevars` without the CUDA objects when it is not.
 
 ### Registering both

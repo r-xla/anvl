@@ -40,7 +40,6 @@ Suggests:
     knitr,
     lifecycle,
     quarto,
-    Rcpp,
     rmarkdown,
     quickr (>= 0.3.0),
     safetensors (>= 0.2.0),
@@ -50,6 +49,7 @@ Remotes:
     r-xla/stablehlo@develop
 Additional_repositories: https://r-xla.r-universe.dev
 Config/testthat/edition: 3
+Config/Needs/website: Rcpp
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Collate:

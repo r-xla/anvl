@@ -8,7 +8,7 @@ At the moment that is the custom-call path documented in
 against {pjrt}'s FFI headers with `Rcpp::sourceCpp()`, registered under the
 target name `anvl_hypot`, and exercised from anvl in
 `testthat/test-custom-call-ffi.R` -- eagerly, under `jit()`, and through a
-primitive with a reverse rule. Compiling it needs a C++20 toolchain, {Rcpp}
+primitive with a pullback rule. Compiling it needs a C++20 toolchain, {Rcpp}
 and an installed {pjrt}, which is why these are not part of the package test
 suite and run in a single CI job (Ubuntu x86, CPU) --
 `.github/workflows/integration-tests.yaml`.

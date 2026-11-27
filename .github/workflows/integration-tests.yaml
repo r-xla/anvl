@@ -30,8 +30,10 @@ jobs:
           use-public-rspm: true
           extra-repositories: https://r-xla.r-universe.dev https://t-kalinowski.r-universe.dev
 
-      # Rcpp and testthat come from the package's Suggests.
+      # testthat comes from the package's Suggests; Rcpp compiles the handler.
       - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::Rcpp
 
       - name: Install anvl
         run: R CMD INSTALL .
