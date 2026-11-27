@@ -40,7 +40,8 @@ binary_case <- function(lhs = unif(-2, 2), rhs = unif(-2, 2)) {
 pushforward_cases <- list(
   # at f64 a conversion to f64 is the identity, at f32 one that changes the
   # data type
-  convert = pushforward_case(list(x = unif(-2, 2)), params = list(dtype = "f64"))
+  convert = pushforward_case(list(x = unif(-2, 2)), params = list(dtype = "f64")),
+  sum = pushforward_case(list(x = unif(-2, 2)), params = list(axes = 2L, drop = FALSE))
 )
 
 # Pushforward rules derived from the pullback rule, named
@@ -120,7 +121,8 @@ check_pushforward_rule <- function(name, case) {
   f <- with_formals(names(args), \(a) do.call(prim, c(a, case$params)))
   x <- arrays_at("f64")
   t <- lapply(directions, anvl_array, dtype = "f64")
-  out_dtype <- dtype(trace_fn(f, x)$outputs[[1L]])
+  out <- trace_fn(f, x)$outputs[[1L]]
+  out_dtype <- dtype(out)
 
   if (!is_dtype_float(out_dtype)) {
     jit(function(x, t) {
@@ -131,7 +133,7 @@ check_pushforward_rule <- function(name, case) {
   }
 
   h <- 1e-5
-  u <- nv_array(array(rnorm(prod(shape)), shape), dtype = "f64")
+  u <- anvl_array(shaped(rnorm(prod(shape(out))), shape(out)), dtype = "f64")
   run <- jit(function(x, t, u) {
     along <- c(lapply(names(t), \(nm) t[nm]), list(t))
     loss <- with_formals(names(x), \(a) sum(do.call(f, a) * u))

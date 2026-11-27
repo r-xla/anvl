@@ -53,3 +53,9 @@ prim_convert[["pushforward"]] <- function(inputs, outputs, tangents, params) {
   out <- outputs[[1L]]
   list(if (is_dtype_float(dtype(out))) prim_convert(tangents[[1L]], dtype(out)))
 }
+
+# `prim_sum()` is linear: the tangent of the result is the sum of the operand's
+# tangent over the same axes.
+prim_sum[["pushforward"]] <- function(inputs, outputs, tangents, params) {
+  list(prim_sum(tangents[[1L]], axes = params$axes, drop = params$drop))
+}

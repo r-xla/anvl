@@ -18,8 +18,9 @@ status](https://www.r-pkg.org/badges/version/anvl)](https://CRAN.R-project.org/p
 
 Accelerated array computing and code transformations for R, allowing you
 to run numerical programs at the speed of light. The package supports
-just-in-time (JIT) compilation for very fast execution and reverse-mode
-automatic differentiation. Programs can run on CPU and NVIDIA GPU.
+just-in-time (JIT) compilation for very fast execution and automatic
+differentiation in reverse and forward mode. Programs can run on CPU and
+NVIDIA GPU.
 
 ## Installation
 
@@ -50,10 +51,10 @@ There are three core ideas:
   compilation step, resulting programs can be faster compared to
   implementing them in [{torch}](https://torch.mlverse.org).
 - **Function transformation.** Programmatically derive new functions
-  from existing ones. Reverse-mode automatic differentiation via
-  `gradient()` returns the derivative of a function as another R
-  function, and `vectorize()` maps a function written for a single
-  instance over a whole batch.
+  from existing ones. Automatic differentiation returns the derivative
+  of a function as another R function – in reverse mode via
+  `pullback()`, in forward mode via `pushforward()` – and `vectorize()`
+  maps a function written for a single instance over a whole batch.
 - **Hardware portability.** The same code runs on CPU or GPU.
 
 Moreover, the package is designed to be extensible. As the package is
@@ -105,6 +106,19 @@ g_jit(a, b, x)
 #> $b
 #> AnvlArray
 #>  1
+#> [ CPUf32{} ]
+```
+
+Forward mode computes the derivative in one direction instead:
+`pushforward()` returns a function that takes a tangent of the arguments
+to the tangent of the result. Here, it is the derivative of `f` with
+respect to `a`:
+
+``` r
+d_jit <- jit(function(a, b, x) pushforward(f, a, b, x)(a = 1))
+d_jit(a, b, x)
+#> AnvlArray
+#>  3
 #> [ CPUf32{} ]
 ```
 
