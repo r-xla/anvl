@@ -21,10 +21,8 @@ For those, XLA offers *custom calls*: you write a C++ function, register it
 with the PJRT runtime under a name, and XLA invokes it at exactly that point
 in the compiled program.
 
-This article walks the whole path on CPU.
-{pjrt}'s [Adding Custom Calls](https://r-xla.github.io/pjrt/dev/articles/ffi.html)
-article covers the C++ side in much more depth, including CUDA, LAPACK,
-buffer aliasing and the full binding API.
+This article walks the whole path on CPU, and then shows what changes for
+CUDA.
 
 Everything here is specific to the **`"pjrt"` backend**.
 A custom call is a handler registered with the PJRT runtime and invoked by

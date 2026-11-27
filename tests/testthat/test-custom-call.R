@@ -66,16 +66,21 @@ describe("nv_custom_call", {
     expect_false(isTRUE(all.equal(col_major, row_major)))
   })
 
-  it("works inside jit()", {
+  it("works inside jit(), with result types derived from the traced operand", {
     f <- jit(function(A) {
       nv_custom_call(
         "eigh",
         A,
-        output_types = list(AbstractArray("f64", c(2, 2)), AbstractArray("f64", 2))
+        output_types = list(AbstractArray(dtype(A), shape(A)), AbstractArray(dtype(A), shape(A)[[1L]]))
       )[[2L]]
     })
-    A <- nv_matrix(c(2, 1, 1, 2), nrow = 2, dtype = "f64")
-    expect_equal(as_array(f(A)), as_array(nv_eigh(A)$values))
+    # one jitted function serves every data type the handler takes
+    for (dt in c("f32", "f64")) {
+      A <- nv_matrix(c(2, 1, 1, 2), nrow = 2, dtype = dt)
+      out <- f(A)
+      expect_equal(dtype(out), as_dtype(dt))
+      expect_equal(as_array(out), as_array(nv_eigh(A)$values))
+    }
   })
 
   it("recompiles when the declared output types change", {
