@@ -1,6 +1,6 @@
 # Helpers shared by the transformations of a function -- `gradient()`,
-# `pullback()`, `vectorize()` -- that trace it into a graph of its own and
-# replay that graph into the trace they are called in.
+# `pullback()`, `pushforward()`, `vectorize()` -- that trace it into a graph of
+# its own and replay that graph into the trace they are called in.
 
 # The leaves of the arguments `args` of a transformation, as `args_flat`, and
 # their tree, as `in_tree`. A random state among them is a leaf, which the
@@ -75,9 +75,9 @@ assert_in_trace <- function(name, call = rlang::caller_env()) {
   }
 }
 
-# The arguments `args` of `pullback()`, matched to the formals of `f`, as
-# `prepare_gradient_args()` returns them: every float array among them is
-# differentiated.
+# The arguments `args` of `pullback()` or `pushforward()`, matched to the
+# formals of `f`, as `prepare_gradient_args()` returns them: every float array
+# among them is differentiated.
 differentiated_args <- function(f, args) {
   prep <- flatten_args(match_args_to_formals(f, args))
   prep$is_wrt_flat <- vapply(prep$args_flat, is_float_array, logical(1L))
@@ -112,8 +112,8 @@ trace_replayed <- function(f, prep, fn, replay, call) {
   list(graph = graph, res = res, enclosing = enclosing)
 }
 
-# Refuses to call a pullback (`what`) that `fn` made in the trace `enclosing`
-# outside that trace and the traces opened inside it.
+# Refuses to call a pullback or a pushforward (`what`) that `fn` made in the
+# trace `enclosing` outside that trace and the traces opened inside it.
 assert_called_within <- function(enclosing, what, fn) {
   if (!descriptor_within(current_descriptor(silent = TRUE), enclosing)) {
     cli_abort(c(
@@ -123,16 +123,16 @@ assert_called_within <- function(enclosing, what, fn) {
   }
 }
 
-# The leaves of `x` -- such as a cotangent of a value -- aligned with those of
-# `like`, `NULL` for each leaf of a part of `like` whose counterpart in `x` is
-# `NULL`. Errors name `call`, with the headline `mismatch` for an `x`
-# structured unlike `like`.
-leaves_like <- function(like, x, call, mismatch) {
+# The leaves of `x` -- a tangent of arguments or a cotangent of a value --
+# aligned with those of `like`, `NULL` for each leaf of a part of `like` whose
+# counterpart in `x` is `NULL`. `is_leaf` is passed to `flatten()`. Errors name
+# `call`, with the headline `mismatch` for an `x` structured unlike `like`.
+leaves_like <- function(like, x, call, mismatch, is_leaf = NULL) {
   if (is.null(x)) {
-    return(vector("list", length(flatten(like))))
+    return(vector("list", length(flatten(like, is_leaf = is_leaf))))
   }
-  if (build_tree(x) == build_tree(like)) {
-    return(flatten(x))
+  if (build_tree(x, is_leaf = is_leaf) == build_tree(like, is_leaf = is_leaf)) {
+    return(flatten(x, is_leaf = is_leaf))
   }
   same_node <- rlang::is_bare_list(like) &&
     rlang::is_bare_list(x) &&
@@ -141,15 +141,14 @@ leaves_like <- function(like, x, call, mismatch) {
   if (!same_node) {
     cli_abort(c(mismatch, i = "{.code NULL} can stand in for any part of it."), call = call)
   }
-  leaves <- Map(leaves_like, like, x, MoreArgs = list(call = call, mismatch = mismatch))
+  leaves <- Map(leaves_like, like, x, MoreArgs = list(call = call, mismatch = mismatch, is_leaf = is_leaf))
   do.call(c, unname(leaves)) %||% list()
 }
 
-# `x`, the seed of a derivative such as a cotangent (`kind`) of the float array
-# `primal`, boxed in the current trace after checking that the two fit
-# together; an R value takes the data type of `primal`. `where` (formatted)
-# says which part of `of`, such as the value, it belongs to. Errors name
-# `call`.
+# `x`, the tangent or cotangent (`kind`) of the float array `primal`, boxed in
+# the current trace after checking that the two fit together; an R value takes
+# the data type of `primal`. `where` (formatted) says which part of the
+# arguments or of the value -- `of` -- it belongs to. Errors name `call`.
 check_seed <- function(primal, x, kind, where, of, call) {
   dt <- dtype(primal)
   if (has_no_dtype(x)) {

@@ -23,6 +23,7 @@ Element-wise inverse error function (the inverse of \code{erf} on \verb{(-1, 1)}
 \itemize{
 \item \code{stablehlo}
 \item \code{pullback}
+\item \code{pushforward}
 \item \code{vectorize}
 }
 }

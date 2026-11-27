@@ -25,6 +25,7 @@ with the default location and scale.
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{pullback}
+\item \code{pushforward}
 \item \code{vectorize}
 }
 }

@@ -28,6 +28,7 @@ Element-wise arithmetic right bit shift.
 \itemize{
 \item \code{stablehlo}
 \item \code{pullback}
+\item \code{pushforward}
 \item \code{vectorize}
 }
 }

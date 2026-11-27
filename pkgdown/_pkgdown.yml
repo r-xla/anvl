@@ -384,6 +384,7 @@ reference:
       - jit
       - gradient
       - pullback
+      - pushforward
       - vectorize
 
   - title: Backend

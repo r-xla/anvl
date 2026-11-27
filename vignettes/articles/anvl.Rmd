@@ -4,7 +4,7 @@ title: "Get Started"
 
 {anvl} is a package for writing numerical code in R that runs fast, on the CPU or a GPU.
 Programs are ordinary R functions that operate on arrays, and {anvl} adds two things on top:
-it can compile a function so that it runs much faster than the R interpreter would run it, and it can compute the gradients of a function automatically.
+it can compile a function so that it runs much faster than the R interpreter would run it, and it can compute the derivatives of a function automatically.
 In return, the code has to be written in a slightly more restricted style than usual R code.
 In this article, you will learn the basics by fitting a linear model.
 If you have experience with JAX in Python, you should feel right at home.
@@ -203,7 +203,9 @@ model_loss_grad <- jit(gradient(
 model_loss_grad(X, beta, alpha, y)
 ```
 
-For more on `gradient()`, see the [Automatic Differentiation](autodiff.html) article.
+`gradient()` is a special case of `pullback()`, which differentiates a function with any result in reverse mode.
+`pushforward()` differentiates in forward mode instead, which suits functions with few inputs and many outputs.
+The [Automatic Differentiation](autodiff.html) article explains both modes.
 
 Now we can write a gradient descent step that updates the parameters.
 We keep them together in a `weights` list, as jitted functions can take and return (nested) lists of arrays:

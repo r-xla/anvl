@@ -24,6 +24,7 @@ Element-wise exponential.
 \item \code{stablehlo}
 \item \code{quickr}
 \item \code{pullback}
+\item \code{pushforward}
 \item \code{vectorize}
 }
 }
