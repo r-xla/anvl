@@ -84,7 +84,8 @@ describe("nv_custom_call", {
   })
 
   it("recompiles when the declared output types change", {
-    A <- nv_matrix(c(2, 1, 1, 2), nrow = 2, dtype = "f64")
+    # on the CPU, whose eigh checks the buffers it is given; cuSOLVER's does not
+    A <- nv_matrix(c(2, 1, 1, 2), nrow = 2, dtype = "f64", device = "cpu")
     call_eigh <- function(value_shape) {
       nv_custom_call(
         "eigh",

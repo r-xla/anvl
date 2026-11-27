@@ -456,6 +456,8 @@ loop.
 The threads of a warp -- 32 on NVIDIA hardware -- still wait for the slowest
 among them, but that is the slowest of 32 elements rather than of the whole
 array.
+On a slice of an A100, the million elements from above took 3 ms per call,
+against 5 ms for [`nv_ppois()`], whose first call spent 4 s compiling.
 What changes is the handler, and above all how it is built: R's build system
 knows how to compile `.cpp`, not `.cu`.
 
@@ -511,41 +513,50 @@ __global__ void ppois_upper_kernel(const T *k, const T *lambda, T *out,
   if (i < n) out[i] = ppois_upper(k[i], lambda[i]);
 }
 
+// Returns NULL on success, and CUDA's description of the error otherwise.
 template <typename T>
-static void launch(void *stream, const T *k, const T *lambda, T *out,
-                   size_t n) {
+static const char *launch(void *stream, const T *k, const T *lambda, T *out,
+                          size_t n) {
+  if (n == 0) return nullptr;  // a launch of zero blocks is itself an error
   const int threads = 256;
   const int blocks = static_cast<int>((n + threads - 1) / threads);
   ppois_upper_kernel<T><<<blocks, threads, 0, static_cast<cudaStream_t>(stream)>>>(
       k, lambda, out, n);
+  cudaError_t err = cudaGetLastError();
+  return err == cudaSuccess ? nullptr : cudaGetErrorString(err);
 }
 
 // The only symbols the rest of the package sees.
-extern "C" void mypkg_launch_ppois_upper_f32(void *stream, const float *k,
-                                             const float *lambda, float *out,
-                                             size_t n) {
-  launch<float>(stream, k, lambda, out, n);
+extern "C" const char *mypkg_launch_ppois_upper_f32(void *stream,
+                                                    const float *k,
+                                                    const float *lambda,
+                                                    float *out, size_t n) {
+  return launch<float>(stream, k, lambda, out, n);
 }
 
-extern "C" void mypkg_launch_ppois_upper_f64(void *stream, const double *k,
-                                             const double *lambda,
-                                             double *out, size_t n) {
-  launch<double>(stream, k, lambda, out, n);
+extern "C" const char *mypkg_launch_ppois_upper_f64(void *stream,
+                                                    const double *k,
+                                                    const double *lambda,
+                                                    double *out, size_t n) {
+  return launch<double>(stream, k, lambda, out, n);
 }
 ```
 
 ```c++
 // src/ppois_upper_cuda.cpp -- compiled by R's C++ toolchain, no CUDA headers
+#include <string>
 #include "xla/ffi/api/ffi.h"
 
 using namespace xla::ffi;
 
-extern "C" void mypkg_launch_ppois_upper_f32(void *stream, const float *k,
-                                             const float *lambda, float *out,
-                                             size_t n);
-extern "C" void mypkg_launch_ppois_upper_f64(void *stream, const double *k,
-                                             const double *lambda,
-                                             double *out, size_t n);
+extern "C" const char *mypkg_launch_ppois_upper_f32(void *stream,
+                                                    const float *k,
+                                                    const float *lambda,
+                                                    float *out, size_t n);
+extern "C" const char *mypkg_launch_ppois_upper_f64(void *stream,
+                                                    const double *k,
+                                                    const double *lambda,
+                                                    double *out, size_t n);
 
 static Error do_ppois_upper_cuda(void *stream, AnyBuffer k, AnyBuffer lambda,
                                  Result<AnyBuffer> out) {
@@ -559,20 +570,23 @@ static Error do_ppois_upper_cuda(void *stream, AnyBuffer k, AnyBuffer lambda,
                                   "the same dtype");
   }
   // these are *device* pointers; only the kernel may dereference them
+  const char *err = nullptr;
   switch (dt) {
     case DataType::F32:
-      mypkg_launch_ppois_upper_f32(stream, k.typed_data<float>(),
-                                   lambda.typed_data<float>(),
-                                   out->typed_data<float>(), n);
-      return Error::Success();
+      err = mypkg_launch_ppois_upper_f32(stream, k.typed_data<float>(),
+                                         lambda.typed_data<float>(),
+                                         out->typed_data<float>(), n);
+      break;
     case DataType::F64:
-      mypkg_launch_ppois_upper_f64(stream, k.typed_data<double>(),
-                                   lambda.typed_data<double>(),
-                                   out->typed_data<double>(), n);
-      return Error::Success();
+      err = mypkg_launch_ppois_upper_f64(stream, k.typed_data<double>(),
+                                         lambda.typed_data<double>(),
+                                         out->typed_data<double>(), n);
+      break;
     default:
       return Error::InvalidArgument("ppois_upper: only f32 and f64 are supported");
   }
+  if (err != nullptr) return Error::Internal(std::string("ppois_upper: ") + err);
+  return Error::Success();
 }
 
 XLA_FFI_DEFINE_HANDLER_SYMBOL(PpoisUpperHandlerCuda, do_ppois_upper_cuda,
@@ -586,6 +600,12 @@ XLA_FFI_DEFINE_HANDLER_SYMBOL(PpoisUpperHandlerCuda, do_ppois_upper_cuda,
 The binding gains one entry: `.Ctx<PlatformStream<void *>>()` puts the CUDA
 stream XLA dispatched the op on in front of the buffers.
 Everything the handler enqueues must go on *that* stream.
+
+The handler returns as soon as the kernel is enqueued, so it can only report
+what goes wrong with the launch itself -- which is why the launcher hands
+back `cudaGetLastError()`.
+Without that check, a kernel that never ran leaves its result unwritten, and
+the error only surfaces, unrelated, at the next CUDA call.
 
 ### You do not need a system CUDA toolkit
 
@@ -627,11 +647,18 @@ OBJECTS = ppois_upper.o ppois_upper_cuda.o ppois_upper_kernel.o
 PKG_LIBS = -L$(CUDA_LIB) -l:libcudart.so.13 -Wl,-rpath,$(CUDA_LIB)
 
 %.o: %.cu
-	$(NVCC) -std=c++17 -O2 -I$(CUDA_INC) -Xcompiler "$(CXXPICFLAGS)" -c $< -o $@
+	$(NVCC) -std=c++17 -O2 -arch=all-major -I$(CUDA_INC) -Xcompiler "$(CXXPICFLAGS)" -c $< -o $@
 ```
 
 `nvcc` finds its own headers and tools relative to its `bin/`, so only the
 include directory has to be named explicitly.
+`-arch=all-major` has it compile machine code for every major GPU generation
+it supports (`sm_75` and `sm_80` up to `sm_120` for CUDA 13), which a GPU of a
+later minor generation, such as an `sm_86` card, runs as well.
+Without it, `nvcc` only compiles machine code for `sm_75`, and every newer
+GPU makes its driver compile the kernel from the intermediate PTX instead --
+which a driver older than the `nvcc` that wrote the PTX refuses, with
+*the provided PTX was compiled with an unsupported toolchain*.
 The runtime comes as the versioned `libcudart.so.13` alone, without the
 unversioned `libcudart.so` that `-lcudart` looks for, hence `-l:` with the
 file name; the rpath lets the loaded package find it again.
