@@ -8,6 +8,7 @@ compile_pjrt(
   f,
   args_flat,
   in_tree,
+  static_flat = NULL,
   donate = character(),
   xla_options = list(),
   device = NULL,
@@ -25,6 +26,9 @@ Flat list of abstract input values.}
 
 \item{in_tree}{(\code{\link[pjrt:build_tree]{RTree}})\cr
 Tree structure of the inputs.}
+
+\item{static_flat}{(\code{NULL} | \code{logical()})\cr
+Which of \code{args_flat} are static, see \code{\link[=trace_fn]{trace_fn()}}.}
 
 \item{donate}{(\code{character()})\cr
 Names of the arguments whose buffers should be donated.}

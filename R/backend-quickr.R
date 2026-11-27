@@ -43,6 +43,7 @@ jit_quickr_compile_cb <- function(f, static, unwrap) {
       f,
       args_flat = avals_from_dispatch(info),
       in_tree = info$in_tree,
+      static_flat = info$is_static,
       unwrap = unwrap,
       flat = TRUE,
       default_dtypes = default_dtypes_from_key(info$context)
@@ -107,12 +108,13 @@ compile_quickr <- function(
   f,
   args_flat,
   in_tree,
+  static_flat = NULL,
   unwrap = FALSE,
   flat = FALSE,
   default_dtypes = NULL
 ) {
   desc <- local_descriptor(default_dtypes = default_dtypes, backend = "quickr", side_effects_mode = "program")
-  graph <- trace_fn(f, desc = desc, args_flat = args_flat, in_tree = in_tree)
+  graph <- trace_fn(f, desc = desc, args_flat = args_flat, in_tree = in_tree, static_flat = static_flat)
   # quickr runs no side effects, such as random draws
   if (length(graph$side_effects)) {
     cli_abort("The quickr backend does not support side effects such as random draws.")

@@ -16,6 +16,7 @@ jit_pjrt_compile_cb <- function(f, static, donate, xla_options, device = NULL) {
       f,
       args_flat = avals_from_dispatch(info),
       in_tree = info$in_tree,
+      static_flat = info$is_static,
       donate = donate,
       xla_options = xla_options,
       device = device,
@@ -108,6 +109,8 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, xla_options, device) {
 #'   Flat list of abstract input values.
 #' @param in_tree ([`RTree`][pjrt::build_tree])\cr
 #'   Tree structure of the inputs.
+#' @param static_flat (`NULL` | `logical()`)\cr
+#'   Which of `args_flat` are static, see [`trace_fn()`].
 #' @param donate (`character()`)\cr
 #'   Names of the arguments whose buffers should be donated.
 #' @param xla_options (named `list()`)\cr
@@ -160,6 +163,7 @@ compile_pjrt <- function(
   f,
   args_flat,
   in_tree,
+  static_flat = NULL,
   donate = character(),
   xla_options = list(),
   device = NULL,
@@ -172,7 +176,8 @@ compile_pjrt <- function(
     f,
     desc = desc,
     args_flat = args_flat,
-    in_tree = in_tree
+    in_tree = in_tree,
+    static_flat = static_flat
   )
 
   # Validate backends on the raw traced graph, before the optimization passes

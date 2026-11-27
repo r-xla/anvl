@@ -480,7 +480,9 @@ maybe_box_arrayish <- function(x, desc = current_descriptor()) {
 # jit it is one of the args declared static (R data it was called with arrives
 # as an `RData`), a primitive whose sub-graph takes its operands (prim_while's
 # state, prim_scan's carry) materializes them itself, and gradient() does not
-# know which of its args are static.
+# know which of its args are static. jit's static args do not get here at all
+# (see `static_flat` of trace_fn()), so an `AbstractArray` among them stays a
+# value.
 maybe_box_input <- function(x, desc) {
   if (is_anvl_array(x)) {
     desc$devices <- c(desc$devices, placement_device(x))
@@ -788,6 +790,10 @@ name_failing_primitive <- function(e) {
 #'   Flattened arguments. Must be accompanied by `in_tree`.
 #' @param in_tree ([`RTree`][pjrt::build_tree])\cr
 #'   Tree structure describing how `args_flat` maps back to `f`'s arguments.
+#' @param static_flat (`NULL` | `logical()`)\cr
+#'   Which of `args_flat` are static: passed to `f` as they are, even an
+#'   [`AbstractArray`], rather than becoming inputs of the graph. `NULL`
+#'   (the default) makes every array and abstract array an input.
 #' @template param_optimize
 #' @return ([`AnvlGraph`])
 #'   Contains the traced operations.
@@ -804,6 +810,7 @@ trace_fn <- function(
   desc = NULL,
   args_flat = NULL,
   in_tree = NULL,
+  static_flat = NULL,
   optimize = FALSE
 ) {
   if (is.null(args)) {
@@ -829,7 +836,11 @@ trace_fn <- function(
   parent_desc <- maybe_previous_descriptor()
 
   # box arrays and add them as inputs to the current graph
-  inputs_flat <- lapply(args_flat, maybe_box_input, desc = desc)
+  inputs_flat <- if (is.null(static_flat)) {
+    lapply(args_flat, maybe_box_input, desc = desc)
+  } else {
+    Map(\(x, is_static) if (is_static) x else maybe_box_input(x, desc), args_flat, static_flat)
+  }
   # Track which flat args are static (non-array) values vs. graph inputs
   desc$is_static_flat <- vapply(inputs_flat, Negate(is_graph_box), logical(1L))
   # A higher-order primitive traces its sub-graphs here and then goes on to

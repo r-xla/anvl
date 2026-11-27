@@ -10,6 +10,7 @@ trace_fn(
   desc = NULL,
   args_flat = NULL,
   in_tree = NULL,
+  static_flat = NULL,
   optimize = FALSE
 )
 }
@@ -29,6 +30,11 @@ Flattened arguments. Must be accompanied by \code{in_tree}.}
 
 \item{in_tree}{(\code{\link[pjrt:build_tree]{RTree}})\cr
 Tree structure describing how \code{args_flat} maps back to \code{f}'s arguments.}
+
+\item{static_flat}{(\code{NULL} | \code{logical()})\cr
+Which of \code{args_flat} are static: passed to \code{f} as they are, even an
+\code{\link{AbstractArray}}, rather than becoming inputs of the graph. \code{NULL}
+(the default) makes every array and abstract array an input.}
 
 \item{optimize}{(\code{logical(1)} | \code{character()})\cr
 Which graph optimization passes to run on the traced graph before returning
