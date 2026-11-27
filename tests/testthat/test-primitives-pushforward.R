@@ -1,10 +1,10 @@
 # A primitive tagged "elementwise" gets its pushforward rule from its pullback
 # rule (`pushforward_from_pullback()`), which the pullback tests cover, and one
 # tagged "linear" is its own pushforward (`pushforward_linear()`), so only the
-# derivations themselves are checked here, on a few primitives that take each
-# of their paths. Every other pushforward rule has an entry in
-# `pushforward_cases`, or, for a primitive that takes functions, entries in
-# `subgraph_cases`.
+# derivations themselves are checked here: the first on one primitive as an
+# example, the second on a few primitives that take each of its paths. Every
+# other pushforward rule has an entry in `pushforward_cases`, or, for a
+# primitive that takes functions, entries in `subgraph_cases`.
 # `check_pushforward_rule()` runs the same checks on each against references
 # that do not use the pushforward rules. torch has no forward mode to compare
 # with.
@@ -68,9 +68,10 @@ anvl_array <- function(x, dtype) {
 # samplers of the directions to differentiate in where they are not `normal()`
 # -- for an argument whose tangents the primitive restricts, such as to
 # symmetric matrices -- static parameters, a function `fn` of the arguments,
-# by name, that calls the primitive in place of calling it with them, whether
-# to check forward-over-reverse, and the tolerance of the comparison with
-# finite differences.
+# by name, that calls the primitive in place of calling it with them, a
+# function `reference` that computes the same as `fn` without the primitive,
+# for a primitive without a pullback rule, and whether to check
+# forward-over-reverse.
 pushforward_case <- function(
   args,
   wrt = names(args),
@@ -79,8 +80,8 @@ pushforward_case <- function(
   directions = list(),
   params = list(),
   fn = NULL,
-  hvp = TRUE,
-  tolerance = 1e-6
+  reference = NULL,
+  hvp = TRUE
 ) {
   list(
     args = args,
@@ -90,8 +91,8 @@ pushforward_case <- function(
     directions = directions,
     params = params,
     fn = fn,
-    hvp = hvp,
-    tolerance = tolerance
+    reference = reference,
+    hvp = hvp
   )
 }
 
@@ -100,10 +101,6 @@ f64 <- function(...) nv_array(c(...), dtype = "f64")
 # The results of a primitive as an unnamed list, with one entry per output.
 as_outputs <- function(r) {
   if (is.list(r) && !is_arrayish(r)) unname(r) else list(r)
-}
-
-binary_case <- function(lhs = unif(-2, 2), rhs = unif(-2, 2)) {
-  pushforward_case(list(lhs = lhs, rhs = rhs))
 }
 
 # `prim_convolution()` of a batch of 1-d signals `x`, with axes (batch, feature,
@@ -219,8 +216,8 @@ pushforward_cases <- list(
   "scatter/max" = scatter_rows_case(c(4L, 2L, 4L, 9L), "max"),
   "scatter/min" = scatter_rows_case(c(4L, 2L, 4L), "min"),
   # The pushforward rule of `prim_chol()` takes the factor as a function of the
-  # symmetric matrices, as its pullback rule does: it agrees with finite
-  # differences in a symmetric direction.
+  # symmetric matrices, as its pullback rule does, so the directions are
+  # symmetric.
   chol = pushforward_case(
     list(x = positive_definite()),
     shapes = list(x = c(3L, 3L, 2L)),
@@ -250,21 +247,10 @@ pushforward_cases <- list(
   )
 )
 
-# Pushforward rules derived from the pullback rule, named
-# `<primitive>[/<scalar operand>]`: an operand alone and several whose tangents
-# add up, a scalar operand whose tangent is broadcast, an operand without a
-# tangent, and a result that is not a float.
-derived_cases <- list(
-  sin = pushforward_case(list(x = unif(-3, 3))),
-  mul = binary_case(),
-  "mul/lhs" = pushforward_case(list(lhs = unif(-2, 2), rhs = unif(-2, 2)), scalar = "lhs"),
-  ifelse = pushforward_case(list(test = coin(), yes = unif(-2, 2), no = unif(-2, 2)), wrt = c("yes", "no")),
-  eq = binary_case()
-)
-
 # The pushforward rules of the primitives that take functions, named
 # `<primitive>/<what the case covers>`, each called through `fn`. What its
-# functions use is closed over, the arguments of `fn` among it.
+# functions use is closed over, the arguments of `fn` among it. A while loop,
+# which has no pullback rule, is checked against the same loop unrolled.
 subgraph_cases <- list(
   # a branch returning a value it closes over as it is, and a result that is
   # not a float
@@ -355,12 +341,16 @@ subgraph_cases <- list(
       nv_scan(h, list(p = p, v = v), body)$carry
     }
   ),
-  # forward mode differentiates a while loop, which reverse mode cannot: no
-  # pullback to compare with
   "while" = pushforward_case(
     list(y = unif(-1, 1), w = unif(-1, 1)),
     shapes = list(y = 2L, w = 2L),
-    fn = function(y, w) nv_while(list(i = 0L, y = y), \(i, y) i < 3L, \(i, y) list(i = i + 1L, y = sin(y) * w + y))$y
+    fn = function(y, w) nv_while(list(i = 0L, y = y), \(i, y) i < 3L, \(i, y) list(i = i + 1L, y = sin(y) * w + y))$y,
+    reference = function(y, w) {
+      for (i in 1:3) {
+        y <- sin(y) * w + y
+      }
+      y
+    }
   ),
   # `b` enters without a tangent and gains one, the counters `i` and `t`
   # never have one
@@ -371,6 +361,16 @@ subgraph_cases <- list(
       init <- list(i = 0L, t = nv_fill(0, integer(), dtype = dtype(a)), a = a, b = nv_fill(0, 2L, dtype = dtype(a)))
       r <- nv_while(init, \(i, t, a, b) i < 3L, \(i, t, a, b) list(i = i + 1L, t = t + 1, a = a * w, b = b + t * a))
       list(r$t, r$a, r$b)
+    },
+    reference = function(a, w) {
+      t <- nv_fill(0, integer(), dtype = dtype(a))
+      b <- nv_fill(0, 2L, dtype = dtype(a))
+      for (i in 1:3) {
+        b <- b + t * a
+        t <- t + 1
+        a <- a * w
+      }
+      list(t, a, b)
     }
   ),
   "while/scan" = pushforward_case(
@@ -379,6 +379,12 @@ subgraph_cases <- list(
     fn = function(y, xs) {
       body <- function(i, y) list(i = i + 1L, y = nv_scan(y, xs, \(c, x) list(carry = sin(c) * x, out = NULL))$carry)
       nv_while(list(i = 0L, y = y), \(i, y) i < 2L, body)$y
+    },
+    reference = function(y, xs) {
+      for (i in 1:2) {
+        y <- nv_scan(y, xs, \(c, x) list(carry = sin(c) * x, out = NULL))$carry
+      }
+      y
     }
   ),
   "while/nested" = pushforward_case(
@@ -387,6 +393,16 @@ subgraph_cases <- list(
     fn = function(y, w) {
       inner <- function(y) nv_while(list(j = 0L, z = y), \(j, z) j < 2L, \(j, z) list(j = j + 1L, z = sin(z) + w))$z
       nv_while(list(i = 0L, y = y), \(i, y) i < 2L, \(i, y) list(i = i + 1L, y = inner(y) * y))$y
+    },
+    reference = function(y, w) {
+      for (i in 1:2) {
+        z <- y
+        for (j in 1:2) {
+          z <- sin(z) + w
+        }
+        y <- z * y
+      }
+      y
     }
   ),
   # a rule that reads the result, so that forward-over-reverse goes through
@@ -416,11 +432,12 @@ subgraph_cases <- list(
   )
 )
 
-# Pushforward rules of the primitives tagged "linear": an operand alone,
-# several whose tangents go in together, a float operand without a tangent, and
-# integer operands passed through.
+# Pushforward rules of the primitives tagged "linear": an operand alone, one
+# with parameters, several whose tangents go in together, a float operand
+# without a tangent, and integer operands passed through.
 linear_cases <- list(
   transpose = pushforward_case(list(x = unif(-2, 2)), params = list(perm = c(2L, 1L))),
+  sum = pushforward_case(list(x = unif(-2, 2)), params = list(axes = 2L, drop = FALSE)),
   concatenate = pushforward_case(list(a = unif(-2, 2), b = unif(-2, 2)), params = list(axis = 2L)),
   dynamic_update_slice = pushforward_case(
     list(x = unif(-2, 2), update = unif(-2, 2), i = ints(1L, 2L), j = ints(1L, 2L)),
@@ -451,27 +468,26 @@ tangent_along <- function(fn, x, t) {
   do.call(do.call(pushforward, c(list(fn), x)), t)
 }
 
-# The central difference of `fn` at the arguments `x` in the direction `t`, which
-# names a subset of them. `fn` returns an array or a list of arrays.
-central_difference <- function(fn, x, t, h) {
-  at <- function(step) {
-    x[names(t)] <- Map(\(a, d) a + step * d, x[names(t)], t)
-    do.call(fn, x)
-  }
-  hi <- at(h)
-  lo <- at(-h)
-  if (is_graph_box(hi)) (hi - lo) / (2 * h) else Map(\(a, b) (a - b) / (2 * h), hi, lo)
+# `fn` of the arguments `t` names alone, the others held at `x`.
+fixing <- function(fn, x, t) {
+  with_formals(names(t), function(a) {
+    args <- x
+    args[names(a)] <- a
+    do.call(fn, args)
+  })
 }
 
 # Checks the pushforward rule of `prim_<name>` on `case`, at f64, on each of
-# its float outputs:
+# its float outputs, against the pullback of `case$reference`, or of the
+# primitive itself, which does not use the pushforward rules:
 #   - the tangent along each argument in `wrt` alone, and along all of them at
-#     once, against a central difference;
-#   - the tangent against the pullback, if the primitive has a pullback rule:
-#     <u, J t> must equal <J^T u, t>;
-#   - forward-over-reverse, unless `case$hvp` is `FALSE`: the tangent of the
-#     gradient against a central difference of the gradient, which needs a
-#     pushforward rule for whatever the pullback rule computes with;
+#     once: element i of J t is <J^T e_i, t>, with J^T e_i the pullback of the
+#     i-th unit cotangent;
+#   - forward-over-reverse against reverse-over-reverse, if the primitive has a
+#     pullback rule and `case$hvp` is not `FALSE`: the tangent of the gradient
+#     of <u, f> along t is its Hessian times t, and as the Hessian is
+#     symmetric, so is the pullback of the gradient along t. That needs both
+#     rules for whatever the pullback rule computes with;
 #   - at f32, that the tangent has the data type of the output.
 # An output that is not a float has no derivative, and so no tangent.
 check_pushforward_rule <- function(name, case) {
@@ -510,41 +526,46 @@ check_pushforward_rule <- function(name, case) {
     return(invisible())
   }
 
-  # `f` with its float outputs alone, as an unnamed list
-  g <- with_formals(names(args), \(a) as_outputs(do.call(f, a))[is_float])
-  h <- 1e-5
-  u <- lapply(outs[is_float], \(o) anvl_array(shaped(rnorm(prod(shape(o))), shape(o)), dtype = "f64"))
-  has_pullback <- !is.null(prim[["pullback"]])
-  check_hvp <- has_pullback && case$hvp
-  run <- jit(function(x, t, u) {
+  # `fn` with its float outputs alone, as an unnamed list
+  float_outputs <- function(fn) with_formals(names(args), \(a) as_outputs(do.call(fn, a))[is_float])
+  g <- float_outputs(f)
+  reference <- float_outputs(case$reference %||% f)
+  out_shapes <- lapply(outs[is_float], shape)
+  as_cotangent <- \(values) Map(\(v, s) anvl_array(shaped(v, s), dtype = "f64"), values, out_shapes)
+  zeros <- lapply(out_shapes, \(s) numeric(prod(s)))
+  # one unit cotangent per element of each float output
+  unit_output <- rep(seq_along(out_shapes), lengths(zeros))
+  units <- Map(
+    \(k, i) as_cotangent(replace(zeros, k, list(replace(zeros[[k]], i, 1)))),
+    unit_output,
+    sequence(lengths(zeros))
+  )
+  u <- as_cotangent(lapply(zeros, \(z) rnorm(length(z))))
+  check_hvp <- !is.null(prim[["pullback"]]) && case$hvp
+  run <- jit(function(x, t, u, units) {
     along <- c(lapply(names(t), \(nm) t[nm]), list(t))
-    # `g` of the arguments in `wrt` alone, the others held at `x`
-    g_wrt <- with_formals(names(t), function(a) {
-      args <- x
-      args[names(a)] <- a
-      do.call(g, args)
-    })
-    jt <- tangent_along(g, x, t)
+    # the rows of the Jacobian, J^T e_i
+    rows <- lapply(units, do.call(pullback, c(list(fixing(reference, x, t)), x[names(t)])))
+    # element i of J d is <J^T e_i, d>
+    reference_along <- function(d) {
+      lapply(rows, \(row) Reduce(`+`, Map(\(nm) sum(row[[nm]] * d[[nm]]), names(d))))
+    }
     c(
       list(
         tangent = lapply(along, \(d) tangent_along(g, x, d)),
-        fd = lapply(along, \(d) central_difference(g, x, d, h))
+        reference = lapply(along, reference_along)
       ),
-      if (has_pullback) {
-        jtu <- do.call(pullback, c(list(g_wrt), x[names(t)]))(u)
-        list(
-          u_jt = Reduce(`+`, Map(\(a, b) sum(a * b), u, jt)),
-          jtu_t = Reduce(`+`, Map(\(nm) sum(jtu[[nm]] * t[[nm]]), names(t)))
-        )
-      },
       if (check_hvp) {
         loss <- with_formals(names(x), \(a) Reduce(`+`, Map(\(o, w) sum(o * w), do.call(g, a), u)))
         grad <- gradient(loss, wrt = names(t))
-        list(hvp = tangent_along(grad, x, t), hvp_fd = central_difference(grad, x, t, h))
+        list(
+          hvp = tangent_along(grad, x, t),
+          hvp_reverse = do.call(pullback, c(list(fixing(grad, x, t)), x[names(t)]))(t)
+        )
       }
     )
   })
-  res <- run(x, t, u)
+  res <- run(x, t, u, units)
 
   labels <- c(paste("along", names(t)), "along all")
   out_dtypes <- lapply(outs[is_float], dtype)
@@ -553,18 +574,15 @@ check_pushforward_rule <- function(name, case) {
       label <- if (length(out_dtypes) > 1L) sprintf("%s, output %d", labels[[i]], k) else labels[[i]]
       expect_equal(dtype(res$tangent[[i]][[k]]), out_dtypes[[k]], label = label)
       expect_equal(
-        as_array(res$tangent[[i]][[k]]),
-        as_array(res$fd[[i]][[k]]),
-        tolerance = case$tolerance,
+        as.vector(as_array(res$tangent[[i]][[k]])),
+        vapply(res$reference[[i]][unit_output == k], as_array, numeric(1L)),
+        tolerance = 1e-10,
         label = label
       )
     }
   }
-  if (has_pullback) {
-    expect_equal(as_array(res$u_jt), as_array(res$jtu_t), tolerance = 1e-10)
-  }
   for (nm in names(res$hvp)) {
-    expect_equal(as_array(res$hvp[[nm]]), as_array(res$hvp_fd[[nm]]), tolerance = 1e-5, label = paste("hvp", nm))
+    expect_equal(as_array(res$hvp[[nm]]), as_array(res$hvp_reverse[[nm]]), tolerance = 1e-10, label = paste("hvp", nm))
   }
 
   x32 <- arrays_at("f32")
@@ -586,7 +604,7 @@ describe("pushforward rules", {
   })
 
   for (name in names(pushforward_cases)) {
-    it(sprintf("of prim_%s agree with finite differences and the pullback", name), {
+    it(sprintf("of prim_%s agree with the pullback", name), {
       withr::local_seed(1L)
       # `prim_print()` prints at every run
       utils::capture.output(check_pushforward_rule(sub("/.*", "", name), pushforward_cases[[name]]))
@@ -594,7 +612,7 @@ describe("pushforward rules", {
   }
 
   for (name in names(subgraph_cases)) {
-    it(sprintf("of %s agree with finite differences and the pullback", name), {
+    it(sprintf("of %s agree with the pullback", name), {
       withr::local_seed(1L)
       check_pushforward_rule(sub("/.*", "", name), subgraph_cases[[name]])
     })
@@ -658,12 +676,12 @@ describe("pushforward_from_pullback", {
     }
   })
 
-  for (name in names(derived_cases)) {
-    it(sprintf("derives a pushforward rule that agrees with finite differences and the pullback for %s", name), {
-      withr::local_seed(1L)
-      check_pushforward_rule(sub("/.*", "", name), derived_cases[[name]])
-    })
-  }
+  # `mul` with a scalar operand: the tangents of two operands add up, and that
+  # of the scalar one is broadcast
+  it("derives a pushforward rule that agrees with the pullback, e.g. for prim_mul", {
+    withr::local_seed(1L)
+    check_pushforward_rule("mul", pushforward_case(list(lhs = unif(-2, 2), rhs = unif(-2, 2)), scalar = "lhs"))
+  })
 })
 
 describe("pushforward_linear", {
@@ -674,7 +692,7 @@ describe("pushforward_linear", {
   })
 
   for (name in names(linear_cases)) {
-    it(sprintf("derives a pushforward rule that agrees with finite differences and the pullback for %s", name), {
+    it(sprintf("derives a pushforward rule that agrees with the pullback for %s", name), {
       withr::local_seed(1L)
       check_pushforward_rule(name, linear_cases[[name]])
     })
