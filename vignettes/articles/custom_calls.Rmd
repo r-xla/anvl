@@ -69,7 +69,6 @@ Generally, the signature contains one `AnyBuffer` per argument and one `Result<A
 `hypot_impl` itself is a template over the element type `T`, with which it reads the buffers through `typed_data<T>()`.
 
 Because a handler may be called from XLA's worker threads, it must not touch R's C API (no allocation, no `Rf_error()`, no printing).
-Instead, it reports failures by returning an `Error`; XLA then aborts the execution and {pjrt} re-raises the error in R.
 
 ```{Rcpp hypot-impl, eval = FALSE}
 // The actual work, once the element type is known.
@@ -91,9 +90,9 @@ static Error hypot_impl(AnyBuffer x, AnyBuffer y, Result<AnyBuffer> out) {
 
 `do_hypot()` then looks at the `element_type()` of the buffers and calls `hypot_impl<T>()` with the matching `T`.
 The alternative would be a statically typed `Buffer<DataType::F64>`, which pins the handler to one data type and makes XLA reject all others.
-Because `AnyBuffer` moves the type checking from XLA into the handler, the handler has to do it itself: `typed_data<T>()` only asserts that `T` matches in a debug build, and reinterprets the bytes otherwise.
-Hence the explicit comparison of the three `element_type()`s and the `default:` branch, which turns an `i32` operand into the error *hypot: only f32 and f64 are supported*.
-These checks are needed because `nv_custom_call()` and `prim_custom_call()` hand the handler whatever operands they are given; once the call becomes a primitive of its own, its inference rule takes them over, as shown in [making it a primitive](#making-it-a-primitive).
+Because `AnyBuffer` moves the type checking from XLA into the handler, `typed_data<T>()` only asserts that `T` matches in a debug build, and reinterprets the bytes otherwise.
+The comparisons of the sizes and of the three `element_type()`s, and the `default:` branch, only keep the handler from reading memory it should not.
+Whether the operands are valid for the computation should be checked in R, before the call: by the inference rule of a primitive, as shown in [making it a primitive](#making-it-a-primitive).
 
 ```{Rcpp hypot-dispatch, eval = FALSE}
 // Dispatch on the dtype; f32 and f64 are what std::hypot covers.
