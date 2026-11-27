@@ -1,6 +1,7 @@
 # A primitive tagged "elementwise" gets its pushforward rule from its pullback
-# rule (`pushforward_from_pullback()`), which the pullback tests cover, so only
-# the derivation itself is checked here, on one primitive as an example. Every
+# rule (`pushforward_from_pullback()`), which the pullback tests cover, and one
+# tagged "linear" applies itself to the tangents (`pushforward_linear()`), so
+# only each derivation is checked here, on one primitive as an example. Every
 # other pushforward rule has an entry in `pushforward_cases`.
 # `check_pushforward_rule()` runs the same checks on each against references
 # that do not use the pushforward rules. torch has no forward mode to compare
@@ -22,10 +23,11 @@ anvl_array <- function(x, dtype) {
 
 # A call of a primitive: its arguments, as samplers of arrays of the data type
 # under test, all of which are differentiated, the arguments that are scalars,
-# which the primitive broadcasts to the shape of the others, and static
-# parameters.
-pushforward_case <- function(args, scalar = character(), params = list()) {
-  list(args = args, scalar = scalar, params = params)
+# which the primitive broadcasts to the shape of the others, static parameters,
+# and, where the primitive does not take the arguments as they are, a `call`
+# that calls it with them.
+pushforward_case <- function(args, scalar = character(), params = list(), call = NULL) {
+  list(args = args, scalar = scalar, params = params, call = call)
 }
 
 # The pushforward rules of their own.
@@ -33,13 +35,20 @@ pushforward_cases <- list(
   # at f64 a conversion to f64 is the identity, at f32 one that changes the
   # data type
   convert = pushforward_case(list(x = unif(-2, 2)), params = list(dtype = "f64")),
-  sum = pushforward_case(list(x = unif(-2, 2)), params = list(axes = 2L, drop = FALSE))
+  # the barrier takes its operands as a list, and returns one
+  optimization_barrier = pushforward_case(
+    list(x = unif(-2, 2)),
+    call = function(x) prim_optimization_barrier(list(x))[[1L]]
+  )
 )
 
-# Whether the pushforward rule of `prim` is the one `pushforward_from_pullback()`
-# derives from its pullback rule.
-derived_from_pullback <- function(prim) {
-  identical(body(prim[["pushforward"]]), body(pushforward_from_pullback(prim[["pullback"]])))
+# Whether the pushforward rule of `prim` is derived from its tags: from its
+# pullback rule (`pushforward_from_pullback()`), or as that of a linear
+# primitive (`pushforward_linear()`).
+derived_from_tags <- function(prim) {
+  rule <- body(prim[["pushforward"]])
+  identical(rule, body(pushforward_from_pullback(prim[["pullback"]]))) ||
+    identical(rule, body(pushforward_linear(prim)))
 }
 
 # `body(args)`, for `args` a named list, as a function with one formal per name.
@@ -80,7 +89,7 @@ check_pushforward_rule <- function(name, case) {
   arrays_at <- function(dtype) lapply(args, anvl_array, dtype = dtype)
   directions <- lapply(args, \(a) shaped(rnorm(length(a)), dim(a)))
 
-  f <- with_formals(names(args), \(a) do.call(prim, c(a, case$params)))
+  f <- with_formals(names(args), \(a) do.call(case$call %||% prim, c(a, case$params)))
   x <- arrays_at("f64")
   t <- lapply(directions, anvl_array, dtype = "f64")
   out <- trace_fn(f, x)$outputs[[1L]]
@@ -133,7 +142,7 @@ describe("pushforward rules", {
   it("have a case for every primitive with a rule of its own", {
     nms <- names(asNamespace("anvl"))
     prims <- Filter(\(p) inherits(p, "AnvlPrimitive"), mget(nms[startsWith(nms, "prim_")], asNamespace("anvl")))
-    own <- Filter(\(p) !is.null(p[["pushforward"]]) && !derived_from_pullback(p), prims)
+    own <- Filter(\(p) !is.null(p[["pushforward"]]) && !derived_from_tags(p), prims)
     expect_setequal(names(pushforward_cases), sub("^prim_", "", names(own)))
   })
 
@@ -169,5 +178,16 @@ describe("pushforward_from_pullback", {
   it("derives a pushforward rule that agrees with the pullback, e.g. for prim_mul", {
     withr::local_seed(1L)
     check_pushforward_rule("mul", pushforward_case(list(lhs = unif(-2, 2), rhs = unif(-2, 2)), scalar = "lhs"))
+  })
+})
+
+describe("pushforward_linear", {
+  # two float operands: along either alone, the other one's tangent is zeros
+  it("derives a pushforward rule that agrees with the pullback, e.g. for prim_concatenate", {
+    withr::local_seed(1L)
+    check_pushforward_rule(
+      "concatenate",
+      pushforward_case(list(x = unif(-2, 2), y = unif(-2, 2)), params = list(axis = 1L))
+    )
   })
 })

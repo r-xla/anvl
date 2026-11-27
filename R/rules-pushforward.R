@@ -54,8 +54,44 @@ prim_convert[["pushforward"]] <- function(inputs, outputs, tangents, params) {
   list(if (is_dtype_float(dtype(out))) prim_convert(tangents[[1L]], dtype(out)))
 }
 
-# `prim_sum()` is linear: the tangent of the result is the sum of the operand's
-# tangent over the same axes.
-prim_sum[["pushforward"]] <- function(inputs, outputs, tangents, params) {
-  list(prim_sum(tangents[[1L]], axes = params$axes, drop = params$drop))
+# Pushforward rules of the linear primitives ----------------------------------
+#
+# A primitive tagged `"linear"` is linear in its float operands, its other
+# operands held fixed, so the tangent of its result is the primitive applied to
+# the tangents of its float operands -- zeros for one without a tangent -- with
+# its other operands and its parameters as they are.
+
+# The pushforward rule of the linear primitive `prim`.
+pushforward_linear <- function(prim) {
+  prim_fn <- primitive_def(prim)$fn
+  function(inputs, outputs, tangents, params) {
+    operands <- Map(
+      function(x, tangent) {
+        if (is_dtype_float(dtype(x))) tangent %||% zeros(dtype(x), shape(x)) else x
+      },
+      inputs,
+      tangents
+    )
+    if (!all(names(params) %in% formalArgs(prim_fn))) {
+      cli_abort(
+        "Internal error: the linear primitive {.fn {paste0('prim_', primitive_def(prim)$name)}} cannot be called with its parameters."
+      )
+    }
+    out <- do.call(prim_fn, c(operands, params))
+    if (is_graph_box(out)) list(out) else out
+  }
+}
+
+for (prim in primitives_tagged("linear")) {
+  prim[["pushforward"]] <- pushforward_linear(prim)
+}
+rm(prim)
+
+# The barrier passes its operands through, and takes their tangents through a
+# barrier of their own, as its pullback rule does their cotangents.
+prim_optimization_barrier[["pushforward"]] <- function(inputs, outputs, tangents, params) {
+  has_tangent <- !vapply(tangents, is.null, logical(1L))
+  out <- vector("list", length(inputs))
+  out[has_tangent] <- prim_optimization_barrier(tangents[has_tangent])
+  out
 }

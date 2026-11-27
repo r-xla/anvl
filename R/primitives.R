@@ -251,7 +251,8 @@ prim_broadcast_in_axes <- new_primitive(
       infer_fn = infer_broadcast_in_axes
     )[[1L]]
   },
-  static = 2:3
+  static = 2:3,
+  tags = "linear"
 )
 
 #' @title Primitive Dot General
@@ -350,7 +351,8 @@ prim_transpose <- new_primitive(
       infer_fn = infer_transpose
     )[[1L]]
   },
-  static = 2L
+  static = 2L,
+  tags = "linear"
 )
 
 #' @title Primitive Reshape
@@ -390,7 +392,8 @@ prim_reshape <- new_primitive(
       infer_fn = infer_reshape
     )[[1L]]
   },
-  static = 2L
+  static = 2L,
+  tags = "linear"
 )
 
 #' @title Primitive Concatenate
@@ -433,7 +436,8 @@ prim_concatenate <- new_primitive(
       infer_fn = infer_concatenate
     )[[1L]]
   },
-  static = "axis"
+  static = "axis",
+  tags = "linear"
 )
 
 #' @title Primitive Static Slice
@@ -495,7 +499,8 @@ prim_static_slice <- new_primitive(
       infer_fn = infer_static_slice
     )[[1L]]
   },
-  static = 2:4
+  static = 2:4,
+  tags = "linear"
 )
 
 #' @title Primitive Dynamic Slice
@@ -554,7 +559,8 @@ prim_dynamic_slice <- new_primitive(
   # `x` needs no promotion: it is the only operand of its kind. The start
   # indices are promoted among themselves by `promote_start_indices()`, which
   # is a group of their own -- they never take `x`'s data type.
-  static = "slice_sizes"
+  static = "slice_sizes",
+  tags = "linear"
 )
 
 #' @title Primitive Dynamic Update Slice
@@ -611,7 +617,8 @@ prim_dynamic_update_slice <- new_primitive(
       params = list(),
       infer_fn = infer_dynamic_update_slice
     )[[1L]]
-  }
+  },
+  tags = "linear"
 )
 
 
@@ -658,7 +665,7 @@ make_reduce_op <- function(infer_fn = infer_reduce_simple) {
 #' # reducing every axis gives a scalar
 #' prim_sum(x, axes = c(1L, 2L))
 #' @export
-prim_sum <- new_primitive("sum", make_reduce_op(), static = 2:3, tags = "reduction")
+prim_sum <- new_primitive("sum", make_reduce_op(), static = 2:3, tags = c("reduction", "linear"))
 
 #' @title Primitive Product Reduction
 #' @description
@@ -826,7 +833,7 @@ cum_extreme_op <- function(x, axis) {
 #' x <- nv_matrix(1:6, nrow = 2)
 #' prim_cumsum(x, axis = 1L)
 #' @export
-prim_cumsum <- new_primitive("cumsum", cum_op, static = 2L, tags = "cumulative")
+prim_cumsum <- new_primitive("cumsum", cum_op, static = 2L, tags = c("cumulative", "linear"))
 
 #' @title Primitive Cumulative Product
 #' @description
@@ -2256,7 +2263,8 @@ prim_rev <- new_primitive(
     axes <- resolve_axes(axes, naxes(x), unique = TRUE)
     graph_desc_add(self, list(x = x), list(axes = axes), infer_fn = infer_reverse)[[1L]]
   },
-  static = 2L
+  static = 2L,
+  tags = "linear"
 )
 
 #' @title Primitive Iota
@@ -2355,7 +2363,8 @@ prim_pad <- new_primitive(
       infer_fn = infer_pad
     )[[1L]]
   },
-  static = 3:5
+  static = 3:5,
+  tags = "linear"
 )
 
 #' @title Primitive Round
@@ -3721,7 +3730,8 @@ prim_gather <- new_primitive(
   },
   # `x` and `start_indices` are operands of different kinds and never meet at
   # one data type, so there is nothing for a promotion rule to do.
-  static = 3:11
+  static = 3:11,
+  tags = "linear"
 )
 
 #' @title Primitive Cholesky Decomposition
