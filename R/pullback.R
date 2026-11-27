@@ -665,10 +665,16 @@ trace_value_and_grad <- function(f, args, wrt, fn, call = rlang::caller_env()) {
 #' that takes a cotangent of the result and returns the corresponding cotangent
 #' back to the arguments, by reverse-mode automatic differentiation. That is
 #' the cotangent times the Jacobian of `.f`, the vector-Jacobian product.
-#' Where [`gradient()`] differentiates a function that returns a single float
-#' scalar, a pullback differentiates one with any result: it gives the
-#' gradient of the sum of the result's elements, each weighted by its
-#' cotangent.
+#'
+#' For \eqn{f: \mathbb{R}^n \to \mathbb{R}^m}{f: R^n -> R^m}, whose Jacobian
+#' \eqn{J_f(x)}{J_f(x)} at \eqn{x}{x} is the \eqn{m \times n}{m x n} matrix of
+#' the derivatives \eqn{\partial f_i / \partial x_j}{d f_i / d x_j}, the
+#' pullback at \eqn{x}{x} is the linear map
+#' \deqn{w \mapsto J_f(x)^\top w}{w -> t(J_f(x)) w}
+#' from a cotangent \eqn{w \in \mathbb{R}^m}{w in R^m} of the result to the
+#' gradient of the weighted sum \eqn{\sum_i w_i f_i(x)}{sum_i w_i f_i(x)}. With
+#' the \eqn{i}{i}-th unit vector as \eqn{w}{w}, it gives the \eqn{i}{i}-th row
+#' of the Jacobian.
 #'
 #' * `pullback()` returns only the pullback.
 #' * `value_and_pullback()` returns both the result of `.f` and its pullback.

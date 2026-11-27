@@ -1,5 +1,6 @@
 ---
 title: "Automatic Differentiation"
+bibliography: references.bib
 ---
 
 ```{r, include = FALSE}
@@ -9,240 +10,63 @@ knitr::opts_chunk$set(
 )
 ```
 
-In this article, you will learn how to compute gradients of functions with {anvl}.
+In this article, you will learn how to compute derivatives of functions with {anvl}.
 If you haven't yet, read the [Get Started](anvl.html) article first, which uses gradients to fit a linear model.
 
-## Computing Gradients
+{anvl} differentiates a function in one of two modes: *forward mode* computes its *pushforward*, and *reverse mode* its *pullback*.
+Both are products of the Jacobian of the function with a vector.
+For $f: \mathbb{R}^n \to \mathbb{R}^m$, the Jacobian at $x$ is the $m \times n$ matrix $J_f(x)$ whose entry $(i, j)$ is the derivative of the $i$-th element of the result with respect to the $j$-th element of the arguments:
 
-`gradient()` takes a function and returns a new function that computes its gradient.
-Consider $f(x) = \sum_i x_i^2$, whose gradient is $2x$:
+$$
+J_f(x) = \begin{pmatrix}
+  \frac{\partial f_1}{\partial x_1}(x) & \cdots & \frac{\partial f_1}{\partial x_n}(x) \\
+  \vdots & \ddots & \vdots \\
+  \frac{\partial f_m}{\partial x_1}(x) & \cdots & \frac{\partial f_m}{\partial x_n}(x)
+\end{pmatrix}
+$$
+
+The pushforward and the pullback of $f$ at $x$ are the linear maps
+
+$$
+\text{pushforward: } v \mapsto J_f(x) \, v
+\qquad\qquad
+\text{pullback: } w \mapsto J_f(x)^\top w
+$$
+
+- The pushforward takes a direction to move the arguments in -- their *tangent* $v \in \mathbb{R}^n$ -- to the derivative of the result along that direction.
+  With the $j$-th unit vector as $v$, it gives the $j$-th column of the Jacobian: the derivatives of all elements of the result with respect to the $j$-th element of the arguments.
+- The pullback takes a *cotangent* $w \in \mathbb{R}^m$ -- a weight for each element of the result -- back to the arguments, to the gradient of the weighted sum $\sum_{i=1}^m w_i f_i(x)$.
+  With the $i$-th unit vector as $w$, it gives the $i$-th row of the Jacobian: the derivatives of the $i$-th element of the result with respect to all elements of the arguments.
+
+`pushforward()` and `pullback()` compute them.
+Each takes a function and the arguments to evaluate it at, as a call of the function would, and returns the pushforward or the pullback there, as a function of the tangent or of the cotangent.
+For the elementwise square $f(x) = x^2$, the Jacobian is diagonal with entries $2 x_i$, so the pushforward and the pullback along the first unit vector both give $(2 x_1, 0, 0)$, its first column and its first row:
 
 ```{r}
 library(anvl)
 
-f <- function(x) sum(x^2)
-f_grad <- jit(gradient(f))
-
-f_grad(nv_array(c(1, 2, 3)))
-```
-
-The gradient function has the same arguments as `f`, and returns a named list with one gradient per argument.
-Each gradient has the same shape and data type as its argument.
-
-Note that the result of `gradient()` must be jitted.
-This is because {anvl} computes gradients by transforming the traced program of `f`, which only exists within `jit()`.
-
-## Differentiable Functions
-
-The function that is differentiated must return a single float scalar, such as a loss.
-If you are interested in the derivative of a function that returns an array, reduce it to a scalar first, or use `pullback()` (see [below](#pullbacks)).
-For an elementwise function such as `sin()`, the gradient of `sum(sin(x))` is exactly the elementwise derivative `cos(x)`:
-
-```{r, error = TRUE}
-jit(gradient(function(x) sin(x)))(nv_array(c(0, pi)))
-
-jit(gradient(function(x) sum(sin(x))))(nv_array(c(0, pi)))
-```
-
-Gradients can only be computed with respect to float arrays, because the derivative with respect to an integer or boolean is not defined.
-
-```{r, error = TRUE}
-jit(gradient(f))(nv_array(1:3))
-```
-
-Bare R values cannot be differentiated with respect to either, even if they are doubles.
-They only take their data type from how the function uses them, so the data type of the gradient would not be determined by the caller.
-Convert them to an `AnvlArray` first:
-
-```{r, error = TRUE}
-jit(gradient(f))(arr(1, 2, 3))
-jit(gradient(f))(nv_array(c(1, 2, 3)))
-```
-
-## Selecting Arguments with `wrt`
-
-By default, the gradient is computed with respect to all arguments.
-The `wrt` argument selects a subset of them, by name or position.
-This is necessary when some arguments are not float arrays, e.g. data that is not being optimized over, or static arguments:
-
-```{r}
-power_sum <- function(x, p) sum(x^p)
-power_sum_grad <- jit(gradient(power_sum, wrt = "x"), static = "p")
-
-power_sum_grad(nv_array(c(1, 2)), p = 3L)
-```
-
-## Nested Inputs
-
-Arguments can also be (nested) lists of arrays, as is common for the parameters of a model.
-The gradient then has the same structure as the argument:
-
-```{r}
-loss <- function(params, x, y) {
-  y_hat <- x * params$w + params$b
-  mean((y_hat - y)^2)
-}
-loss_grad <- jit(gradient(loss, wrt = "params"))
-
-params <- list(w = nv_scalar(1), b = nv_scalar(0))
-x <- nv_array(c(1, 2, 3))
-y <- nv_array(c(2, 4, 6))
-
-loss_grad(params, x, y)
-```
-
-This makes it easy to update all parameters at once with `pmap_tree()`, which applies a function to the corresponding `AnvlArray`s of several lists with the same structure.
-
-```{r}
-grads <- loss_grad(params, x, y)$params
-pmap_tree(list(params, grads), \(p, g) p - 0.1 * g)
-```
-
-## Value and Gradient
-
-When fitting a model, one usually needs both the value of the loss and its gradient.
-Instead of calling the function and its gradient separately, `value_and_gradient()` computes both in a single pass:
-
-```{r}
-loss_vg <- jit(value_and_gradient(loss, wrt = "params"))
-loss_vg(params, x, y)
-```
-
-## Pullbacks
-
-For a function with any other result, `pullback()` evaluates it and returns its *pullback*.
-The pullback takes a cotangent -- a weight for each element of the result -- back to the arguments.
-For $f: \mathbb{R}^n \to \mathbb{R}^m$ evaluated at $x$, it maps a cotangent $w \in \mathbb{R}^m$ to the gradient of the result's elements summed with the weights $w$, which is the transposed Jacobian of $f$ applied to $w$:
-
-$$w \mapsto \nabla_x \sum_{j=1}^m w_j f_j(x) = J_f(x)^\top w$$
-
-`pullback()` takes the arguments as a call of the function would, and the pullback returns the same named list as `gradient()`:
-
-```{r}
 f <- function(x) x^2L
+x <- nv_array(c(1, 2, 3))
+e1 <- nv_array(c(1, 0, 0))
+
+f_pushforward <- jit(function(x, v) pushforward(f, x)(v))
+f_pushforward(x, e1)
+
 f_pullback <- jit(function(x, w) pullback(f, x)(w))
-f_pullback(nv_array(c(1, 2, 3)), nv_array(c(1, 0, 1)))
+f_pullback(x, e1)
 ```
 
-`value_and_pullback()` returns the result of the function as well, as `value_and_gradient()` does.
-The pullback can be called several times, while the function runs only once.
-
-The cotangent is structured like the result.
-`NULL` stands for zeros in place of an array or of a whole part of it:
+The pushforward takes the tangents as the function takes its arguments, and returns the tangent of the result, structured like the result.
+The pullback takes a cotangent structured like the result, and returns a named list with one derivative per argument.
+In a cotangent, `NULL` stands for zeros, in place of a single array or of a whole sublist of arrays:
 
 ```{r}
 stats <- function(x) list(total = sum(x), squares = x^2L)
-jit(function(x) pullback(stats, x)(list(total = 1, squares = NULL)))(nv_array(c(1, 2, 3)))
+stats_pullback <- jit(function(x) pullback(stats, x)(list(total = 1, squares = NULL)))
+stats_pullback(x)
 ```
 
-Every float array among the arguments is differentiated.
-An argument that is not one, such as an integer array or an R value, is held fixed, and the pullback returns `NULL` for it.
-
-## Composing with `jit()`
-
-`gradient()` works on any function that can be traced, including jitted ones, and the gradient function can itself be called within other jitted functions.
-Because nested jitted functions are compiled together, it does not matter whether you jit `f`, its gradient, or the function that calls the gradient.
-Typically, you jit the outermost function, e.g. a complete step of the model fitting:
-
-```{r}
-fit_step <- jit(function(params, x, y, lr) {
-  out <- value_and_gradient(loss, wrt = "params")(params, x, y)
-  list(
-    loss = out$value,
-    params = pmap_tree(list(params, out$grad$params), \(p, g) p - lr * g)
-  )
-})
-
-for (i in 1:3) {
-  step <- fit_step(params, x, y, lr = 0.05)
-  params <- step$params
-  print(as_array(step$loss))
-}
-```
-
-## Non-Differentiable Operations
-
-Some operations have no meaningful derivative, e.g. comparisons.
-Where they only select values, gradients flow through the selected values.
-For example, in `nv_ifelse(x > 0, x, 0)`, the gradient is `1` where `x` is positive and `0` elsewhere:
-
-```{r}
-relu_sum <- function(x) sum(nv_ifelse(x > 0, x, 0))
-jit(gradient(relu_sum))(nv_array(c(-1, 2)))
-```
-
-Other functions, such as `max()` or `abs()`, are differentiable everywhere except at a few points.
-At these points, {anvl} follows the conventions of other frameworks such as PyTorch.
-
-## Control Flow
-
-`gradient()` differentiates through the control-flow functions `nv_if()` and `nv_scan()`.
-Values their functions close over are differentiated as well.
-For `nv_if()`, the gradient flows through the branch the predicate selects:
-
-```{r}
-f <- function(x, square) nv_if(square, \() sum(x^2), \() sum(x))
-f_grad <- jit(gradient(f, wrt = "x"))
-f_grad(nv_array(c(1, 2)), nv_scalar(TRUE))
-f_grad(nv_array(c(1, 2)), nv_scalar(FALSE))
-```
-
-A loop with a fixed number of steps can be written with `nv_scan()`.
-Below, `x` takes three steps of gradient descent on $\sum_i x_i^2$, and we differentiate the loss it ends at with respect to the learning rate `lr`:
-
-```{r}
-loss_after_steps <- function(lr, x) {
-  step <- \(x, unused) list(carry = x - lr * 2 * x, out = NULL)
-  x_final <- nv_scan(x, body = step, steps = 3L)$carry
-  sum(x_final^2L)
-}
-jit(gradient(loss_after_steps, wrt = "lr"))(nv_scalar(0.1), nv_array(c(1, 2)))
-```
-
-In contrast, `gradient()` cannot differentiate `nv_while()`.
-Its number of iterations is only known when the program runs, so there is no fixed size for the intermediate states that computing the gradient needs to keep.
-Where the number of iterations is known, use `nv_scan()` instead.
-Where the derivative of what a loop computes has a formula of its own, `prim_custom_gradient()` attaches it.
-
-## Pushforwards
-
-`gradient()` and `pullback()` differentiate in *reverse mode*: they give the derivative of a single scalar -- or of a weighted sum of the result -- with respect to all arguments at once, which is efficient for functions with many inputs and one output, such as losses.
-`pushforward()` differentiates in *forward mode* instead.
-It evaluates a function and returns its *pushforward*, which takes a direction to move the arguments in -- their *tangents* -- to the derivative of the whole result along that direction, the product of the Jacobian with a vector.
-The pushforward takes the tangents as the function takes its arguments, and an argument without a tangent is held fixed.
-For $f(x) = x \sin(x)$, the tangent along $v$ is $(\sin(x) + x \cos(x)) v$:
-
-```{r}
-f <- function(x) x * sin(x)
-f_pushforward <- jit(function(x, v) pushforward(f, x)(v))
-f_pushforward(nv_array(c(0, 1, 2)), nv_array(c(1, 1, 1)))
-```
-
-Forward mode carries the tangents through `nv_if()`, `nv_scan()` and `nv_while()` along with the values, and keeps no intermediate states, so it differentiates `nv_while()` as well.
-Below, $x^4$ is computed by a while loop, and its tangent along $1$ is $4 x^3$:
-
-```{r}
-pow4 <- function(x) nv_while(list(i = 0L, y = x), \(i, y) i < 3L, \(i, y) list(i = i + 1L, y = y * x))$y
-jit(function(x) pushforward(pow4, x)(1))(nv_scalar(2))
-```
-
-`value_and_pushforward()` returns the result of the function as well.
-The two modes combine: the pushforward of the gradient along $v$ is the product of the Hessian with $v$:
-
-```{r}
-f_grad <- function(x) gradient(function(x) sum(x * sin(x)))(x)$x
-hvp <- jit(function(x, v) pushforward(f_grad, x)(v))
-hvp(nv_array(c(0, 1, 2)), nv_array(c(1, 0, 0)))
-```
-
-## Forward and Reverse Mode
-
-Both modes compute products with the Jacobian of a function $f: \mathbb{R}^n \to \mathbb{R}^m$ at $x$: the $m \times n$ matrix $J_f(x)$ whose entry $(i, j)$ is the derivative of the $i$-th element of the result with respect to the $j$-th element of the arguments.
-The pushforward computes $J_f(x) v$, and the pullback $J_f(x)^\top w$.
-With the $j$-th unit vector as $v$, the pushforward gives the $j$-th column of the Jacobian: the derivatives of all elements of the result with respect to the $j$-th element of the arguments.
-With the $i$-th unit vector as $w$, the pullback gives the $i$-th row: the derivatives of the $i$-th element of the result with respect to all elements of the arguments.
-
-Neither builds the Jacobian itself.
+Neither mode builds the full Jacobian itself, as that would be far more costly: it would take products of the Jacobians of the steps, which are matrices, while a product with a vector takes one product of a matrix with a vector per step.
 Take a function of two steps, $f(x) = g(h(x))$, with the intermediate result $z = h(x) \in \mathbb{R}^l$.
 By the chain rule, its Jacobian is the product of the Jacobians of the two steps, of sizes $m \times l$ and $l \times n$:
 
@@ -252,31 +76,64 @@ Multiplied with a vector, this product can be evaluated in an order in which eve
 
 - Forward mode evaluates it from the right, $J_f(x) v = J_g(z) \, (J_h(x) \, v)$.
   $J_h(x) v$ is the tangent of $z$, computed along with $z$ itself, and $J_g(z)$ applied to it gives the tangent of the result, along with the result.
-  The tangents move forward through the function together with the values.
 - Reverse mode evaluates it from the left, $J_f(x)^\top w = J_h(x)^\top \, (J_g(z)^\top w)$.
-  The first product needs $J_g$ at $z$, a value the function only computes on its way to the result.
-  So the function runs forward first, keeping the intermediate values its derivatives need, and then the cotangents move backward from the result to the arguments.
+  The first product needs $J_g$ at $z$, a value the function only computes on its way to the result, so the function has to run forward first.
 
-A function of many steps works the same way, so reverse mode needs memory for the intermediate values of the forward pass, which forward mode does not.
+A function of many steps works the same way, on its *computational graph*, whose nodes are the values the function computes -- the *primals* -- and whose edges lead from the operands of each step to its result.
+The figure below shows both modes on the same graph.
+Forward mode (left) pushes the primals and their tangents through the graph together, in a single pass from the arguments to the result: every step computes the tangent of its result from the primals and tangents of its operands.
+Reverse mode (right) takes two passes.
+The first runs the function forward, computing the primals and keeping those that the derivative rules need.
+The second goes backward, from the result to the arguments: every step passes the cotangent of its result on to its operands, and a primal that several steps use, such as $x_1$, sums the cotangents they pass it.
 
-A pushforward or a pullback costs a small multiple of evaluating $f$, and the whole Jacobian takes $n$ pushforwards, one per column, or $m$ pullbacks, one per row.
-Reverse mode therefore suits a loss: with $m = 1$, a single pullback -- which is what `gradient()` computes -- gives the derivatives with respect to all parameters, however many there are.
-Forward mode suits the opposite case of few inputs and many outputs, such as the derivative of a whole curve with respect to a single parameter, which one pushforward gives:
-
-```{r}
-curve <- function(t, a) sin(a * t)
-t <- nv_array(seq(0, 1, by = 0.25))
-jit(function(t, a) pushforward(curve, t, a)(a = 1))(t, nv_scalar(2))
+```{r, echo = FALSE, out.width = "100%", fig.align = "center"}
+knitr::include_graphics("figures/autodiff-modes.png")
 ```
 
-In reverse mode, the same derivatives would take one pullback per point of the curve.
+So reverse mode needs memory for the primals it keeps, which forward mode does not.
 
-## Limitations
+Applied to all unit vectors at once, the two orders multiply the Jacobian with an identity matrix: forward mode with $I_n$ from the right, one pushforward per column, and reverse mode with $I_m$ from the left, one pullback per row:
 
-- Not every primitive has a derivative yet, so some functions cannot be differentiated.
-  The *Pullback* column of the [Primitives Reference](primitives.html) shows which primitives implement it.
-  If a derivative is missing and you need it, you can add a pullback rule to the primitive yourself, as shown in the [add the pullback rule](extending_primitive.html#step-3-add-the-pullback-rule) step of the Adding a Primitive article.
+$$
+\text{forward: } J_f(x) \, I_n
+\qquad\qquad
+\text{reverse: } I_m \, J_f(x)
+$$
 
-## How It Works
+Both give the whole Jacobian, but each pushforward and each pullback costs a small multiple of evaluating $f$, so the work grows with $n$ in forward mode and with $m$ in reverse mode.
+Reverse mode is therefore cheaper when $n \gg m$, and forward mode when $n \ll m$.
 
-See the [transforming graphs into other graphs](internals.html#transforming-graphs-into-other-graphs) and [`gradient()`](internals.html#gradient) sections of the internals article for how {anvl} computes gradients, and the [Adding a Primitive](extending_primitive.html) article for how to write a pullback rule.
+For a function whose result is a single float scalar, such as a loss, the pullback of the cotangent `1` is the gradient, which `gradient()` computes directly.
+It returns a function with the same arguments, which returns their gradients:
+
+```{r}
+g <- function(x) mean(f(x))
+g_gradient <- jit(gradient(g))
+g_gradient(x)
+```
+
+The `wrt` argument of `gradient()` selects the arguments to differentiate, and `value_and_gradient()` returns the value of the function as well.
+
+The two modes also combine: the pushforward of the gradient along $v$ is the product of the Hessian with $v$:
+
+```{r}
+g_grad_x <- function(x) gradient(g)(x)$x
+hvp <- jit(function(x, v) pushforward(g_grad_x, x)(v))
+hvp(x, e1)
+```
+
+Differentiating the gradient in forward mode, *forward over reverse*, is the standard way to compute such Hessian-vector products: one costs a small constant multiple of evaluating the function.
+A full Hessian takes $n$ of them, one per column, or fewer when it is sparse.
+See @griewank2008evaluating [chapters 5 and 8] for more.
+
+Some functions, such as `abs()`, `max()` or a comparison like `x > 0`, are differentiable everywhere except on a set of measure zero; a comparison is constant almost everywhere, so its derivative is zero there.
+At the points where they are not differentiable, {anvl} follows the conventions of other frameworks such as PyTorch.
+For example, `nv_ifelse(x > 0, x, 0)` only uses the comparison to select values, so the gradient is `1` where `x` is positive and `0` elsewhere:
+
+```{r}
+relu_sum <- function(x) sum(nv_ifelse(x > 0, x, 0))
+relu_sum_gradient <- jit(gradient(relu_sum))
+relu_sum_gradient(nv_array(c(-1, 2)))
+```
+
+For how {anvl} computes derivatives, see the [transforming graphs into other graphs](internals.html#transforming-graphs-into-other-graphs) and [`gradient()`](internals.html#gradient) sections of the internals article, and for how to write the derivative rules of a primitive, the [Adding a Primitive](extending_primitive.html) article.

@@ -202,11 +202,13 @@ Each rule of each primitive should be tested. Tests are organized as:
 - `tests/testthat/test-primitives-pullback.R` -- sources `inst/extra-tests/test-primitives-pullback-torch.R`
 - `tests/testthat/test-primitives-pushforward.R` -- an autotest: every primitive with a
   pushforward rule of its own needs an entry in `pushforward_cases` (inputs from its domain, the
-  arguments to differentiate), and each entry is checked against central differences, against the
-  pullback (`<u, J t> == <J^T u, t>`), and forward-over-reverse against central differences of
-  the gradient. A rule derived from a tag (`"elementwise"`, `"linear"`) needs no entry: a few
-  `derived_cases` and `linear_cases` check the derivations themselves. torch has no forward mode
-  to compare with.
+  arguments to differentiate), and each entry is checked against the pullback: every element of
+  the tangent `J t` against `<J^T e_i, t>`, and forward-over-reverse against reverse-over-reverse
+  (the Hessian is symmetric). A primitive without a pullback rule (`prim_while()`) is checked
+  against the pullback of a `reference` that computes the same without it. A rule derived from a
+  tag needs no entry: one example (`prim_mul`) checks the derivation from the pullback rule (tag
+  `"elementwise"`), and a few `linear_cases` that of a `"linear"` primitive. torch has no forward
+  mode to compare with.
 - `tests/testthat/test-primitives-vectorize.R` -- every vectorize rule through `autotest_vectorize()`
   (`helper-vectorize.R`), which compares against applying the primitive slice by slice
 
