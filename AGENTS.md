@@ -132,6 +132,7 @@ Primitives are `AnvlPrimitive` callables constructed by `new_primitive()` (defin
   Rules receive a trailing batch axis, so existing axis indices keep their values. Use
   `vec_shape()`, `vec_axis_map()`, and `vec_per_axis()` to adapt parameters to the batch axis.
   The generic rule broadcasts unmapped operands. Supply `fn` when a primitive needs custom batching.
+- **`decomposition`** -- An internal composition of primitives with the same operands, static parameters, and output types. A composition takes no captured arrays and uses no side effects. Ordinary tracing records a single call to the original primitive. StableHLO lowering expands it when a specialized rule is absent or returns `use_decomposition()`. Reverse-mode autodiff expands it when the primitive has no explicit pullback rule.
 
 ## Side Effects
 

@@ -247,3 +247,39 @@ subgraphs <- function(statement) {
     p$subgraphs
   )
 }
+
+# Returned by a lowering rule that has no specialized lowering for a call, so
+# the lowering expands the primitive's decomposition instead.
+use_decomposition <- function() {
+  structure(list(), class = "UseDecomposition")
+}
+
+is_use_decomposition <- function(x) {
+  inherits(x, "UseDecomposition")
+}
+
+# A decomposition is a pure function of the primitive's operands and static
+# parameters. Trace it with abstract operands so both lowering and autodiff
+# can bind the resulting graph to the values in their enclosing program.
+trace_primitive_decomposition <- function(call) {
+  decompose <- call$primitive[["decomposition"]]
+  if (is.null(decompose)) {
+    cli_abort("No decomposition for primitive {.field {call$primitive$name}}.")
+  }
+  operands <- lapply(call$inputs, function(input) abstract_aval(input$aval))
+  graph <- trace_fn(
+    function(...) {
+      rlang::exec(decompose, !!!list(...), !!!call$params)
+    },
+    args = unname(operands)
+  )
+  if (length(graph$constants) || length(graph$side_effects)) {
+    cli_abort("Primitive {.field {call$primitive$name}} must decompose without captured arrays or side effects.")
+  }
+  outputs <- lapply(graph$outputs, function(x) abstract_aval(x$aval))
+  expected <- lapply(call$outputs, function(x) abstract_aval(x$aval))
+  if (!identical(outputs, expected)) {
+    cli_abort("The decomposition of primitive {.field {call$primitive$name}} returned unexpected output types.")
+  }
+  graph
+}

@@ -118,6 +118,108 @@ prim_dot_general[["stablehlo"]] <- function(lhs, rhs, contracting_axes, batching
   ))
 }
 
+prim_scaled_dot_product_attention[["stablehlo"]] <- function(x, key, value, scale, causal, compute_dtype) {
+  query_shape <- r_shape(x)
+  value_shape <- r_shape(value)
+  dt <- as.character(dtype(x))
+  compute_dtype <- compute_dtype %||% dt
+  feature_size <- query_shape[[1L]]
+  compute_capability <- current_compute_capability()
+  # cuDNN's fused attention needs an Ampere GPU or newer.
+  if (
+    !identical(current_platform(), "cuda") ||
+      is.null(compute_capability) ||
+      compute_capability < "8.0" ||
+      !compute_dtype %in% c("bf16", "f16") ||
+      !all(query_shape > 0L) ||
+      !all(value_shape > 0L) ||
+      feature_size != value_shape[[1L]] ||
+      feature_size > 128L ||
+      feature_size %% 8L != 0L ||
+      (causal && query_shape[[2L]] != value_shape[[2L]])
+  ) {
+    return(use_decomposition())
+  }
+
+  # Reversed XLA axes already put the contiguous feature axis last.
+  x <- hlo_convert(x, compute_dtype)
+  key <- hlo_convert(key, compute_dtype)
+  value <- hlo_convert(value, compute_dtype)
+  scale <- scale %||% (1 / sqrt(feature_size))
+  out <- hlo_cudnn_attention(x, key, value, scale, causal)
+  list(hlo_convert(out, dt))
+}
+
+# XLA's cuDNN FMHA custom call expects [batch, heads, positions, features]
+# in row-major layout, plus a second result for compiler-sized workspace.
+hlo_cudnn_attention <- function(x, key, value, scale, causal) {
+  reshape_for_cudnn <- function(x) {
+    shp <- shape(x)
+    rank <- length(shp)
+    if (rank == 4L) {
+      return(x)
+    }
+    heads <- if (rank >= 3L) shp[[rank - 2L]] else 1L
+    batch <- prod(shp[seq_len(max(0L, rank - 3L))])
+    hlo_reshape(x, c(batch, heads, tail(shp, 2L)))
+  }
+  query_shape <- shape(x)
+  x <- reshape_for_cudnn(x)
+  key <- reshape_for_cudnn(key)
+  value <- reshape_for_cudnn(value)
+  bnth <- shape(x)
+  value_bnth <- shape(value)
+  layout <- 3:0
+  # Protobuf repeated fields require JSON arrays, including singleton axes.
+  dot_axes <- function(rhs_contracting) {
+    list(
+      lhs_contracting_dimensions = list("3"),
+      rhs_contracting_dimensions = list(rhs_contracting),
+      lhs_batch_dimensions = c("0", "1"),
+      rhs_batch_dimensions = c("0", "1")
+    )
+  }
+  config <- jsonlite::toJSON(
+    list(
+      cudnn_fmha_backend_config = list(
+        algorithm = list(
+          algo_id = "0",
+          math_type = "TENSOR_OP_MATH",
+          tuning_knobs = list("17" = "1", "24" = "0"),
+          is_cudnn_frontend = TRUE,
+          workspace_size = "0"
+        ),
+        fmha_scale = scale,
+        intermediate_tensor_shape = list(
+          element_type = toupper(as.character(dtype(x))),
+          dimensions = as.character(c(bnth[1:3], value_bnth[[3L]])),
+          layout = list(minor_to_major = as.character(layout))
+        ),
+        is_flash_attention = TRUE,
+        mask_type = if (causal) "CAUSAL" else "NO_MASK",
+        max_seg_per_batch = 1L,
+        bmm1_dot_dimension_numbers = dot_axes("3"),
+        bmm2_dot_dimension_numbers = dot_axes("2")
+      )
+    ),
+    auto_unbox = TRUE,
+    digits = NA
+  )
+  out <- hlo_custom_call(
+    x,
+    key,
+    value,
+    call_target_name = "__cudnn$fmhaSoftmax",
+    api_version = 2L,
+    has_side_effect = FALSE,
+    backend_config = as.character(config),
+    output_types = list(vt(dtype(x), bnth), vt("ui8", 0L)),
+    operand_layouts = rep(list(layout), 3L),
+    result_layouts = list(layout, 0L)
+  )[[1L]]
+  if (length(query_shape) == 4L) out else hlo_reshape(out, query_shape)
+}
+
 prim_transpose[["stablehlo"]] <- function(x, perm, output_types) {
   list(hlo_transpose(x, xla_perm(perm), output_types = output_types))
 }
@@ -985,12 +1087,7 @@ prim_scan[["stablehlo"]] <- function(..., body, steps, reverse, n_carry, n_xs, n
 # operations are lowered in place. `rule` and `forward` are not lowered: a
 # gradient is traced, as anvl operations, before the program is lowered.
 prim_custom_gradient[["stablehlo"]] <- function(..., fn, rule, forward, n_captures) {
-  env <- HloEnv()
-  ins <- list(...)
-  for (k in seq_along(fn$inputs)) {
-    env_add(env, fn$inputs[[k]], ins[[k]])
-  }
-  lower_graph_calls(fn, env, stablehlo::.current_func())
+  inline_stablehlo_graph(fn, list(...), stablehlo::.current_func())
 }
 
 prim_sort[["stablehlo"]] <- function(..., axis, decreasing, stable) {

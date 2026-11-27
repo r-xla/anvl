@@ -432,6 +432,9 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
   for (i in seq_along(graph$statements)) {
     call <- graph$statements[[i]]
     rule <- call$primitive[["pullback"]]
+    if (is.null(rule) && !is.null(call$primitive[["decomposition"]])) {
+      rule <- decomposition_pullback_rule(call)
+    }
 
     needs_grad <- is.null(required_env) ||
       any(vapply(call$inputs, \(x) !is_graph_literal(x) && isTRUE(required_env[[x]]), logical(1L)))
@@ -489,6 +492,26 @@ rebuild_forward_into <- function(graph, desc, inputs = NULL, required_env = NULL
   }
 
   list(trans = trans, backwards = backwards, translate = translate_gnode, box_of = box_for)
+}
+
+decomposition_pullback_rule <- function(call) {
+  force(call)
+  rule_pullback(forward = function(inputs, params, required) {
+    graph <- trace_primitive_decomposition(call)
+    reqs <- list(
+      required_env = requirements_from(graph, graph$inputs[required]),
+      requires_grad = required
+    )
+    result <- graph_pullback(graph, reqs, inputs)
+    list(
+      outputs = result$value,
+      backward = function(inputs, outputs, grads, params, required) {
+        cotangents <- vector("list", length(required))
+        cotangents[required] <- result$pullback(grads)
+        cotangents
+      }
+    )
+  })
 }
 
 # Replays `graph` into the current descriptor as a function of `inputs`

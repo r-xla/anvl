@@ -458,6 +458,7 @@ reference:
       - compile_pjrt
       - stablehlo
       - current_platform
+      - current_compute_capability
       - local_platform
 
   - subtitle: Tree

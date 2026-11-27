@@ -102,6 +102,10 @@ env_get <- function(env, gval) {
 #'   [`current_platform()`]) can branch on it. `NULL` (the default)
 #'   leaves the current value untouched — recursive calls from higher-order
 #'   primitives inherit the platform of the enclosing call.
+#' @param compute_capability (`NULL` | `character(1)`)\cr
+#'   Compute capability of the target CUDA device (e.g. `"8.6"`), which
+#'   lowering rules query via [`current_compute_capability()`]. Set together
+#'   with `platform`; `NULL` means it is unknown.
 #' @return (`list`)\cr
 #'   Of length 4:
 #'   - the [`stablehlo::Func`]
@@ -145,11 +149,14 @@ stablehlo <- function(
   captured = list(),
   donate = character(),
   donate_unaliased_outputs = FALSE,
-  platform = NULL
+  platform = NULL,
+  compute_capability = NULL
 ) {
   assert_string(id)
   if (!is.null(platform)) {
-    local_platform(platform)
+    local_platform(platform, compute_capability)
+  } else if (!is.null(compute_capability)) {
+    cli_abort("{.arg compute_capability} needs a {.arg platform}.")
   }
   # GraphNode -> FuncValue
   env <- HloEnv()
@@ -313,7 +320,11 @@ lower_graph_calls <- function(graph, env, func) {
         list(output_types = lapply(call$outputs, function(o) at2vt(o$aval)))
       )
     }
-    fvals_out <- rlang::exec(rule, !!!c(inputs, params))
+    fvals_out <- if (is.null(rule)) use_decomposition() else rlang::exec(rule, !!!c(inputs, params))
+    if (is_use_decomposition(fvals_out)) {
+      graph <- trace_primitive_decomposition(call)
+      fvals_out <- inline_stablehlo_graph(graph, inputs, func)
+    }
     if (length(call$outputs) != length(fvals_out)) {
       cli_abort("Expected {length(call$outputs)} outputs, but got {length(fvals_out)}")
     }
@@ -332,6 +343,14 @@ lower_graph_calls <- function(graph, env, func) {
   })
 }
 
+inline_stablehlo_graph <- function(graph, inputs, func) {
+  env <- HloEnv()
+  for (i in seq_along(graph$inputs)) {
+    env_add(env, graph$inputs[[i]], inputs[[i]])
+  }
+  lower_graph_calls(graph, env, func)
+}
+
 #' @title Current Lowering Target Platform
 #' @description
 #' Returns the target platform currently set by an enclosing [`stablehlo()`]
@@ -340,23 +359,36 @@ lower_graph_calls <- function(graph, env, func) {
 #' targeting CUDA with `m < n` because cuSOLVER's `gesvd` requires `m >= n`.
 #' Returns `NULL` outside of a lowering call.
 #'
-#' [`local_platform()`] sets the current platform for the duration of the
-#' calling scope, restoring the previous value via [`withr::defer()`] when the
-#' scope exits. Useful in tests and for manually exercising platform-aware
-#' lowering rules outside of a [`stablehlo()`] call.
+#' [`current_compute_capability()`] returns the compute capability of the
+#' target CUDA device, for rules whose lowering needs a newer GPU (e.g. cuDNN's
+#' fused attention, which needs `8.0`). It is `NULL` when the target is not a
+#' CUDA device or the lowering does not know which one.
+#'
+#' [`local_platform()`] sets the current platform and compute capability for
+#' the duration of the calling scope, restoring the previous values via
+#' [`withr::defer()`] when the scope exits. Useful in tests and for manually
+#' exercising platform-aware lowering rules outside of a [`stablehlo()`] call.
 #' @param platform (`character(1)` | `NULL`)\cr
 #'   Target platform name (e.g. `"cpu"`, `"cuda"`), or `NULL` to clear it.
+#' @param compute_capability (`character(1)` | `NULL`)\cr
+#'   Compute capability of the target CUDA device (e.g. `"8.6"`), or `NULL`
+#'   when it is unknown.
 #' @param envir (`environment`)\cr
-#'   Environment whose exit triggers restoration of the previous platform.
-#' @return (`NULL` | `character(1)`)\cr
+#'   Environment whose exit triggers restoration of the previous values.
+#' @return
+#'   `current_platform()`: (`NULL` | `character(1)`)\cr
 #'   The current platform.
+#'
+#'   `current_compute_capability()`: (`NULL` | [`numeric_version`])\cr
+#'   The current compute capability.
+#'
 #'   `local_platform()` invisibly returns the previous platform.
 #' @seealso [`stablehlo()`]
 #' @examples
 #' current_platform()
 #' f <- function() {
-#'   local_platform("cuda")
-#'   current_platform()
+#'   local_platform("cuda", compute_capability = "8.6")
+#'   list(current_platform(), current_compute_capability() >= "8.0")
 #' }
 #' f()
 #' @export
@@ -366,14 +398,26 @@ current_platform <- function() {
 
 #' @rdname current_platform
 #' @export
-local_platform <- function(platform, envir = parent.frame()) {
-  old <- globals[["lowering_platform"]]
+current_compute_capability <- function() {
+  globals[["lowering_compute_capability"]]
+}
+
+#' @rdname current_platform
+#' @export
+local_platform <- function(platform, compute_capability = NULL, envir = parent.frame()) {
+  assert_string(compute_capability, null.ok = TRUE)
+  old_platform <- globals[["lowering_platform"]]
+  old_compute_capability <- globals[["lowering_compute_capability"]]
   globals[["lowering_platform"]] <- platform
+  globals[["lowering_compute_capability"]] <- if (!is.null(compute_capability)) {
+    numeric_version(compute_capability)
+  }
   withr::defer(
     {
-      globals[["lowering_platform"]] <- old
+      globals[["lowering_platform"]] <- old_platform
+      globals[["lowering_compute_capability"]] <- old_compute_capability
     },
     envir = envir
   )
-  invisible(old)
+  invisible(old_platform)
 }

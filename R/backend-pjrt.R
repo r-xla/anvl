@@ -224,11 +224,15 @@ compile_pjrt <- function(
 # inputs, and calls the entry's `on_success` after a run.
 compile_graph_pjrt <- function(graph, donate = character(), device, xla_options = list()) {
   platform_name <- if (is.character(device)) device else platform(device)
+  compute_capability <- if (identical(platform_name, "cuda")) {
+    pjrt::device_attributes(device)$compute_capability
+  }
   out <- stablehlo(
     graph,
     donate = donate,
     donate_unaliased_outputs = TRUE,
-    platform = platform_name
+    platform = platform_name,
+    compute_capability = compute_capability
   )
   func <- out[[1L]]
   constants <- out[[2L]]

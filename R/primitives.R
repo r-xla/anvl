@@ -318,6 +318,102 @@ prim_dot_general <- new_primitive(
   static = 3:5
 )
 
+#' @title Primitive Scaled Dot-Product Attention
+#' @description
+#' Computes softmax of the scaled query-key scores over the key positions,
+#' then uses those probabilities to weight the values.
+#' @param x ([`arrayish`])\cr
+#'   Queries with shape `c(query_features, query_positions, batch_shape)`.
+#'   Trailing batch axes can include an attention head axis. The feature axis
+#'   is contiguous in column-major order.
+#' @param key ([`arrayish`])\cr
+#'   Keys with shape `c(query_features, key_positions, batch_shape)`.
+#' @param value ([`arrayish`])\cr
+#'   Values with shape `c(value_features, key_positions, batch_shape)`.
+#'   All three arrays must have the same floating-point data type and batch
+#'   shape. The key sequence and query feature axis must be nonempty.
+#' @param scale (`numeric(1)` | `NULL`)\cr
+#'   Static multiplier for the query-key scores. `NULL` uses
+#'   `1 / sqrt(query_features)`.
+#' @param causal (`logical(1)`)\cr
+#'   Static flag. If true, each query can attend only to keys at or before
+#'   its own position, counting both sequences from the start.
+#' @param compute_dtype (`character(1)` | `NULL`)\cr
+#'   Static precision for the query, key and value operands, either `"f16"`
+#'   or `"bf16"`. The returned array keeps the original data type.
+#'   `NULL` computes at the input data type.
+#' @return ([`arrayish`])\cr
+#'   An array with shape `c(value_features, query_positions, batch_shape)`
+#'   and the input data type.
+#' @templateVar primitive_id scaled_dot_product_attention
+#' @template section_rules
+#' @section StableHLO:
+#' On a CUDA GPU of compute capability 8.0 (Ampere) or newer, setting
+#' `compute_dtype` uses cuDNN's fused Flash Attention kernel when the query
+#' and value feature axes have the
+#' same size, a multiple of eight up to 128. Causal Flash Attention also
+#' requires equal query and key sequence axis sizes.
+#' The portable lowering uses batched dot products and max-shifted softmax.
+#' If `compute_dtype` is set, it rounds the operands to that data type and
+#' computes in `f32`. Differentiation uses the portable path on all devices.
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_matrix(c(1, 0, 0, 1), nrow = 2, dtype = "f32")
+#' prim_scaled_dot_product_attention(x, x, x, causal = TRUE)
+#' @export
+prim_scaled_dot_product_attention <- new_primitive(
+  "scaled_dot_product_attention",
+  function(x, key, value, scale = NULL, causal = FALSE, compute_dtype = NULL) {
+    operands <- apply_promotion(list(x = x, key = key, value = value), promotion_rdata_common())
+    graph_desc_add(
+      self,
+      operands,
+      list(scale = scale, causal = causal, compute_dtype = compute_dtype),
+      infer_fn = infer_scaled_dot_product_attention
+    )[[1L]]
+  },
+  static = c("scale", "causal", "compute_dtype")
+)
+
+prim_scaled_dot_product_attention[["decomposition"]] <- function(x, key, value, scale, causal, compute_dtype) {
+  rank <- naxes(x)
+  dt <- as.character(dtype(x))
+  scale <- scale %||% (1 / sqrt(shape(x)[[1L]]))
+  compute_dtype <- compute_dtype %||% dt
+  half <- compute_dtype %in% c("f16", "bf16")
+  if (half) {
+    to_compute <- function(x) prim_convert(prim_convert(x, compute_dtype), "f32")
+    x <- to_compute(x)
+    key <- to_compute(key)
+    value <- to_compute(value)
+  }
+
+  batch_axes <- seq_len(rank - 2L) + 2L
+  scores <- prim_dot_general(x, key, list(1L, 1L), list(batch_axes, batch_axes))
+  scores <- prim_mul(scores, scale)
+  score_shape <- shape(scores)
+  if (causal) {
+    q <- prim_iota(1L, score_shape, "i32")
+    k <- prim_iota(2L, score_shape, "i32")
+    scores <- prim_ifelse(prim_ge(q, k), scores, -Inf)
+  }
+
+  # The scores' axes are query, key, then batch. The maximum is a
+  # constant shift for differentiation of softmax.
+  broadcast <- function(x) prim_broadcast_in_axes(x, score_shape, seq_len(rank))
+  maximum <- stop_gradient(prim_max(scores, axes = 2L, drop = FALSE))
+  weights <- prim_exp(prim_sub(scores, broadcast(maximum)))
+  total <- prim_sum(weights, axes = 2L, drop = FALSE)
+  weights <- prim_div(weights, broadcast(total))
+
+  out <- prim_dot_general(
+    value,
+    weights,
+    list(2L, 2L),
+    list(batch_axes, batch_axes)
+  )
+  if (half) prim_convert(out, dt) else out
+}
+
 #' @title Primitive Transpose
 #' @description
 #' Permutes the axes of an array.

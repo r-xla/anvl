@@ -94,6 +94,12 @@
 
 * `jit()` takes XLA options for the pjrt backend, `xla_options`, which apply
   to that function's compiles only.
+* `prim_scaled_dot_product_attention()` adds scaled dot-product attention for
+  feature-first arrays on CPU and CUDA, with cuDNN Flash Attention for compatible
+  inputs on GPUs of compute capability 8.0 or newer.
+* `stablehlo()` and `local_platform()` take the `compute_capability` of the target
+  CUDA device, which lowering rules read with `current_compute_capability()`.
+
 * `AnvlArray`s can now be serialized.
 * New `nv_bool()`, `nv_int{8,16,32,64}()`, `nv_uint{8,16,32,64}()`, `nv_float32()`
   and `nv_float64()` create an array of the data type in their name.
