@@ -24,7 +24,7 @@ The structure of this article is as follows:
 1. Writing the CUDA kernel
 2. Writing the handler that launches it
 3. Building both
-4. Registering both with {pjrt}
+4. Registering both with {pjrt} and calling the kernel
 
 ## Step 1: Write the kernel
 
@@ -154,9 +154,14 @@ We do not need a system CUDA toolkit for this.
 On a machine with an NVIDIA GPU, `pjrt::install_pjrt()` installs the [{pjrt.cuda}](https://github.com/r-xla/pjrt.cuda) package along with the CUDA plugin, and {pjrt.cuda} provides the CUDA toolkit: `nvcc` (the NVIDIA CUDA Compiler), the CUDA headers, and the CUDA runtime library, whose locations `pjrt.cuda::bin_path()`, `pjrt.cuda::include_path()` and `pjrt.cuda::lib_path()` report.
 {pjrt.cuda} is Linux only, as is the CUDA plugin.
 
-With these, `nvcc` compiles the kernel into an object file, and `Rcpp::sourceCpp()` compiles the handler as in the CPU article, linking the kernel and the CUDA runtime library into it through the `PKG_LIBS` environment variable.
+With these, building takes three steps:
 
-## Step 4: Register both
+1. `nvcc` compiles the kernel into an object file, with machine code for every GPU generation the kernel should run on.
+2. `Rcpp::sourceCpp()` compiles the handler as in the CPU article.
+3. The handler's shared library is linked against the kernel's object file and {pjrt.cuda}'s CUDA runtime library, both passed to `Rcpp::sourceCpp()` through the `PKG_LIBS` environment variable.
+   The shared library also has to record where that runtime library lives, so that it is found when R loads the handler.
+
+## Step 4: Register and call
 
 Finally, we register both handlers under the same target, in place of the CPU-only registration of the CPU article:
 
@@ -165,6 +170,14 @@ pjrt::pjrt_register_custom_call(
   "mypkg_hypot",
   list(cpu = hypot_handler_ptr(), cuda = hypot_handler_cuda_ptr())
 )
+```
+
+From then on, the call of the CPU article runs the kernel whenever its operands live on the GPU:
+
+```{r, eval = FALSE}
+x <- nv_array(c(3, 5), dtype = "f64", device = "cuda")
+y <- nv_array(c(4, 12), dtype = "f64", device = "cuda")
+nv_custom_call("mypkg_hypot", x, y, output_types = nv_aval(dtype(x), shape(x)))
 ```
 
 ## Using in a package

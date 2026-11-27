@@ -18,7 +18,7 @@ knitr::opts_chunk$set(
 
 {anvl} lowers every primitive to a StableHLO program, which XLA then compiles.
 While the StableHLO opset covers the most common operations, there are cases where one wants to go beyond it, either for efficiency reasons or to exercise more control over the implementation.
-This is what so called *custom calls* are for.
+This is what so-called *custom calls* are for.
 Here, we cover the CPU case, and [Custom Calls on CUDA](custom_calls_cuda.html) focuses on the GPU case.
 
 The StableHLO operations operate on whole arrays.
@@ -32,11 +32,11 @@ A loop that handles one element at a time pays this cost per element.
 It also gives up SIMD: a body that works on one scalar has nothing to vectorize, while a `while` over a whole array vectorizes each step.
 On CUDA the situation is even worse: every iteration is at least one kernel launch, and a kernel launch costs on the order of microseconds, where an iteration of a loop inside a kernel costs nanoseconds.
 In C/C++, by contrast, each element stops when it is done.
-Custom calls can also be advantageous when the computation does operate on arrays but involves hundres or thousands of small operations.
+Custom calls can also be advantageous when the computation does operate on arrays but involves hundreds or thousands of small operations.
 There, XLA is not the problem, but instead the trace-time overhead in R becomes significant.
 Finally, for common operations, such as linear algebra primitives, hyper-optimized routines exist in LAPACK or cuSOLVER and a generic compiler like XLA cannot match their performance.
 
-The price of a custom call over composing a function of existing primitives is anvl then does not now how to compute its derivative.
+The price of a custom call over composing a function of existing primitives is that anvl does not know how to compute its derivative.
 Also, the custom call cannot be fused with the surrounding StableHLO operations.
 
 We will keep the implemented example simple to focus on the mechanics of the registration and not the numerical routine.
@@ -264,4 +264,4 @@ prim_hypot(x, y)
 ## Using it in a package
 
 `Rcpp::sourceCpp()` keeps this article self-contained.
-In a package, the `.cpp` file goes in `src/hypot.cpp`, with [{pjrt}](https://r-xla.github.io/pjrt/) in `LinkingTo:`, and the handler has to be registered in the package's `.onLoad()` hook via `pjrt::pjrt_register_custom_call()`, passing `.package = pkgname` so that it is dropped again when the package is unloaded.
+In a package, the `.cpp` file goes in `src/hypot.cpp`, with [{pjrt}](https://r-xla.github.io/pjrt/) in `LinkingTo:`, and the handler has to be registered in the package's `.onLoad()` hook via `pjrt::pjrt_register_custom_call()`.
