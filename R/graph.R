@@ -481,8 +481,8 @@ maybe_box_arrayish <- function(x, desc = current_descriptor()) {
 # as an `RData`), a primitive whose sub-graph takes its operands (prim_while's
 # state, prim_scan's carry) materializes them itself, and gradient() does not
 # know which of its args are static. jit's static args do not get here at all
-# (see `static_flat` of trace_fn()), so an `AbstractArray` among them, such as
-# the result types of prim_custom_call(), stays a value.
+# (see `static_flat` of trace_fn()), so an `AbstractArray` among them stays a
+# value.
 maybe_box_input <- function(x, desc) {
   if (is_anvl_array(x)) {
     desc$devices <- c(desc$devices, placement_device(x))
