@@ -2069,3 +2069,24 @@ infer_while <- function(..., cond, body, n_captures) {
 infer_custom_gradient <- function(..., fn, rule, forward, n_captures) {
   graph_output_avals(fn)
 }
+
+# The handler, not the operands, decides the result types, so they are declared
+# as `result_types`; a side-effect only call (`NULL`) passes its operands
+# through. The layouts are checked here, where the axes of every operand are
+# known.
+infer_custom_call <- function(
+  ...,
+  target_name,
+  result_types,
+  attrs,
+  has_side_effect,
+  operand_layouts,
+  result_layouts,
+  aliases
+) {
+  operands <- list(...)
+  naxes_of <- \(xs) vapply(xs, naxes, integer(1L))
+  assert_custom_call_layouts(operand_layouts, naxes_of(operands), "operand_layouts", "operand")
+  assert_custom_call_layouts(result_layouts, naxes_of(result_types), "result_layouts", "result")
+  result_types %||% operands
+}

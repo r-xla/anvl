@@ -4108,3 +4108,156 @@ prim_convolution <- new_primitive(
   },
   static = 3:18
 )
+
+# FFI primitive
+#' @title Primitive FFI Call
+#' @description
+#' `r lifecycle::badge("experimental")`
+#'
+#' Invokes an XLA FFI handler registered with
+#' [`pjrt::pjrt_register_custom_call()`]. XLA documents custom calls, and the
+#' FFI API a handler is written against, in its
+#' [custom call guide](https://openxla.org/xla/custom_call).
+#'
+#' This is the escape hatch for operations StableHLO cannot express, or
+#' cannot express efficiently. Unlike every other primitive, its output
+#' types cannot be derived from its inputs -- the handler decides them --
+#' so they are declared up front.
+#'
+#' Custom calls exist only on the `"pjrt"` backend, which is the one that
+#' compiles StableHLO and runs the handler. There is no `quickr` rule and
+#' there cannot be one, so a function containing a custom call fails to
+#' compile under [`local_backend("quickr")`][local_backend].
+#'
+#' Within pjrt the call is platform-agnostic: it names a target, and XLA
+#' invokes whichever handler was registered for the platform the program is
+#' compiled for. Registering a `cuda` handler alongside the `cpu` one is
+#' therefore all it takes to run the same call on a GPU.
+#'
+#' Use [`nv_custom_call()`] unless you need the exact primitive signature.
+#' @param operands (`list` of [`arrayish`])\cr
+#'   The values passed to the handler, in the order it binds them.
+#' @param target_name (`character(1)`)\cr
+#'   The name the handler was registered under.
+#' @param output_types ([`AbstractArray`] | `list` of them | `NULL`)\cr
+#'   Data type and shape of each result. The handler, not the inputs,
+#'   decides these, so anvl cannot infer them.
+#'   `NULL` declares a call that only runs for its side effect; `operands`
+#'   are then returned unchanged, so at least one is required.
+#' @param attrs (`list`)\cr
+#'   Named attributes the handler reads via `.Attr<T>("name")` or
+#'   `.Attrs<Dictionary>()`. A string is converted for you, and so is a
+#'   number or a logical, at a data type fixed by its R type, whatever
+#'   [`default_dtypes()`] says: a double is `f64`, an integer `i64` and a
+#'   logical `bool`, so the handler reads them as `double`, `int64_t` and
+#'   `bool`. A vector of several becomes an array attribute of that data
+#'   type. Pass a `stablehlo` attribute object such as
+#'   [`stablehlo::ScalarAttr()`] for another data type.
+#' @param has_side_effect (`logical(1)`)\cr
+#'   Whether XLA must keep the call even when its results are unused.
+#'   Defaults to `TRUE` exactly when `output_types` is `NULL`. Under
+#'   [`gradient()`], a side-effect call in the body of an [`nv_scan()`] may
+#'   still be dropped.
+#' @param operand_layouts,result_layouts (`list` | `NULL`)\cr
+#'   The memory layout of each operand and result: its axes in minor-to-major
+#'   order, the axis whose index varies fastest in memory first. `NULL` (the
+#'   default) is R's own column-major order, `seq_len(n)` for an `n`-axis
+#'   array, which is how a LAPACK routine wants a matrix. A handler written
+#'   for row-major (C order) buffers wants `rev(seq_len(n))` instead. Keep
+#'   the default for a call that may see an array with an axis of size zero:
+#'   XLA's CPU compiler crashes compiling any other layout for one.
+#'
+#'   A handler whose platforms disagree -- a LAPACK CPU kernel wanting
+#'   column-major next to a row-major CUDA one -- can instead pass a list of
+#'   such lists named by platform, e.g.
+#'   `list(cpu = list(1:2), cuda = list(2:1))`. The entry is picked when the
+#'   program is lowered, which is the first point at which the target
+#'   platform is known.
+#' @param aliases (`integer()` | `NULL`)\cr
+#'   One entry per result, giving the index of the operand whose buffer that
+#'   result is written into, or `NA` for no aliasing. XLA then hands the
+#'   handler the same pointer for both, so an in-place kernel avoids a copy.
+#' @param device (`NULL` | `character(1)` | [device][nv_device])\cr
+#'   Where to run. Only needed when there are no operands to take it from.
+#' @return `list` of [`arrayish`]\cr
+#'   One element per result, or the operands unchanged for a side-effect
+#'   only call.
+#' @templateVar primitive_id custom_call
+#' @template section_rules
+#' @section StableHLO:
+#' Lowers to [hlo_custom_call()].
+#' @seealso [nv_custom_call()]
+#' @export
+prim_custom_call <- new_primitive(
+  "custom_call",
+  function(
+    operands,
+    target_name,
+    output_types = NULL,
+    attrs = list(),
+    has_side_effect = is.null(output_types),
+    operand_layouts = NULL,
+    result_layouts = NULL,
+    aliases = NULL,
+    device = NULL
+  ) {
+    assert_string(target_name)
+    assert_flag(has_side_effect)
+    if (!is.list(operands)) {
+      cli_abort("{.arg operands} must be a list of arrayish values.")
+    }
+    if (is_abstract_array(output_types)) {
+      output_types <- list(output_types)
+    }
+    assert_list(output_types, types = "AbstractArray", null.ok = TRUE)
+    assert_list(attrs, names = "unique")
+    if (is.null(output_types) && !length(operands)) {
+      cli_abort(c(
+        "A side-effect only {.fn prim_custom_call} returns its operands, so it needs at least one.",
+        i = "Declare {.arg output_types} for a call that produces results."
+      ))
+    }
+
+    n_results <- length(output_types)
+    if (!is.null(aliases)) {
+      assert_integerish(aliases)
+      aliases <- as.integer(aliases)
+      if (length(aliases) != n_results) {
+        cli_abort("{.arg aliases} must have one entry per result.")
+      }
+      bad <- !is.na(aliases) & (aliases < 1L | aliases > length(operands))
+      if (any(bad)) {
+        cli_abort("{.arg aliases} must index an operand between 1 and {length(operands)}, or be {.val NA}.")
+      }
+    }
+
+    # Carried under `result_types` rather than `output_types`: anvl injects an
+    # `output_types` argument into any lowering rule that declares one, and the
+    # two would collide.
+    graph_desc_add(
+      self,
+      args = unname(operands),
+      params = list(
+        target_name = target_name,
+        result_types = output_types,
+        attrs = custom_call_attrs(attrs),
+        has_side_effect = has_side_effect,
+        operand_layouts = operand_layouts,
+        result_layouts = result_layouts,
+        aliases = aliases
+      ),
+      infer_fn = infer_custom_call,
+      device = device
+    )
+  },
+  static = c(
+    "target_name",
+    "output_types",
+    "attrs",
+    "has_side_effect",
+    "operand_layouts",
+    "result_layouts",
+    "aliases",
+    "device"
+  )
+)

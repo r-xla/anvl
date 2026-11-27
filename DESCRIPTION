@@ -49,6 +49,7 @@ Remotes:
     r-xla/stablehlo@develop
 Additional_repositories: https://r-xla.r-universe.dev
 Config/testthat/edition: 3
+Config/Needs/website: Rcpp
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Collate:
@@ -76,6 +77,7 @@ Collate:
     'backend-quickr.R'
     'bibentries.R'
     'box.R'
+    'custom-call.R'
     'graph-passes.R'
     'graph.R'
     'graph-print.R'

@@ -41,6 +41,9 @@
 * Experimental: `AnvlBackend()`, `register_backend()` and the new
   `register_rule_type()` let a package add a backend, with its own rules for
   the primitives.
+* Experimental: new `nv_custom_call()` / `prim_custom_call()` call an XLA FFI
+  handler registered with `pjrt::pjrt_register_custom_call()`. The new "Custom
+  Calls" and "Custom Calls on CUDA" articles show how to write one.
 
 ## Bug fixes
 
@@ -51,7 +54,6 @@
   `nv_array()` at the data type it takes, instead of being refused with a
   self-contradictory error. An `NA` in an R array passed to a jitted function
   is now reported at `i32` too.
-
 * An empty `wrt` in `gradient()`, `value_and_gradient()` and `graph_gradient()`
   differentiates with respect to no argument, rather than all of them.
 * `nv_array(byrow = TRUE)` refuses data that does not fill `shape` instead of

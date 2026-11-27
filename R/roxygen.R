@@ -32,6 +32,8 @@ roxy_wrap <- function(x, width = 74L) {
 article_titles <- c(
   anvl = "Get Started",
   autodiff = "Automatic Differentiation",
+  custom_calls = "Custom Calls",
+  custom_calls_cuda = "Custom Calls on CUDA",
   `depending-on-anvl` = "Depending on anvl",
   efficiency = "Efficiency",
   extending_api = "Extending the API",

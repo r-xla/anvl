@@ -36,10 +36,9 @@ There are various scenarios:
 
    2. It cannot be expressed or can only be expressed inefficiently:
 
-      $\rightarrow$ You can implement a StableHLO custom call, see the custom print operation in [pjrt](https://github.com/r-xla/pjrt).
-      The {pjrt} package has a dedicated ["Adding Custom Calls"](https://r-xla.github.io/pjrt/dev/articles/ffi.html) tutorial.
+      $\rightarrow$ You can implement a custom call: a C++ or CUDA function that XLA invokes at that point of the program.
+      The [Custom Calls](custom_calls.html) article shows how to write, register and call one, and [Custom Calls on CUDA](custom_calls_cuda.html) how to build one for a GPU.
       This mechanism is used, for example, to implement some of the linear algebra primitives such as SVD: on CPU these call into LAPACK, and on GPU they use NVIDIA's cuSOLVER library.
-      In the future it will also be possible to call into user-provided custom CUDA kernels, but there is no infrastructure for this yet -- currently we only call into predefined kernels shipped with the CUDA toolkit.
 
 ## Adding a Primitive: Practical Example
 
@@ -92,7 +91,7 @@ The primitive is now callable directly as `prim_repeat_along(x, times, axis)`.
 
 Key points:
 
-- Pass the lexically-bound `self` (the [`AnvlPrimitiveDef`]) as the first argument to `graph_desc_add()`. `new_primitive()` installs `self` into the enclosing environment of the body, so this is always available inside a primitive.
+- Pass the lexically-bound `self` (the [`AnvlPrimitiveDef`](../reference/AnvlPrimitiveDef.html)) as the first argument to `graph_desc_add()`. `new_primitive()` installs `self` into the enclosing environment of the body, so this is always available inside a primitive.
 - The inference function receives abstract arrays (types, not values) for dynamic inputs, and actual values for static parameters. It must verify that the arguments to the function are valid, and should throw clear error messages — {anvl} programs are otherwise hard to debug.
 - `graph_desc_add()` returns a list of outputs; use `[[1L]]` for single-output primitives.
 

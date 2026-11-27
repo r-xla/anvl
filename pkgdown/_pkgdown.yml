@@ -66,6 +66,10 @@ navbar:
         href: articles/extending_primitive.html
       - text: "Adding an API Function"
         href: articles/extending_api.html
+      - text: "Custom Calls"
+        href: articles/custom_calls.html
+      - text: "Custom Calls on CUDA"
+        href: articles/custom_calls_cuda.html
       - text: Other
       - text: Internals
         href: articles/internals.html
@@ -377,6 +381,11 @@ reference:
       - promotion_dtype
       - promotion_rdata_common
       - promotion_grouped
+
+  - subtitle: Custom Calls
+    desc: Calling hand-written XLA FFI handlers
+    contents:
+      - nv_custom_call
 
   - title: Transformations
     desc: Code transformations

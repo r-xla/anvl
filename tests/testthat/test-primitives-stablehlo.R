@@ -2064,6 +2064,18 @@ if (nzchar(system.file(package = "torch"))) {
   source(system.file("extra-tests", "test-primitives-stablehlo-torch.R", package = "anvl"), local = TRUE)
 }
 
+test_that("prim_custom_call", {
+  # lowers to a stablehlo.custom_call; "eigh" is registered by {pjrt}
+  A <- nv_matrix(c(2, 1, 1, 2), nrow = 2, dtype = "f64")
+  out <- prim_custom_call(
+    list(A),
+    target_name = "eigh",
+    output_types = list(AbstractArray("f64", c(2, 2)), AbstractArray("f64", 2))
+  )
+  expect_length(out, 2L)
+  expect_equal(as_array(out[[2L]]), as_array(nv_eigh(A)$values))
+})
+
 describe("prim_scatter update_fn", {
   scatter_with <- function(update_fn) {
     prim_scatter(
