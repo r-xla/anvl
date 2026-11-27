@@ -85,8 +85,8 @@ rule_vectorize(params = list(perm = vec_axis_map()))
 #> $params$perm
 #> function (x, size) 
 #> c(x, length(x) + 1L)
-#> <bytecode: 0x5c0b52ebc4e0>
-#> <environment: 0x5c0b52ebc7f0>
+#> <bytecode: 0x615ab6c4be90>
+#> <environment: 0x615ab6c4c168>
 #> attr(,"class")
 #> [1] "anvl_param_kind"
 #> 

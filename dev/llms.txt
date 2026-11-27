@@ -793,6 +793,13 @@ article for how they are used.
   [`promotion_rule()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
   : Promotion Rules
 
+### Custom Calls
+
+Calling hand-written XLA FFI handlers
+
+- [`nv_custom_call()`](https://r-xla.github.io/anvl/dev/reference/nv_custom_call.md)
+  **\[experimental\]** : Call an XLA FFI Handler
+
 ## Transformations
 
 Code transformations
@@ -1014,6 +1021,8 @@ Low-level primitive operations (prim\_\* functions)
   : Primitive Cumulative Product
 - [`prim_cumsum()`](https://r-xla.github.io/anvl/dev/reference/prim_cumsum.md)
   : Primitive Cumulative Sum
+- [`prim_custom_call()`](https://r-xla.github.io/anvl/dev/reference/prim_custom_call.md)
+  **\[experimental\]** : Primitive FFI Call
 - [`prim_custom_gradient()`](https://r-xla.github.io/anvl/dev/reference/prim_custom_gradient.md)
   : Primitive Custom Gradient
 - [`prim_digamma()`](https://r-xla.github.io/anvl/dev/reference/prim_digamma.md)
@@ -1189,6 +1198,10 @@ Helpers for the tests of packages that depend on anvl
 - [Get Started](https://r-xla.github.io/anvl/dev/articles/anvl.md):
 - [Automatic
   Differentiation](https://r-xla.github.io/anvl/dev/articles/autodiff.md):
+- [Custom Calls on
+  CUDA](https://r-xla.github.io/anvl/dev/articles/custom_calls_cuda.md):
+- [Custom
+  Calls](https://r-xla.github.io/anvl/dev/articles/custom_calls.md):
 - [Depending on
   anvl](https://r-xla.github.io/anvl/dev/articles/depending-on-anvl.md):
 - [Efficiency](https://r-xla.github.io/anvl/dev/articles/efficiency.md):

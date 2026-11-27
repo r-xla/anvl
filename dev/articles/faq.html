@@ -79,6 +79,8 @@
 <li><h6 class="dropdown-header" data-toc-skip>Extending</h6></li>
     <li><a class="dropdown-item" href="../articles/extending_primitive.html">Adding a Primitive</a></li>
     <li><a class="dropdown-item" href="../articles/extending_api.html">Adding an API Function</a></li>
+    <li><a class="dropdown-item" href="../articles/custom_calls.html">Custom Calls</a></li>
+    <li><a class="dropdown-item" href="../articles/custom_calls_cuda.html">Custom Calls on CUDA</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>Other</h6></li>
     <li><a class="dropdown-item" href="../articles/internals.html">Internals</a></li>
     <li><a class="dropdown-item" href="../articles/primitives.html">Available Primitives</a></li>
@@ -173,7 +175,7 @@ related discussion in JAX.</p>
 <span><span class="co"># 2. Includes compilation time</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="fu">mul_n</span><span class="op">(</span><span class="va">x</span>, <span class="fl">20</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">##    user  system elapsed </span></span>
-<span><span class="co">##   1.196   1.324   0.878</span></span></code></pre>
+<span><span class="co">##   1.456   1.446   1.117</span></span></code></pre>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Good:</span></span>
 <span><span class="co"># 1. Awaits the computation</span></span>
@@ -181,7 +183,7 @@ related discussion in JAX.</p>
 <span><span class="co">#    already compiled above.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="fu"><a href="../reference/await.html">await</a></span><span class="op">(</span><span class="fu">mul_n</span><span class="op">(</span><span class="va">x</span>, <span class="fl">20</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">##    user  system elapsed </span></span>
-<span><span class="co">##   1.512   4.570   2.914</span></span></code></pre>
+<span><span class="co">##   1.072   3.302   2.068</span></span></code></pre>
 </div>
 <div class="section level2">
 <h2 id="how-do-i-control-the-number-of-threads-used-by-xla">How do I control the number of threads used by XLA?<a class="anchor" aria-label="anchor" href="#how-do-i-control-the-number-of-threads-used-by-xla"></a>

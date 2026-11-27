@@ -41,18 +41,17 @@ are various scenarios:
 
     2.  It cannot be expressed or can only be expressed inefficiently:
 
-        \\\rightarrow\\ You can implement a StableHLO custom call, see
-        the custom print operation in
-        [pjrt](https://github.com/r-xla/pjrt). The {pjrt} package has a
-        dedicated [“Adding Custom
-        Calls”](https://r-xla.github.io/pjrt/dev/articles/ffi.html)
-        tutorial. This mechanism is used, for example, to implement some
-        of the linear algebra primitives such as SVD: on CPU these call
-        into LAPACK, and on GPU they use NVIDIA’s cuSOLVER library. In
-        the future it will also be possible to call into user-provided
-        custom CUDA kernels, but there is no infrastructure for this yet
-        – currently we only call into predefined kernels shipped with
-        the CUDA toolkit.
+        \\\rightarrow\\ You can implement a custom call: a C++ or CUDA
+        function that XLA invokes at that point of the program. The
+        [Custom
+        Calls](https://r-xla.github.io/anvl/dev/articles/custom_calls.md)
+        article shows how to write, register and call one, and [Custom
+        Calls on
+        CUDA](https://r-xla.github.io/anvl/dev/articles/custom_calls_cuda.md)
+        how to build one for a GPU. This mechanism is used, for example,
+        to implement some of the linear algebra primitives such as SVD:
+        on CPU these call into LAPACK, and on GPU they use NVIDIA’s
+        cuSOLVER library.
 
 ## Adding a Primitive: Practical Example
 
@@ -120,8 +119,9 @@ The primitive is now callable directly as
 
 Key points:
 
-- Pass the lexically-bound `self` (the \[`AnvlPrimitiveDef`\]) as the
-  first argument to
+- Pass the lexically-bound `self` (the
+  [`AnvlPrimitiveDef`](https://r-xla.github.io/anvl/dev/reference/AnvlPrimitiveDef.md))
+  as the first argument to
   [`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md).
   [`new_primitive()`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md)
   installs `self` into the enclosing environment of the body, so this is

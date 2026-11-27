@@ -1,0 +1,333 @@
+# Custom Calls
+
+> **Note:** Everything in this article is about the default `"pjrt"`
+> backend.
+
+{anvl} lowers every primitive to a StableHLO program, which XLA then
+compiles. While the StableHLO opset covers the most common operations,
+there are cases where one wants to go beyond it, either for efficiency
+reasons or to exercise more control over the implementation. This is
+what so-called *custom calls* are for. Here, we cover the CPU case, and
+[Custom Calls on
+CUDA](https://r-xla.github.io/anvl/dev/articles/custom_calls_cuda.md)
+focuses on the GPU case.
+
+The StableHLO operations operate on whole arrays. Loops are supported
+via
+[`prim_while()`](https://r-xla.github.io/anvl/dev/reference/prim_while.md),
+and scalars are available as
+[`nv_scalar()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
+but a StableHLO loop over scalars has a very different performance
+profile than an actual C/C++ or CUDA loop. A StableHLO `while` does not
+run its body once per element of an array: it runs it once per
+*iteration*, on the whole loop-carried state, for as long as its
+condition returns `TRUE` ([StableHLO
+spec](https://openxla.org/stablehlo/spec#while)). Written over the whole
+array, a loop whose length depends on the element – a series summed
+until it converges, a continued fraction, a root search, rejection
+sampling – therefore makes every element go round as often as the
+slowest one needs. XLA lowers a compiled program into a sequence of
+*thunks*, units of work that its runtime executes one after the other,
+with control flow such as a loop among them ([XLA
+docs](https://openxla.org/xla/hlo_to_thunks)). In a simplified view, the
+body of the loop becomes a compiled unit of its own, which the runtime
+invokes anew after checking the condition on every iteration. That loop
+control costs time on every iteration where a C/C++ loop spends a few
+instructions per iteration. A loop that handles one element at a time
+pays this cost per element. It also gives up SIMD: a body that works on
+one scalar has nothing to vectorize, while a `while` over a whole array
+vectorizes each step. On CUDA the situation is even worse: every
+iteration is at least one kernel launch, and a kernel launch costs on
+the order of microseconds, where an iteration of a loop inside a kernel
+costs nanoseconds. In C/C++, by contrast, each element stops when it is
+done. Custom calls can also be advantageous when the computation does
+operate on arrays but involves hundreds or thousands of small
+operations. There, XLA is not the problem, but instead the trace-time
+overhead in R becomes significant. Finally, for common operations, such
+as linear algebra primitives, hyper-optimized routines exist in LAPACK
+or cuSOLVER and a generic compiler like XLA cannot match their
+performance.
+
+The price of a custom call over composing a function of existing
+primitives is that anvl does not know how to compute its derivative.
+Also, the custom call cannot be fused with the surrounding StableHLO
+operations.
+
+We will keep the implemented example simple to focus on the mechanics of
+the registration and not the numerical routine. Specifically, we will
+implement the hypotenuse \\\sqrt{x^2 + y^2}\\. While this can be
+implemented directly in {anvl}, the custom call will use the numerically
+optimized routine from `<cmath>`, namely `std::hypot()`.
+
+Implementing this involves three steps:
+
+1.  Writing the actual function
+2.  Registering the function with {pjrt}
+3.  Calling the custom call from {anvl}
+
+## Step 1: Write the handler
+
+In order to write the handler, we need to import the FFI (Foreign
+Function Interface) headers from XLA, which are vendored in {pjrt}’s
+[`inst/include`](https://github.com/r-xla/pjrt/tree/main/inst/include/xla/ffi/api)
+directory. We will also use Rcpp to interface with R.
+
+``` cpp
+// [[Rcpp::plugins(cpp20)]]
+// [[Rcpp::depends(pjrt)]]
+#include <Rcpp.h>
+#include <cmath>
+#include "xla/ffi/api/ffi.h"
+
+using namespace xla::ffi;
+```
+
+Because we want our custom call to work with both single and double
+precision, our `hypot_impl` will take in the `xla::ffi::AnyBuffer` type
+for its arguments and result. Generally, the signature contains one
+`AnyBuffer` per argument and one `Result<AnyBuffer>` per result.
+`hypot_impl` itself is a template over the element type `T`, with which
+it reads the buffers through `typed_data<T>()`.
+
+Because a handler may be called from XLA’s worker threads, it must not
+touch R’s C API (no allocation, no `Rf_error()`, no printing).
+
+``` cpp
+// The actual work, once the element type is known.
+template <typename T>
+static Error hypot_impl(AnyBuffer x, AnyBuffer y, Result<AnyBuffer> out) {
+  size_t n = out->element_count();
+  if (x.element_count() != n || y.element_count() != n) {
+    return Error::InvalidArgument("hypot: operands must have the same size");
+  }
+  const T *xp = x.typed_data<T>();
+  const T *yp = y.typed_data<T>();
+  T *op = out->typed_data<T>();
+  for (size_t i = 0; i < n; ++i) {
+    op[i] = std::hypot(xp[i], yp[i]);
+  }
+  return Error::Success();
+}
+```
+
+`do_hypot()` then looks at the `element_type()` of the buffers and calls
+`hypot_impl<T>()` with the matching `T`. The alternative would be a
+statically typed `Buffer<DataType::F64>`, which pins the handler to one
+data type and makes XLA reject all others. Because `AnyBuffer` moves the
+type checking from XLA into the handler, `typed_data<T>()` only asserts
+that `T` matches in a debug build, and reinterprets the bytes otherwise.
+The comparisons of the sizes and of the three `element_type()`s, and the
+`default:` branch, only keep the handler from reading memory it should
+not. Whether the operands are valid for the computation should be
+checked in R, before the call: by the inference rule of a primitive, as
+shown in [making it a primitive](#making-it-a-primitive).
+
+``` cpp
+// Dispatch on the dtype; f32 and f64 are what std::hypot covers.
+static Error do_hypot(AnyBuffer x, AnyBuffer y, Result<AnyBuffer> out) {
+  DataType dt = x.element_type();
+  if (y.element_type() != dt || out->element_type() != dt) {
+    return Error::InvalidArgument("hypot: operands and result must have the "
+                                  "same dtype");
+  }
+  switch (dt) {
+    case DataType::F32:
+      return hypot_impl<float>(x, y, out);
+    case DataType::F64:
+      return hypot_impl<double>(x, y, out);
+    default:
+      return Error::InvalidArgument("hypot: only f32 and f64 are supported");
+  }
+}
+```
+
+Next, `XLA_FFI_DEFINE_HANDLER_EXPLICIT()` attaches the *binding
+specification* to `do_hypot()`, which tells the runtime that it takes
+two operands and one result, in that order. The macro defines
+`hypot_handler`, a plain function pointer.
+
+``` cpp
+XLA_FFI_DEFINE_HANDLER_EXPLICIT(hypot_handler, do_hypot,
+                                Ffi::Bind()
+                                    .Arg<AnyBuffer>()   // x
+                                    .Arg<AnyBuffer>()   // y
+                                    .Ret<AnyBuffer>()); // hypot(x, y)
+```
+
+Finally, `hypot_handler_ptr()` hands that pointer to R as an external
+pointer, which is what the registration function in Step 2 expects.
+{pjrt} hands its own handlers to R the same way.
+
+``` cpp
+// [[Rcpp::export]]
+SEXP hypot_handler_ptr() {
+  return R_MakeExternalPtr((void *)hypot_handler, R_NilValue, R_NilValue);
+}
+```
+
+The loop in `hypot_impl()` handles one element at a time on one thread,
+which is where a production kernel goes further. Binding
+`.Ctx<ThreadPool>()` hands the handler XLA’s thread pool to split the
+elements across, and the
+[{highway}](https://github.com/louisaslett/highway) package, used
+through `LinkingTo: highway`, provides Google’s Highway library for
+SIMD: one kernel that works on several elements per instruction,
+compiled for every instruction set of the CPU and picked at run time.
+
+## Step 2: Register it with PJRT
+
+[`pjrt::pjrt_register_custom_call()`](https://r-xla.github.io/pjrt/reference/pjrt_register_custom_call.html)
+registers the handler under a target name. That name is a process-global
+key, so prefix it with something specific to your package – `mypkg`
+stands in for its name here. The second argument is one handler per
+platform, `"cpu"` (a synonym for PJRT’s own `"host"`) and `"cuda"`.
+Platforms you leave out simply have no implementation: running the call
+there aborts with *No FFI handler registered for `mypkg_hypot`*.
+
+``` r
+
+pjrt::pjrt_register_custom_call(
+  "mypkg_hypot",
+  list(cpu = hypot_handler_ptr())
+)
+```
+
+## Step 3: Call it
+
+We will use two right triangles as example inputs:
+
+``` r
+
+library(anvl)
+x <- nv_array(c(3, 5), dtype = "f64")
+y <- nv_array(c(4, 12), dtype = "f64")
+```
+
+[`nv_custom_call()`](https://r-xla.github.io/anvl/dev/reference/nv_custom_call.md)
+takes the target name, the operands, and the dtype and shape of each
+result, which
+[`nv_aval()`](https://r-xla.github.io/anvl/dev/reference/AbstractArray.md)
+combines into an abstract array. anvl cannot infer the result types –
+the handler decides them – but nothing forces you to write them out as
+literals:
+[`dtype()`](https://r-xla.github.io/anvl/dev/reference/dtype.md) and
+[`shape()`](https://r-xla.github.io/anvl/dev/reference/shape.md) of the
+operands are available at trace time, so a generic call reads
+
+``` r
+
+nv_custom_call("mypkg_hypot", x, y, output_types = nv_aval(dtype(x), shape(x)))
+#> AnvlArray
+#>   5
+#>  13
+#> [ CPUf64{2} ]
+```
+
+[`nv_custom_call()`](https://r-xla.github.io/anvl/dev/reference/nv_custom_call.md)
+has further arguments for attributes passed to the handler, memory
+layouts, results written in place of operands, and calls kept for their
+side effects; see
+[`nv_custom_call()`](https://r-xla.github.io/anvl/dev/reference/nv_custom_call.md)
+for these, and XLA’s [custom call
+guide](https://openxla.org/xla/custom_call) for how a handler reads its
+attributes.
+
+> **Important:** A handler that indexes by axis has to keep in mind that
+> R stores arrays column-major, while XLA reads them row-major. Every
+> operand therefore reaches the handler transposed, with all of its axes
+> reversed: an R \\3 \times 2\\ matrix `A` arrives as the row-major \\2
+> \times 3\\ matrix `t(A)`, with `dimensions()` `{2, 3}`. The same holds
+> for the result, which the handler has to write transposed: a row-major
+> matrix product, for example, returns `A %*% B` by computing
+> `t(B) %*% t(A)`. `operand_layouts` / `result_layouts` can instead ask
+> XLA to rearrange the data before and after the call, see
+> [`nv_custom_call()`](https://r-xla.github.io/anvl/dev/reference/nv_custom_call.md).
+
+## Making it a primitive
+
+[`nv_custom_call()`](https://r-xla.github.io/anvl/dev/reference/nv_custom_call.md)
+is opaque to XLA, and therefore to {anvl}’s differentiation:
+[`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
+will not go through it. It also shows up in a traced graph as a generic
+`custom_call` rather than an operation with a name of its own.
+
+Both are fixed the same way – by giving the call its own primitive,
+exactly as in [Adding a
+Primitive](https://r-xla.github.io/anvl/dev/articles/extending_primitive.md).
+What is specific to a custom call is the StableHLO rule, which connects
+the primitive to the handler, so that is all this section shows. A
+pullback rule, which makes the primitive differentiable, is written as
+for any other primitive, as described in the [pullback
+rule](https://r-xla.github.io/anvl/dev/articles/extending_primitive.html#step-3-add-the-pullback-rule)
+step of that article.
+
+The inference rule is where the operands are checked now. It runs when
+the primitive is traced and refuses what the handler cannot take with an
+R error that names the primitive, before anything reaches XLA, so a
+handler that is only ever called through its primitive can do without
+checks of its own. The dtype stays generic here too: the inference rule
+propagates whatever float dtype the operands were traced with:
+
+``` r
+
+prim_hypot <- new_primitive("hypot", function(x, y) {
+  infer_fn <- function(x, y) {
+    if (!as.character(dtype(x)) %in% c("f32", "f64") || dtype(x) != dtype(y)) {
+      cli::cli_abort("{.arg x} and {.arg y} must both be f32 or both be f64.")
+    }
+    if (!identical(shape(x), shape(y))) {
+      cli::cli_abort("{.arg x} and {.arg y} must have the same shape.")
+    }
+    list(nv_aval(dtype(x), shape(x)))
+  }
+  graph_desc_add(self, list(x = x, y = y), infer_fn = infer_fn)[[1L]]
+})
+```
+
+The lowering rule is handed the `output_types` that follow from the
+inference rule. It reaches one level lower than
+[`nv_custom_call()`](https://r-xla.github.io/anvl/dev/reference/nv_custom_call.md)
+does, emitting
+[`stablehlo::hlo_custom_call()`](https://r-xla.github.io/stablehlo/reference/hlo_custom_call.html)
+directly, because a rule is handed `FuncValue`s rather than arrays.
+Those speak XLA’s order: their shapes are the R shapes reversed, and the
+layouts are XLA’s, which number the axes of that reversed shape from
+zero. XLA’s default layout, `n - 1` down to `0`, is R’s column-major
+order:
+
+``` r
+
+prim_hypot[["stablehlo"]] <- function(x, y, output_types) {
+  layout <- rev(seq_along(shape(x)) - 1L)
+  list(stablehlo::hlo_custom_call(
+    x,
+    y,
+    call_target_name = "mypkg_hypot",
+    api_version = 4L,
+    has_side_effect = FALSE,
+    output_types = output_types,
+    operand_layouts = list(layout, layout),
+    result_layouts = list(layout)
+  ))
+}
+```
+
+Calling the primitive runs the handler:
+
+``` r
+
+prim_hypot(x, y)
+#> AnvlArray
+#>   5
+#>  13
+#> [ CPUf64{2} ]
+```
+
+## Using it in a package
+
+[`Rcpp::sourceCpp()`](https://rdrr.io/pkg/Rcpp/man/sourceCpp.html) keeps
+this article self-contained. In a package, the `.cpp` file goes in
+`src/hypot.cpp`, with [{pjrt}](https://r-xla.github.io/pjrt/) in
+`LinkingTo:`, and the handler has to be registered in the package’s
+`.onLoad()` hook via
+[`pjrt::pjrt_register_custom_call()`](https://r-xla.github.io/pjrt/reference/pjrt_register_custom_call.html).

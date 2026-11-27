@@ -79,6 +79,8 @@
 <li><h6 class="dropdown-header" data-toc-skip>Extending</h6></li>
     <li><a class="dropdown-item" href="../articles/extending_primitive.html">Adding a Primitive</a></li>
     <li><a class="dropdown-item" href="../articles/extending_api.html">Adding an API Function</a></li>
+    <li><a class="dropdown-item" href="../articles/custom_calls.html">Custom Calls</a></li>
+    <li><a class="dropdown-item" href="../articles/custom_calls_cuda.html">Custom Calls on CUDA</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>Other</h6></li>
     <li><a class="dropdown-item" href="../articles/internals.html">Internals</a></li>
     <li><a class="dropdown-item" href="../articles/primitives.html">Available Primitives</a></li>
@@ -166,14 +168,12 @@ future.</p>
 <p>It cannot be expressed or can only be expressed
 inefficiently:</p>
 <p><span class="math inline">\(\rightarrow\)</span> You can implement a
-StableHLO custom call, see the custom print operation in <a href="https://github.com/r-xla/pjrt" class="external-link">pjrt</a>. The {pjrt} package has a
-dedicated <a href="https://r-xla.github.io/pjrt/dev/articles/ffi.html" class="external-link">“Adding Custom
-Calls”</a> tutorial. This mechanism is used, for example, to implement
-some of the linear algebra primitives such as SVD: on CPU these call
-into LAPACK, and on GPU they use NVIDIA’s cuSOLVER library. In the
-future it will also be possible to call into user-provided custom CUDA
-kernels, but there is no infrastructure for this yet – currently we only
-call into predefined kernels shipped with the CUDA toolkit.</p>
+custom call: a C++ or CUDA function that XLA invokes at that point of
+the program. The <a href="custom_calls.html">Custom Calls</a> article
+shows how to write, register and call one, and <a href="custom_calls_cuda.html">Custom Calls on CUDA</a> how to build one
+for a GPU. This mechanism is used, for example, to implement some of the
+linear algebra primitives such as SVD: on CPU these call into LAPACK,
+and on GPU they use NVIDIA’s cuSOLVER library.</p>
 </li>
 </ol>
 </li>
@@ -236,11 +236,11 @@ naming a primitive names a function the reader can look up.</p>
 <code>prim_repeat_along(x, times, axis)</code>.</p>
 <p>Key points:</p>
 <ul>
-<li>Pass the lexically-bound <code>self</code> (the
-[<code>AnvlPrimitiveDef</code>]) as the first argument to
-<code><a href="../reference/graph_desc_add.html">graph_desc_add()</a></code>. <code><a href="../reference/new_primitive.html">new_primitive()</a></code> installs
-<code>self</code> into the enclosing environment of the body, so this is
-always available inside a primitive.</li>
+<li>Pass the lexically-bound <code>self</code> (the <a href="../reference/AnvlPrimitiveDef.html"><code>AnvlPrimitiveDef</code></a>)
+as the first argument to <code><a href="../reference/graph_desc_add.html">graph_desc_add()</a></code>.
+<code><a href="../reference/new_primitive.html">new_primitive()</a></code> installs <code>self</code> into the
+enclosing environment of the body, so this is always available inside a
+primitive.</li>
 <li>The inference function receives abstract arrays (types, not values)
 for dynamic inputs, and actual values for static parameters. It must
 verify that the arguments to the function are valid, and should throw

@@ -5,6 +5,10 @@
 - [Get Started](https://r-xla.github.io/anvl/dev/articles/anvl.md):
 - [Automatic
   Differentiation](https://r-xla.github.io/anvl/dev/articles/autodiff.md):
+- [Custom Calls on
+  CUDA](https://r-xla.github.io/anvl/dev/articles/custom_calls_cuda.md):
+- [Custom
+  Calls](https://r-xla.github.io/anvl/dev/articles/custom_calls.md):
 - [Depending on
   anvl](https://r-xla.github.io/anvl/dev/articles/depending-on-anvl.md):
 - [Efficiency](https://r-xla.github.io/anvl/dev/articles/efficiency.md):

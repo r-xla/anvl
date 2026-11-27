@@ -72,6 +72,8 @@ For more complex rules it is necessary to provide the fn argument."><meta proper
   <ul class="dropdown-menu" aria-labelledby="dropdown-developers"><li><h6 class="dropdown-header" data-toc-skip>Extending</h6></li>
     <li><a class="dropdown-item" href="../articles/extending_primitive.html">Adding a Primitive</a></li>
     <li><a class="dropdown-item" href="../articles/extending_api.html">Adding an API Function</a></li>
+    <li><a class="dropdown-item" href="../articles/custom_calls.html">Custom Calls</a></li>
+    <li><a class="dropdown-item" href="../articles/custom_calls_cuda.html">Custom Calls on CUDA</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>Other</h6></li>
     <li><a class="dropdown-item" href="../articles/internals.html">Internals</a></li>
     <li><a class="dropdown-item" href="../articles/primitives.html">Available Primitives</a></li>
@@ -172,8 +174,8 @@ A rule to assign to <code>prim_&lt;name&gt;[["vectorize"]]</code>.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $params$perm</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> function (x, size) </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> c(x, length(x) + 1L)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;bytecode: 0x5c0b52ebc4e0&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x5c0b52ebc7f0&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;bytecode: 0x615ab6c4be90&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x615ab6c4c168&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"class")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "anvl_param_kind"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>

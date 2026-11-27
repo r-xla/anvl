@@ -87,6 +87,14 @@
   and the new
   [`register_rule_type()`](https://r-xla.github.io/anvl/dev/reference/register_rule_type.md)
   let a package add a backend, with its own rules for the primitives.
+- Experimental: new
+  [`nv_custom_call()`](https://r-xla.github.io/anvl/dev/reference/nv_custom_call.md)
+  /
+  [`prim_custom_call()`](https://r-xla.github.io/anvl/dev/reference/prim_custom_call.md)
+  call an XLA FFI handler registered with
+  [`pjrt::pjrt_register_custom_call()`](https://r-xla.github.io/pjrt/reference/pjrt_register_custom_call.html).
+  The new “Custom Calls” and “Custom Calls on CUDA” articles show how to
+  write one.
 
 ### Bug fixes
 
@@ -95,7 +103,6 @@
   [`with_dtypes()`](https://r-xla.github.io/anvl/dev/reference/with_dtypes.md)
   returns takes the wrapper’s default data types, not those of the
   enclosing trace.
-
 - A missing value (`NA_real_`, `NA_integer_`, `NA`) passed to a jitted
   function or an operation as an R scalar, or written in a traced body,
   behaves as in
@@ -103,18 +110,15 @@
   at the data type it takes, instead of being refused with a
   self-contradictory error. An `NA` in an R array passed to a jitted
   function is now reported at `i32` too.
-
 - An empty `wrt` in
   [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md),
   [`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
   and
   [`graph_gradient()`](https://r-xla.github.io/anvl/dev/reference/graph_gradient.md)
   differentiates with respect to no argument, rather than all of them.
-
 - `nv_array(byrow = TRUE)` refuses data that does not fill `shape`
   instead of recycling it, and keeps the values of a
   [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html).
-
 - An array that a branch of
   [`nv_if()`](https://r-xla.github.io/anvl/dev/reference/nv_if.md), the
   body of
@@ -124,13 +128,10 @@
   closes over now counts toward the device
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) detects,
   as it already did for the jitted function itself.
-
 - [`as_raw()`](https://r-xla.github.io/anvl/dev/reference/as_raw.md) of
   a `"quickr"` array returns the bytes of its data type, in row-major
   order with `row_major = TRUE`.
-
 - The `"quickr"` backend accepts a device given as a string, `"cpu"`.
-
 - A static argument of
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) that is
   an `AbstractArray` reaches the function as that value, instead of

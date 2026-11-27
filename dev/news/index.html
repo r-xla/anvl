@@ -52,6 +52,8 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-developers"><li><h6 class="dropdown-header" data-toc-skip>Extending</h6></li>
     <li><a class="dropdown-item" href="../articles/extending_primitive.html">Adding a Primitive</a></li>
     <li><a class="dropdown-item" href="../articles/extending_api.html">Adding an API Function</a></li>
+    <li><a class="dropdown-item" href="../articles/custom_calls.html">Custom Calls</a></li>
+    <li><a class="dropdown-item" href="../articles/custom_calls_cuda.html">Custom Calls on CUDA</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>Other</h6></li>
     <li><a class="dropdown-item" href="../articles/internals.html">Internals</a></li>
     <li><a class="dropdown-item" href="../articles/primitives.html">Available Primitives</a></li>
@@ -111,17 +113,20 @@
 <code><a href="https://mlverse.github.io/safetensors/reference/safe_save_file.html" class="external-link">safetensors::safe_save_file()</a></code> writes <code>AnvlArray</code>s, and <code>safetensors::safe_load_file(framework = "anvl")</code> reads them.</li>
 <li>The <code>"quickr"</code> backend accepts a raw payload in <code><a href="../reference/AnvlArray.html">nv_array()</a></code>.</li>
 <li>Experimental: <code><a href="../reference/AnvlBackend.html">AnvlBackend()</a></code>, <code><a href="../reference/register_backend.html">register_backend()</a></code> and the new <code><a href="../reference/register_rule_type.html">register_rule_type()</a></code> let a package add a backend, with its own rules for the primitives.</li>
+<li>Experimental: new <code><a href="../reference/nv_custom_call.html">nv_custom_call()</a></code> / <code><a href="../reference/prim_custom_call.html">prim_custom_call()</a></code> call an XLA FFI handler registered with <code><a href="https://r-xla.github.io/pjrt/reference/pjrt_register_custom_call.html" class="external-link">pjrt::pjrt_register_custom_call()</a></code>. The new “Custom Calls” and “Custom Calls on CUDA” articles show how to write one.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
-<ul><li><p>Inside <code><a href="../reference/jit.html">jit()</a></code>, an R value that a function wrapped by <code><a href="../reference/with_dtypes.html">with_dtypes()</a></code> returns takes the wrapper’s default data types, not those of the enclosing trace.</p></li>
-<li><p>A missing value (<code>NA_real_</code>, <code>NA_integer_</code>, <code>NA</code>) passed to a jitted function or an operation as an R scalar, or written in a traced body, behaves as in <code><a href="../reference/AnvlArray.html">nv_array()</a></code> at the data type it takes, instead of being refused with a self-contradictory error. An <code>NA</code> in an R array passed to a jitted function is now reported at <code>i32</code> too.</p></li>
-<li><p>An empty <code>wrt</code> in <code><a href="../reference/gradient.html">gradient()</a></code>, <code><a href="../reference/gradient.html">value_and_gradient()</a></code> and <code><a href="../reference/graph_gradient.html">graph_gradient()</a></code> differentiates with respect to no argument, rather than all of them.</p></li>
-<li><p><code>nv_array(byrow = TRUE)</code> refuses data that does not fill <code>shape</code> instead of recycling it, and keeps the values of a <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code>.</p></li>
-<li><p>An array that a branch of <code><a href="../reference/nv_if.html">nv_if()</a></code>, the body of <code><a href="../reference/nv_while.html">nv_while()</a></code> or a function differentiated by <code><a href="../reference/gradient.html">gradient()</a></code> closes over now counts toward the device <code><a href="../reference/jit.html">jit()</a></code> detects, as it already did for the jitted function itself.</p></li>
-<li><p><code><a href="../reference/as_raw.html">as_raw()</a></code> of a <code>"quickr"</code> array returns the bytes of its data type, in row-major order with <code>row_major = TRUE</code>.</p></li>
-<li><p>The <code>"quickr"</code> backend accepts a device given as a string, <code>"cpu"</code>.</p></li>
-<li><p>A static argument of <code><a href="../reference/jit.html">jit()</a></code> that is an <code>AbstractArray</code> reaches the function as that value, instead of becoming an input of the program that the call does not supply.</p></li>
+<ul><li>Inside <code><a href="../reference/jit.html">jit()</a></code>, an R value that a function wrapped by <code><a href="../reference/with_dtypes.html">with_dtypes()</a></code> returns takes the wrapper’s default data types, not those of the enclosing trace.</li>
+<li>A missing value (<code>NA_real_</code>, <code>NA_integer_</code>, <code>NA</code>) passed to a jitted function or an operation as an R scalar, or written in a traced body, behaves as in <code><a href="../reference/AnvlArray.html">nv_array()</a></code> at the data type it takes, instead of being refused with a self-contradictory error. An <code>NA</code> in an R array passed to a jitted function is now reported at <code>i32</code> too.</li>
+<li>An empty <code>wrt</code> in <code><a href="../reference/gradient.html">gradient()</a></code>, <code><a href="../reference/gradient.html">value_and_gradient()</a></code> and <code><a href="../reference/graph_gradient.html">graph_gradient()</a></code> differentiates with respect to no argument, rather than all of them.</li>
+<li>
+<code>nv_array(byrow = TRUE)</code> refuses data that does not fill <code>shape</code> instead of recycling it, and keeps the values of a <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code>.</li>
+<li>An array that a branch of <code><a href="../reference/nv_if.html">nv_if()</a></code>, the body of <code><a href="../reference/nv_while.html">nv_while()</a></code> or a function differentiated by <code><a href="../reference/gradient.html">gradient()</a></code> closes over now counts toward the device <code><a href="../reference/jit.html">jit()</a></code> detects, as it already did for the jitted function itself.</li>
+<li>
+<code><a href="../reference/as_raw.html">as_raw()</a></code> of a <code>"quickr"</code> array returns the bytes of its data type, in row-major order with <code>row_major = TRUE</code>.</li>
+<li>The <code>"quickr"</code> backend accepts a device given as a string, <code>"cpu"</code>.</li>
+<li>A static argument of <code><a href="../reference/jit.html">jit()</a></code> that is an <code>AbstractArray</code> reaches the function as that value, instead of becoming an input of the program that the call does not supply.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="performance-development-version">Performance<a class="anchor" aria-label="anchor" href="#performance-development-version"></a></h3>

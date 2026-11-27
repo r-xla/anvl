@@ -79,6 +79,8 @@
 <li><h6 class="dropdown-header" data-toc-skip>Extending</h6></li>
     <li><a class="dropdown-item" href="../articles/extending_primitive.html">Adding a Primitive</a></li>
     <li><a class="dropdown-item" href="../articles/extending_api.html">Adding an API Function</a></li>
+    <li><a class="dropdown-item" href="../articles/custom_calls.html">Custom Calls</a></li>
+    <li><a class="dropdown-item" href="../articles/custom_calls_cuda.html">Custom Calls on CUDA</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>Other</h6></li>
     <li><a class="dropdown-item" href="../articles/internals.html">Internals</a></li>
     <li><a class="dropdown-item" href="../articles/primitives.html">Available Primitives</a></li>
@@ -326,7 +328,7 @@ transformation are attached to each primitive.</p>
 <span><span class="co">##     operands &lt;- lapply(list(...), hlo_broadcast_scalar, output_types = output_types)</span></span>
 <span><span class="co">##     list(do.call(hlo_fn, c(unname(operands), list(output_types = output_types))))</span></span>
 <span><span class="co">## }</span></span>
-<span><span class="co">## &lt;environment: 0x609341f33d48&gt;</span></span></code></pre>
+<span><span class="co">## &lt;environment: 0x600c0a34d028&gt;</span></span></code></pre>
 <p>The <code><a href="../reference/stablehlo.html">stablehlo()</a></code> function creates a
 <code><a href="https://r-xla.github.io/stablehlo/reference/Func.html" class="external-link">stablehlo::Func</a></code> object and sequentially translates the
 <code>GraphStatement</code>s into StableHLO operations.</p>

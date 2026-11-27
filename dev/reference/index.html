@@ -52,6 +52,8 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-developers"><li><h6 class="dropdown-header" data-toc-skip>Extending</h6></li>
     <li><a class="dropdown-item" href="../articles/extending_primitive.html">Adding a Primitive</a></li>
     <li><a class="dropdown-item" href="../articles/extending_api.html">Adding an API Function</a></li>
+    <li><a class="dropdown-item" href="../articles/custom_calls.html">Custom Calls</a></li>
+    <li><a class="dropdown-item" href="../articles/custom_calls_cuda.html">Custom Calls on CUDA</a></li>
     <li><h6 class="dropdown-header" data-toc-skip>Other</h6></li>
     <li><a class="dropdown-item" href="../articles/internals.html">Internals</a></li>
     <li><a class="dropdown-item" href="../articles/primitives.html">Available Primitives</a></li>
@@ -1590,6 +1592,22 @@
         </dt>
         <dd>Promotion Rules</dd>
       </dl></div><div class="section level2">
+
+      <h3 id="custom-calls">Custom Calls<a class="anchor" aria-label="anchor" href="#custom-calls"></a></h3>
+      <div class="section-desc"><p>Calling hand-written XLA FFI handlers</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="nv_custom_call.html">nv_custom_call()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Call an XLA FFI Handler</dd>
+      </dl></div><div class="section level2">
       <h2 id="transformations">Transformations<a class="anchor" aria-label="anchor" href="#transformations"></a></h2>
 
       <div class="section-desc"><p>Code transformations</p></div>
@@ -2244,6 +2262,13 @@
 
         </dt>
         <dd>Primitive Cumulative Sum</dd>
+
+        <dt>
+
+          <code><a href="prim_custom_call.html">prim_custom_call()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Primitive FFI Call</dd>
 
         <dt>
 

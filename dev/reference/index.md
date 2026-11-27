@@ -637,6 +637,13 @@ article for how they are used.
   [`promotion_rule()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
   : Promotion Rules
 
+### Custom Calls
+
+Calling hand-written XLA FFI handlers
+
+- [`nv_custom_call()`](https://r-xla.github.io/anvl/dev/reference/nv_custom_call.md)
+  **\[experimental\]** : Call an XLA FFI Handler
+
 ## Transformations
 
 Code transformations
@@ -858,6 +865,8 @@ Low-level primitive operations (prim\_\* functions)
   : Primitive Cumulative Product
 - [`prim_cumsum()`](https://r-xla.github.io/anvl/dev/reference/prim_cumsum.md)
   : Primitive Cumulative Sum
+- [`prim_custom_call()`](https://r-xla.github.io/anvl/dev/reference/prim_custom_call.md)
+  **\[experimental\]** : Primitive FFI Call
 - [`prim_custom_gradient()`](https://r-xla.github.io/anvl/dev/reference/prim_custom_gradient.md)
   : Primitive Custom Gradient
 - [`prim_digamma()`](https://r-xla.github.io/anvl/dev/reference/prim_digamma.md)

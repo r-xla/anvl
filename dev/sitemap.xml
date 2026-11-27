@@ -4,6 +4,8 @@
 <url><loc>https://r-xla.github.io/anvl/dev/LICENSE.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/articles/anvl.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/articles/autodiff.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/articles/custom_calls.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/articles/custom_calls_cuda.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/articles/depending-on-anvl.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/articles/efficiency.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/articles/extending_api.html</loc></url>
@@ -125,6 +127,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_cummin.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_cumprod.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_cumsum.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_custom_call.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_det.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_determinant.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_device.html</loc></url>
@@ -274,6 +277,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_cummin.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_cumprod.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_cumsum.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/prim_custom_call.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_custom_gradient.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_digamma.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_div.html</loc></url>
