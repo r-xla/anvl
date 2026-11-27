@@ -77,10 +77,11 @@ nv_custom_call <- function(
 
 # Helpers of `prim_custom_call()`.
 
-# The attributes of a custom call as stablehlo attribute objects. A number or a
-# logical takes the default data type of its category, so this runs while
-# tracing, where the default data types of the program are known. An attribute
-# object passes through, so a caller who needs another data type can build the
+# The attributes of a custom call as stablehlo attribute objects. A handler
+# reads an attribute at a C++ type fixed when it was compiled, so a number or a
+# logical takes a data type fixed by its R type, not the default data types: a
+# double is `f64`, an integer `i64` and a logical `bool`. An attribute object
+# passes through, so a caller who needs another data type can build the
 # attribute itself.
 custom_call_attrs <- function(attrs) {
   Map(
@@ -100,7 +101,10 @@ custom_call_attrs <- function(attrs) {
         }
         return(stablehlo::StringAttr(name = nm, value = value))
       }
-      dt <- default_dtype(value)
+      if (!is.numeric(value) && !is.logical(value)) {
+        cli_abort("Attribute {.val {nm}} must be a string, a number or a logical, not {.obj_type_friendly {value}}.")
+      }
+      dt <- as_dtype(switch(typeof(value), double = "f64", integer = "i64", logical = "bool"))
       if (length(value) == 1L) {
         if (is.logical(value)) {
           stablehlo::BoolAttr(name = nm, value = value)

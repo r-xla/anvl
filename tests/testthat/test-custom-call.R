@@ -64,6 +64,22 @@ describe("nv_custom_call", {
     expect_equal(as_array(out), as_array(x))
   })
 
+  it("gives a numeric attribute a data type fixed by its R type", {
+    f <- function(x) {
+      nv_custom_call("print_tensor", x, attrs = list(eps = 1e-8, n = 3L, flag = TRUE, ws = c(1, 2), ns = 1:2))
+    }
+    # a handler reads an attribute at a C++ type fixed when it was compiled, so
+    # the default data types must not change it
+    for (defaults in list(c(float = "f32", int = "i32"), c(float = "f64", int = "i64"))) {
+      mlir <- with_default_dtypes(defaults, repr(stablehlo(trace_fn(f, list(nv_aval("f32", 2L))))[[1L]]))
+      expect_match(mlir, "eps = 1.0000000000000000e-08 : f64", fixed = TRUE)
+      expect_match(mlir, "n = 3 : i64", fixed = TRUE)
+      expect_match(mlir, "flag = true", fixed = TRUE)
+      expect_match(mlir, "ws = array<f64: ", fixed = TRUE)
+      expect_match(mlir, "ns = array<i64: 1, 2>", fixed = TRUE)
+    }
+  })
+
   it("hands the handler the layout it asks for", {
     # eigh reads one triangle, so a matrix whose triangles differ tells the
     # default column-major layout from a row-major one, which transposes it
@@ -208,6 +224,10 @@ describe("nv_custom_call", {
     expect_error(
       nv_custom_call("t", x, attrs = list(bad = list(1))),
       "non-empty atomic vector"
+    )
+    expect_error(
+      nv_custom_call("t", x, attrs = list(z = 1i)),
+      "must be a string, a number or a logical"
     )
   })
 })

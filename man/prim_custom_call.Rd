@@ -31,10 +31,13 @@ are then returned unchanged, so at least one is required.}
 
 \item{attrs}{(\code{list})\cr
 Named attributes the handler reads via \verb{.Attr<T>("name")} or
-\verb{.Attrs<Dictionary>()}. Strings, and numbers and logicals at the default
-data type of their category (see \code{\link[=default_dtypes]{default_dtypes()}}), are converted
-for you; pass a \code{stablehlo} attribute object such as
-\code{\link[stablehlo:ScalarAttr]{stablehlo::ScalarAttr()}} to pin another data type.}
+\verb{.Attrs<Dictionary>()}. A string is converted for you, and so is a
+number or a logical, at a data type fixed by its R type, whatever
+\code{\link[=default_dtypes]{default_dtypes()}} says: a double is \code{f64}, an integer \code{i64} and a
+logical \code{bool}, so the handler reads them as \code{double}, \code{int64_t} and
+\code{bool}. A vector of several becomes an array attribute of that data
+type. Pass a \code{stablehlo} attribute object such as
+\code{\link[stablehlo:ScalarAttr]{stablehlo::ScalarAttr()}} for another data type.}
 
 \item{has_side_effect}{(\code{logical(1)})\cr
 Whether XLA must keep the call even when its results are unused.

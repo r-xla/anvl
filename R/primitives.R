@@ -4146,10 +4146,13 @@ prim_convolution <- new_primitive(
 #'   are then returned unchanged, so at least one is required.
 #' @param attrs (`list`)\cr
 #'   Named attributes the handler reads via `.Attr<T>("name")` or
-#'   `.Attrs<Dictionary>()`. Strings, and numbers and logicals at the default
-#'   data type of their category (see [`default_dtypes()`]), are converted
-#'   for you; pass a `stablehlo` attribute object such as
-#'   [`stablehlo::ScalarAttr()`] to pin another data type.
+#'   `.Attrs<Dictionary>()`. A string is converted for you, and so is a
+#'   number or a logical, at a data type fixed by its R type, whatever
+#'   [`default_dtypes()`] says: a double is `f64`, an integer `i64` and a
+#'   logical `bool`, so the handler reads them as `double`, `int64_t` and
+#'   `bool`. A vector of several becomes an array attribute of that data
+#'   type. Pass a `stablehlo` attribute object such as
+#'   [`stablehlo::ScalarAttr()`] for another data type.
 #' @param has_side_effect (`logical(1)`)\cr
 #'   Whether XLA must keep the call even when its results are unused.
 #'   Defaults to `TRUE` exactly when `output_types` is `NULL`. Under
