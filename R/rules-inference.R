@@ -854,6 +854,13 @@ infer_clamp <- function(x, min, max) {
   list(AbstractArray(dtype = dtype(x), shape = shape))
 }
 
+infer_poisson_series <- function(k, lambda) {
+  assert_array_dtype(k, "float")
+  assert_same_dtype(k, lambda)
+  shape <- infer_elementwise_shape(list(k = k, lambda = lambda))
+  list(AbstractArray(dtype = dtype(k), shape = shape))
+}
+
 infer_iota <- function(axis, dtype, shape, start) {
   shape <- assert_shapevec(shape)
   axis <- assert_int_param(axis, len = 1L)

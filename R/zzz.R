@@ -36,6 +36,7 @@ register_s3_method <- function(pkg, generic, class, fun = NULL) {
 
   read_env_defaults()
   register_rng_state_node()
+  register_cpu_kernels(pkgname)
 
   # Arrays read with readRDS() and friends load onto anvl's default device:
   # pjrt uploads an unserialized buffer to the device this entry returns.

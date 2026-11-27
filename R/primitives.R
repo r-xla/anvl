@@ -2230,6 +2230,33 @@ prim_clamp <- new_primitive(
   tags = "elementwise"
 )
 
+# An internal primitive that sums the Poisson tail series for `ppois_raw()`.
+# Where `lambda <= k` it sums the upper series, and elsewhere the lower one. See
+# `poisson_series()` for details.
+#
+# `k` must be a whole number >= 0 and `lambda` must be finite and positive. They
+# share a float data type, and each is either a scalar or has the shape of the
+# result.
+#
+# On the CPU we use anvl's own kernel, `anvl_poisson_series` in src/. It sums
+# each element only as far as that element needs, and reduces XLA compile time.
+# On other platforms we lower `poisson_series()` in place instead.
+#
+# There is no pullback rule. Like the loop it replaces, this primitive is only
+# ever given inputs whose gradient has been stopped.
+prim_poisson_series <- new_primitive(
+  "poisson_series",
+  function(k, lambda) {
+    operands <- apply_promotion(list(k = k, lambda = lambda), promotion_rdata_common())
+    graph_desc_add(
+      self,
+      operands,
+      list(),
+      infer_fn = infer_poisson_series
+    )[[1L]]
+  }
+)
+
 #' @title Primitive Reverse
 #' @description
 #' Reverses the order of elements along specified axes.

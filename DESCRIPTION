@@ -44,12 +44,16 @@ Suggests:
     quickr (>= 0.3.0),
     safetensors (>= 0.2.0),
     testthat (>= 3.0.0)
+LinkingTo:
+    highway,
+    pjrt
 Remotes:
     r-xla/pjrt@develop,
     r-xla/stablehlo@develop
 Additional_repositories: https://r-xla.r-universe.dev
 Config/testthat/edition: 3
 Encoding: UTF-8
+SystemRequirements: C++20
 Roxygen: list(markdown = TRUE)
 Collate:
     'aaa.R'
@@ -76,6 +80,7 @@ Collate:
     'backend-quickr.R'
     'bibentries.R'
     'box.R'
+    'cpu-kernels.R'
     'graph-passes.R'
     'graph.R'
     'graph-print.R'
@@ -97,4 +102,4 @@ Collate:
     'stablehlo.R'
     'transformation.R'
     'zzz.R'
-Config/roxygen2/version: 8.1.0
+Config/roxygen2/version: 8.1.1

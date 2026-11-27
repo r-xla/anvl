@@ -622,6 +622,20 @@ prim_clamp[["stablehlo"]] <- function(x, min, max, output_types) {
   list(hlo_clamp(min, hlo_broadcast_scalar(x, output_types), max, output_types = output_types))
 }
 
+# On the CPU we call anvl's `anvl_poisson_series` kernel in src/. It accepts
+# each operand either as a scalar or with the shape of the result, so we don't
+# need to broadcast. On other platforms, and for data types the kernel doesn't
+# support, we lower `poisson_series()` in place instead.
+prim_poisson_series[["stablehlo"]] <- function(k, lambda, output_types) {
+  if (use_cpu_kernel(k)) {
+    return(list(cpu_custom_call("anvl_poisson_series", list(k, lambda), output_types)))
+  }
+  lower_inline(
+    function(k, lambda) poisson_series(k, lambda, lambda <= k, dtype(k) == "f32"),
+    list(k = k, lambda = lambda)
+  )
+}
+
 prim_rev[["stablehlo"]] <- function(x, axes, output_types) {
   list(hlo_reverse(x, xla_dims(axes, naxes(x)), output_types = output_types))
 }

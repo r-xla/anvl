@@ -646,6 +646,14 @@ test_that("prim_reshape", {
   expect_snapshot(error = TRUE, prim_reshape(nv_array(1:4), shape = c(3L, 3L)))
 })
 
+test_that("prim_poisson_series", {
+  expect_snapshot(error = TRUE, prim_poisson_series(nv_array(1:3, dtype = "i32"), nv_array(1:3, dtype = "i32")))
+  expect_snapshot(
+    error = TRUE,
+    prim_poisson_series(nv_array(c(1, 2, 3), dtype = "f32"), nv_array(c(1, 2), dtype = "f32"))
+  )
+})
+
 test_that("prim_rev", {
   expect_snapshot(error = TRUE, prim_rev(nv_array(1:4), axes = list(1L)))
 })

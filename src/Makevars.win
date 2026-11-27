@@ -1,0 +1,5 @@
+# XLA's FFI headers, which come from pjrt, need C++20. Highway includes each
+# kernel file again once per SIMD target, and `-I.` lets it find them.
+CXX_STD = CXX20
+PKG_CPPFLAGS = -I.
+PKG_CXXFLAGS = $(CXX_VISIBILITY)

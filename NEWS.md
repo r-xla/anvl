@@ -18,6 +18,10 @@
 
 ## Features
 
+* On the CPU, the Poisson tail series used by `nv_ppois()` and `nv_qpois()`
+  moves to a C++ SIMD kernel, called by XLA as a custom call and run on XLA's
+  thread pool. Roughly halves compile time, and gives 2-10x speedup when they
+  are required.
 * New `nv_split_rng_states()` splits `n` random states off a random state.
 * New `shp()` creates a shape vector from its axis sizes: `shp(2, 3)`, or `shp()` for
   a scalar.

@@ -163,6 +163,26 @@
       ! `shape` must have as many elements as `x`.
       x Got (4) and (3x3).
 
+# prim_poisson_series
+
+    Code
+      prim_poisson_series(nv_array(1:3, dtype = "i32"), nv_array(1:3, dtype = "i32"))
+    Condition
+      Error in `prim_poisson_series()`:
+      ! `k` must have a float data type.
+      x Got "i32".
+
+---
+
+    Code
+      prim_poisson_series(nv_array(c(1, 2, 3), dtype = "f32"), nv_array(c(1, 2),
+      dtype = "f32"))
+    Condition
+      Error in `prim_poisson_series()`:
+      ! `k` and `lambda` must have the same shape, unless one of them is a scalar.
+      x Got f32[3] and f32[2].
+      i Use `nv_broadcast_arrays()` for general broadcasting.
+
 # prim_rev
 
     Code
