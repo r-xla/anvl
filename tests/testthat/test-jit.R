@@ -630,6 +630,22 @@ test_that("static arguments without reference semantics are accepted", {
   expect_equal(k(y ~ x, nv_array(1)), nv_array(2))
 })
 
+describe("a static argument", {
+  it("reaches the function as the value it is, even an AbstractArray", {
+    seen <- NULL
+    f <- jit(
+      function(x, like) {
+        seen <<- class(like)
+        x + nv_fill(1, shape = shape(like), dtype = dtype(like))
+      },
+      static = "like"
+    )
+    out <- f(nv_array(c(1, 2), dtype = "f32"), AbstractArray("f32", 2L))
+    expect_true("AbstractArray" %in% seen)
+    expect_equal(out, nv_array(c(2, 3), dtype = "f32"))
+  })
+})
+
 test_that("rejecting a reference-semantics static names it helpfully", {
   e <- new.env()
   f <- jit(function(s, x) x + 1, static = "s")
