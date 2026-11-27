@@ -54,24 +54,31 @@ prim_convert[["pushforward"]] <- function(inputs, outputs, tangents, params) {
   list(if (is_dtype_float(dtype(out))) prim_convert(tangents[[1L]], dtype(out)))
 }
 
-# Pushforward rules of the linear primitives -----------------------------------
+# Pushforward rules of the linear primitives ----------------------------------
 #
-# A primitive tagged `"linear"` is linear in its float operands jointly, so it
-# is its own derivative: the tangent of its result is the primitive applied to
-# the tangents of those operands, a zero standing in for a missing one, with
-# its other operands -- start indices, which have no tangent -- and its
-# parameters unchanged.
+# A primitive tagged `"linear"` is linear in its float operands, its other
+# operands held fixed, so the tangent of its result is the primitive applied to
+# the tangents of its float operands -- zeros for one without a tangent -- with
+# its other operands and its parameters as they are.
 
 # The pushforward rule of the linear primitive `prim`.
 pushforward_linear <- function(prim) {
-  force(prim)
+  prim_fn <- primitive_def(prim)$fn
   function(inputs, outputs, tangents, params) {
     operands <- Map(
-      function(x, tangent) tangent %||% if (is_dtype_float(dtype(x))) zeros_like(x) else x,
+      function(x, tangent) {
+        if (is_dtype_float(dtype(x))) tangent %||% zeros(dtype(x), shape(x)) else x
+      },
       inputs,
       tangents
     )
-    list(do.call(prim, c(unname(operands), params)))
+    if (!all(names(params) %in% formalArgs(prim_fn))) {
+      cli_abort(
+        "Internal error: the linear primitive {.fn {paste0('prim_', primitive_def(prim)$name)}} cannot be called with its parameters."
+      )
+    }
+    out <- do.call(prim_fn, c(operands, params))
+    if (is_graph_box(out)) list(out) else out
   }
 }
 
@@ -86,12 +93,12 @@ prim_print[["pushforward"]] <- function(inputs, outputs, tangents, params) {
   list(tangents[[1L]])
 }
 
-# The barrier passes its operands through. As the pullback rule does with the
-# cotangents, the tangents go behind a barrier of their own.
+# The barrier passes its operands through, and takes their tangents through a
+# barrier of their own, as its pullback rule does their cotangents.
 prim_optimization_barrier[["pushforward"]] <- function(inputs, outputs, tangents, params) {
-  given <- !vapply(tangents, is.null, logical(1L))
-  out <- vector("list", length(outputs))
-  out[given] <- prim_optimization_barrier(tangents[given])
+  has_tangent <- !vapply(tangents, is.null, logical(1L))
+  out <- vector("list", length(inputs))
+  out[has_tangent] <- prim_optimization_barrier(tangents[has_tangent])
   out
 }
 
@@ -106,30 +113,33 @@ prim_which_max[["pushforward"]] <- pushforward_none
 prim_which_min[["pushforward"]] <- pushforward_none
 prim_bitcast_convert[["pushforward"]] <- pushforward_none
 
-# Pushforward rules of the multilinear primitives ------------------------------
+# Pushforward rules of the bilinear primitives ---------------------------------
 #
-# A primitive that is linear in each of its operands, the others held fixed, is
-# its own derivative in each: its tangent is the sum, over the operands with a
-# tangent, of the primitive at the operands with that one replaced by its
-# tangent.
+# A primitive tagged `"bilinear"` is linear in each of its two operands, the
+# other held fixed, so the tangent of its result is the sum, over the operands
+# with a tangent, of the primitive with that operand replaced by its tangent.
 
-# The pushforward rule of the multilinear primitive `prim`, whose parameters are
-# its arguments of the same names.
-pushforward_multilinear <- function(prim) {
-  force(prim)
+# The pushforward rule of the bilinear primitive `prim`.
+pushforward_bilinear <- function(prim) {
+  prim_fn <- primitive_def(prim)$fn
   function(inputs, outputs, tangents, params) {
+    if (!all(names(params) %in% formalArgs(prim_fn))) {
+      cli_abort(
+        "Internal error: the bilinear primitive {.fn {paste0('prim_', primitive_def(prim)$name)}} cannot be called with its parameters."
+      )
+    }
     with_tangent <- which(!vapply(tangents, is.null, logical(1L)))
     terms <- lapply(with_tangent, function(i) {
       operands <- inputs
       operands[[i]] <- tangents[[i]]
-      do.call(prim, c(operands, params))
+      do.call(prim_fn, c(operands, params))
     })
     list(Reduce(prim_add, terms))
   }
 }
 
-for (prim in list(prim_dot_general, prim_convolution)) {
-  prim[["pushforward"]] <- pushforward_multilinear(prim)
+for (prim in primitives_tagged("bilinear")) {
+  prim[["pushforward"]] <- pushforward_bilinear(prim)
 }
 rm(prim)
 

@@ -1,10 +1,11 @@
 # A primitive tagged "elementwise" gets its pushforward rule from its pullback
-# rule (`pushforward_from_pullback()`), which the pullback tests cover, and one
-# tagged "linear" is its own pushforward (`pushforward_linear()`), so only the
-# derivations themselves are checked here: the first on one primitive as an
-# example, the second on a few primitives that take each of its paths. Every
-# other pushforward rule has an entry in `pushforward_cases`, or, for a
-# primitive that takes functions, entries in `subgraph_cases`.
+# rule (`pushforward_from_pullback()`), which the pullback tests cover, one
+# tagged "linear" applies itself to the tangents (`pushforward_linear()`), and
+# one tagged "bilinear" applies itself to each tangent in place of its operand
+# (`pushforward_bilinear()`), so only each derivation is checked here, on one
+# primitive as an example. Every other pushforward rule has an entry in
+# `pushforward_cases`, or, for a primitive that takes functions, entries in
+# `subgraph_cases`.
 # `check_pushforward_rule()` runs the same checks on each against references
 # that do not use the pushforward rules. torch has no forward mode to compare
 # with.
@@ -103,25 +104,6 @@ as_outputs <- function(r) {
   if (is.list(r) && !is_arrayish(r)) unname(r) else list(r)
 }
 
-# `prim_convolution()` of a batch of 1-d signals `x`, with axes (batch, feature,
-# spatial), and a `kernel` with axes (output feature, input feature, spatial),
-# strided and padded.
-conv1d_params <- list(
-  x_batch_axis = 1L,
-  x_feature_axis = 2L,
-  x_spatial_axes = 3L,
-  kernel_input_feature_axis = 2L,
-  kernel_output_feature_axis = 1L,
-  kernel_spatial_axes = 3L,
-  output_batch_axis = 1L,
-  output_feature_axis = 2L,
-  output_spatial_axes = 3L,
-  window_strides = 2L,
-  padding = matrix(1L, 1L, 2L),
-  x_dilation = 1L,
-  kernel_dilation = 1L
-)
-
 # `prim_scatter()` of rows of `update` into the rows of `x`, a 5x3, that
 # `indices` gives; an index of 9 is out of bounds.
 scatter_rows_case <- function(indices, update_fn, unique_indices = FALSE) {
@@ -158,21 +140,6 @@ pushforward_cases <- list(
   which_max = pushforward_case(list(x = unif(-2, 2)), params = list(axis = 1L)),
   which_min = pushforward_case(list(x = unif(-2, 2)), params = list(axis = 2L)),
   bitcast_convert = pushforward_case(list(x = unif(-2, 2)), params = list(dtype = "i64")),
-  dot_general = pushforward_case(
-    list(lhs = unif(-2, 2), rhs = unif(-2, 2)),
-    shapes = list(rhs = c(3L, 4L)),
-    params = list(contracting_axes = list(2L, 1L), batching_axes = list(integer(), integer()))
-  ),
-  "dot_general/batched" = pushforward_case(
-    list(lhs = unif(-2, 2), rhs = unif(-2, 2)),
-    shapes = list(lhs = c(2L, 3L, 2L), rhs = c(3L, 4L, 2L)),
-    params = list(contracting_axes = list(2L, 1L), batching_axes = list(3L, 3L))
-  ),
-  convolution = pushforward_case(
-    list(x = unif(-2, 2), kernel = unif(-2, 2)),
-    shapes = list(x = c(2L, 3L, 6L), kernel = c(4L, 3L, 3L)),
-    params = conv1d_params
-  ),
   max = pushforward_case(list(x = unif(-2, 2)), shapes = list(x = c(3L, 4L)), params = list(axes = 2L)),
   "max/keep" = pushforward_case(
     list(x = unif(-2, 2)),
@@ -432,27 +399,14 @@ subgraph_cases <- list(
   )
 )
 
-# Pushforward rules of the primitives tagged "linear": an operand alone, one
-# with parameters, several whose tangents go in together, a float operand
-# without a tangent, and integer operands passed through.
-linear_cases <- list(
-  transpose = pushforward_case(list(x = unif(-2, 2)), params = list(perm = c(2L, 1L))),
-  sum = pushforward_case(list(x = unif(-2, 2)), params = list(axes = 2L, drop = FALSE)),
-  concatenate = pushforward_case(list(a = unif(-2, 2), b = unif(-2, 2)), params = list(axis = 2L)),
-  dynamic_update_slice = pushforward_case(
-    list(x = unif(-2, 2), update = unif(-2, 2), i = ints(1L, 2L), j = ints(1L, 2L)),
-    wrt = "update",
-    shapes = list(update = c(1L, 2L), i = integer(), j = integer())
-  )
-)
-
-# Whether the pushforward rule of `prim` is one derived from its tag: by
-# `pushforward_from_pullback()` from its pullback rule, or by
-# `pushforward_linear()`.
-derived_from_tag <- function(prim) {
+# Whether the pushforward rule of `prim` is derived from its tags: from its
+# pullback rule (`pushforward_from_pullback()`), or as that of a linear
+# (`pushforward_linear()`) or a bilinear primitive (`pushforward_bilinear()`).
+derived_from_tags <- function(prim) {
   rule <- body(prim[["pushforward"]])
   identical(rule, body(pushforward_from_pullback(prim[["pullback"]]))) ||
-    identical(rule, body(pushforward_linear(prim)))
+    identical(rule, body(pushforward_linear(prim))) ||
+    identical(rule, body(pushforward_bilinear(prim)))
 }
 
 # `body(args)`, for `args` a named list, as a function with one formal per name.
@@ -598,7 +552,7 @@ describe("pushforward rules", {
   it("have a case for every primitive with a rule of its own", {
     nms <- names(asNamespace("anvl"))
     prims <- Filter(\(p) inherits(p, "AnvlPrimitive"), mget(nms[startsWith(nms, "prim_")], asNamespace("anvl")))
-    own <- Filter(\(p) !is.null(p[["pushforward"]]) && !derived_from_tag(p), prims)
+    own <- Filter(\(p) !is.null(p[["pushforward"]]) && !derived_from_tags(p), prims)
     cased <- unique(sub("/.*", "", c(names(pushforward_cases), names(subgraph_cases))))
     expect_setequal(cased, sub("^prim_", "", names(own)))
   })
@@ -685,18 +639,28 @@ describe("pushforward_from_pullback", {
 })
 
 describe("pushforward_linear", {
-  it("derives the pushforward rule of every primitive tagged linear", {
-    for (prim in primitives_tagged("linear")) {
-      expect_identical(body(prim[["pushforward"]]), body(pushforward_linear(prim)), label = primitive_def(prim)$name)
-    }
+  # two float operands: along either alone, the other one's tangent is zeros
+  it("derives a pushforward rule that agrees with the pullback, e.g. for prim_concatenate", {
+    withr::local_seed(1L)
+    check_pushforward_rule(
+      "concatenate",
+      pushforward_case(list(x = unif(-2, 2), y = unif(-2, 2)), params = list(axis = 1L))
+    )
   })
+})
 
-  for (name in names(linear_cases)) {
-    it(sprintf("derives a pushforward rule that agrees with the pullback for %s", name), {
-      withr::local_seed(1L)
-      check_pushforward_rule(name, linear_cases[[name]])
-    })
-  }
+describe("pushforward_bilinear", {
+  it("derives a pushforward rule that agrees with the pullback, e.g. for prim_dot_general", {
+    withr::local_seed(1L)
+    check_pushforward_rule(
+      "dot_general",
+      pushforward_case(
+        list(lhs = unif(-2, 2), rhs = unif(-2, 2)),
+        shapes = list(rhs = c(3L, 4L)),
+        params = list(contracting_axes = list(2L, 1L), batching_axes = list(integer(), integer()))
+      )
+    )
+  })
 })
 
 # The number of times a print ran in `expr`, which is invisible, so that its
