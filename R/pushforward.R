@@ -4,10 +4,16 @@
 #' function that takes a tangent of the arguments -- a direction to move them
 #' in -- to the corresponding tangent of the result, by forward-mode automatic
 #' differentiation. That is the Jacobian of `.f` times the tangent, the
-#' Jacobian-vector product. Where [`pullback()`] gives the derivative of a
-#' weighted sum of the result with respect to all arguments, a pushforward
-#' gives the derivative of the whole result along a single direction of the
-#' arguments.
+#' Jacobian-vector product.
+#'
+#' For \eqn{f: \mathbb{R}^n \to \mathbb{R}^m}{f: R^n -> R^m}, whose Jacobian
+#' \eqn{J_f(x)}{J_f(x)} at \eqn{x}{x} is the \eqn{m \times n}{m x n} matrix of
+#' the derivatives \eqn{\partial f_i / \partial x_j}{d f_i / d x_j}, the
+#' pushforward at \eqn{x}{x} is the linear map
+#' \deqn{v \mapsto J_f(x) \, v}{v -> J_f(x) v}
+#' from a tangent \eqn{v \in \mathbb{R}^n}{v in R^n} of the arguments to the
+#' tangent of the result. With the \eqn{j}{j}-th unit vector as \eqn{v}{v}, it
+#' gives the \eqn{j}{j}-th column of the Jacobian.
 #'
 #' * `pushforward()` returns only the pushforward.
 #' * `value_and_pushforward()` returns both the result of `.f` and its
