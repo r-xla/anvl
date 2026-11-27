@@ -64,6 +64,9 @@
 * `as_raw()` of a `"quickr"` array returns the bytes of its data type, in
   row-major order with `row_major = TRUE`.
 * The `"quickr"` backend accepts a device given as a string, `"cpu"`.
+* A static argument of `jit()` that is an `AbstractArray` reaches the function
+  as that value, instead of becoming an input of the program that the call
+  does not supply.
 
 ## Performance
 
