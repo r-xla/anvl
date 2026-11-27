@@ -1,5 +1,0 @@
-/* The logo is black line art on a white hexagon. In dark mode, invert it to
-   white line art on a dark hexagon, so that it does not glare. */
-[data-bs-theme="dark"] img.logo {
-  filter: invert(1);
-}
